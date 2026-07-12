@@ -1,5 +1,7 @@
 # Flow Runner PySide6 Refactor Implementation Plan
 
+> 当前实施与验证状态见 `REFACTOR_STATUS.md`。本文件中的逐步复选框保留为原始 TDD 实施清单；最终真实环境验收仍以 `REAL_ENVIRONMENT_CHECKLIST.md` 的逐项证据为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a standardized PySide6 game-automation workflow editor and runtime using composable conditions, actions, policies, and conditional routing, while keeping the existing three scripts unchanged as migration references.
