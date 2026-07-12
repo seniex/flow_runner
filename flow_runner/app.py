@@ -34,8 +34,8 @@ from flow_runner.engine.runner import Runner
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
 from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCapture
-from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
-from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
+from flow_runner.infrastructure.input.keyboard import KeyboardDevice, PyAutoGuiKeyboardDevice
+from flow_runner.infrastructure.input.mouse import MouseDevice, PyAutoGuiMouseDevice
 from flow_runner.infrastructure.input.recording import (
     RecordingListenerFactory,
     RecordingPlayer,
@@ -67,6 +67,8 @@ class ApplicationComposition:
     recording_path: Path
     resource_coordinator: ResourceCoordinator
     ocr_client: PaddleJsonProcessClient | None
+    mouse_device: MouseDevice
+    keyboard_device: KeyboardDevice
 
     def start_services(self) -> None:
         self.hotkey_service.start()
@@ -77,8 +79,13 @@ class ApplicationComposition:
             self.window.set_recording_state(False)
         self.hotkey_service.stop()
         self.runner_bridge.shutdown()
+        self.release_inputs()
         if self.ocr_client is not None:
             self.ocr_client.stop()
+
+    def release_inputs(self) -> None:
+        self.mouse_device.release_all()
+        self.keyboard_device.release_all()
 
     def toggle_recording(self) -> None:
         if self.recorder.is_recording:
@@ -99,6 +106,8 @@ def create_application(
     hotkey_listener_factory: ListenerFactory | None = None,
     recording_listener_factory: RecordingListenerFactory | None = None,
     recording_path: Path | None = None,
+    mouse_device: MouseDevice | None = None,
+    keyboard_device: KeyboardDevice | None = None,
 ) -> ApplicationComposition:
     enable_per_monitor_dpi_awareness()
     existing = QApplication.instance()
@@ -109,7 +118,9 @@ def create_application(
     perception = PerceptionService(TargetCapture(DesktopCapture(), WindowCapture()))
     resource_coordinator = ResourceCoordinator(perception)
     ocr_provider, ocr_client = _build_ocr_provider(project, path.parent)
-    registry = _build_registry(perception, asyncio.sleep, ocr_provider)
+    mouse = mouse_device or PyAutoGuiMouseDevice()
+    keyboard = keyboard_device or PyAutoGuiKeyboardDevice()
+    registry = _build_registry(perception, asyncio.sleep, ocr_provider, mouse, keyboard)
     registry.validate_project_or_raise(project)
 
     def save_project(candidate: Project) -> None:
@@ -121,7 +132,13 @@ def create_application(
 
         if not isinstance(token, CancellationToken):
             raise TypeError("runner supplied an invalid cancellation token")
-        execution_registry = _build_registry(perception, token.sleep, ocr_provider)
+        execution_registry = _build_registry(
+            perception,
+            token.sleep,
+            ocr_provider,
+            mouse,
+            keyboard,
+        )
         return StepExecutor(
             StepRuntime(
                 registry=execution_registry,
@@ -168,8 +185,11 @@ def create_application(
         recording_path=recording_path or path.parent / "recordings" / "latest.json",
         resource_coordinator=resource_coordinator,
         ocr_client=ocr_client,
+        mouse_device=mouse,
+        keyboard_device=keyboard,
     )
     window.recordRequested.connect(lambda: composition.toggle_recording())
+    runner_bridge.terminated.connect(lambda: composition.release_inputs())
     app.aboutToQuit.connect(lambda: composition.shutdown())
     return composition
 
@@ -178,6 +198,8 @@ def _build_registry(
     perception: PerceptionService,
     sleep: Callable[[float], Awaitable[None]],
     ocr_provider: OcrProvider,
+    mouse_device: MouseDevice,
+    keyboard_device: KeyboardDevice,
 ) -> CapabilityRegistry:
     registry = CapabilityRegistry()
     for condition in (
@@ -192,8 +214,8 @@ def _build_registry(
         ProcessCondition(WindowsProcessQuery()),
     ):
         registry.register_condition(condition)
-    registry.register_action(MouseAction(PyAutoGuiMouseDevice()))
-    registry.register_action(KeyboardAction(PyAutoGuiKeyboardDevice()))
+    registry.register_action(MouseAction(mouse_device))
+    registry.register_action(KeyboardAction(keyboard_device))
     registry.register_action(WaitAction(sleep))
     registry.register_action(SetVariableAction())
     registry.register_action(LaunchProcessAction(WindowsProcessLauncher()))

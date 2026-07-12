@@ -130,15 +130,20 @@ class RecordingPlayer:
     ) -> None:
         self.sleep = sleep
         self.backend = backend or importlib.import_module("pyautogui")
+        self._held_keys: set[str] = set()
 
     async def __call__(self, path: Path, speed: float, max_gap: float) -> None:
         events = RecordingStore.load(path)
         previous = 0.0
-        for event in events:
-            delay = min(max(0.0, event.timestamp - previous) / speed, max_gap)
-            await self.sleep(delay)
-            await asyncio.to_thread(self._dispatch, event)
-            previous = event.timestamp
+        self._held_keys.clear()
+        try:
+            for event in events:
+                delay = min(max(0.0, event.timestamp - previous) / speed, max_gap)
+                await self.sleep(delay)
+                await asyncio.to_thread(self._dispatch, event)
+                previous = event.timestamp
+        finally:
+            await asyncio.to_thread(self._release_held_keys)
 
     def _dispatch(self, event: RecordedEvent) -> None:
         data = event.data
@@ -154,11 +159,24 @@ class RecordingPlayer:
             self.backend.moveTo(int(data["x"]), int(data["y"]))
             self.backend.scroll(int(data["units"]))
         elif event.kind == "key_press":
-            self.backend.keyDown(str(data["key"]))
+            key = str(data["key"])
+            self.backend.keyDown(key)
+            self._held_keys.add(key)
         elif event.kind == "key_release":
-            self.backend.keyUp(str(data["key"]))
+            key = str(data["key"])
+            self.backend.keyUp(key)
+            self._held_keys.discard(key)
         else:
             raise ValueError(f"unknown recorded event kind: {event.kind}")
+
+    def _release_held_keys(self) -> None:
+        keys = tuple(self._held_keys)
+        self._held_keys.clear()
+        for key in keys:
+            try:
+                self.backend.keyUp(key)
+            except Exception:
+                continue
 
 
 class _CompositeListener:

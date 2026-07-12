@@ -107,6 +107,12 @@ F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings can chang
 Recordings are stored by default at `recordings/latest.json` beside the project. The playback action
 can reuse a recording with configurable speed and maximum gap.
 
+Mouse actions support fixed or result-bound coordinates, an additional coordinate offset, click,
+move, scroll, button-down, button-up, and drag operations. Keyboard actions support press, hotkey,
+text entry, key-down, and key-up. Ordered step actions form input sequences without a separate
+sequence step type. Tracked held inputs are released whenever a run terminates or the application
+shuts down; recording playback also releases held keys on cancellation.
+
 ## Persistence and safety
 
 Project JSON, UUID references, registered condition/action configs, policy hooks, and runtime binding

@@ -126,6 +126,37 @@ def test_application_hotkeys_start_selected_workflow_and_stop_on_shutdown(qtbot,
     assert created[0].started and created[0].stopped
 
 
+def test_application_releases_held_inputs_when_runtime_terminates(qtbot, tmp_path):
+    workflow = Workflow(name="main")
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(project)
+
+    class Device:
+        def __init__(self):
+            self.releases = 0
+
+        def release_all(self):
+            self.releases += 1
+
+    mouse = Device()
+    keyboard = Device()
+    composition = create_application(
+        [],
+        project_path=path,
+        mouse_device=mouse,
+        keyboard_device=keyboard,
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.flow_tree.select_workflow(workflow.id)
+
+    with qtbot.waitSignal(composition.runner_bridge.terminated, timeout=3000):
+        composition.window.start_action.trigger()
+
+    assert mouse.releases == 1
+    assert keyboard.releases == 1
+
+
 def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_path):
     hotkey_listeners = []
     recording_callbacks = {}

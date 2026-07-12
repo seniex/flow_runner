@@ -68,6 +68,15 @@ class FakeMouse:
     async def scroll(self, **kwargs):
         self.calls.append(("scroll", kwargs))
 
+    async def button_down(self, **kwargs):
+        self.calls.append(("button_down", kwargs))
+
+    async def button_up(self, **kwargs):
+        self.calls.append(("button_up", kwargs))
+
+    async def drag(self, **kwargs):
+        self.calls.append(("drag", kwargs))
+
 
 class FakeKeyboard:
     def __init__(self):
@@ -81,6 +90,12 @@ class FakeKeyboard:
 
     async def write(self, text, interval):
         self.calls.append(("write", text, interval))
+
+    async def key_down(self, key):
+        self.calls.append(("key_down", key))
+
+    async def key_up(self, key):
+        self.calls.append(("key_up", key))
 
 
 @pytest.mark.asyncio
@@ -105,6 +120,62 @@ async def test_mouse_and_keyboard_actions_use_device_adapters():
         )
     ]
     assert keyboard.calls == [("hotkey", ("ctrl", "s"))]
+
+
+@pytest.mark.asyncio
+async def test_mouse_action_supports_result_offset_hold_release_and_drag():
+    mouse = FakeMouse()
+    action = MouseAction(mouse)
+
+    await action.execute(
+        MouseActionConfig(
+            operation="button_down",
+            position=(10, 20),
+            offset=(3, -2),
+            button="left",
+        ),
+        StepContext(),
+    )
+    await action.execute(
+        MouseActionConfig(
+            operation="drag",
+            position=(30, 40),
+            offset=(-5, 2),
+            button="right",
+            duration=0.5,
+        ),
+        StepContext(),
+    )
+    await action.execute(
+        MouseActionConfig(operation="button_up", position=(50, 60), button="left"),
+        StepContext(),
+    )
+
+    assert mouse.calls == [
+        ("button_down", {"position": (13, 18), "button": "left"}),
+        (
+            "drag",
+            {"position": (25, 42), "button": "right", "duration": 0.5},
+        ),
+        ("button_up", {"position": (50, 60), "button": "left"}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_keyboard_action_supports_explicit_key_down_and_key_up():
+    keyboard = FakeKeyboard()
+    action = KeyboardAction(keyboard)
+
+    await action.execute(
+        KeyboardActionConfig(operation="key_down", key="shift"),
+        StepContext(),
+    )
+    await action.execute(
+        KeyboardActionConfig(operation="key_up", key="shift"),
+        StepContext(),
+    )
+
+    assert keyboard.calls == [("key_down", "shift"), ("key_up", "shift")]
 
 
 @pytest.mark.asyncio
@@ -198,6 +269,43 @@ async def test_recording_player_applies_speed_gap_and_dispatches(tmp_path):
     ]
 
 
+@pytest.mark.asyncio
+async def test_recording_player_releases_held_keys_when_cancelled(tmp_path):
+    path = tmp_path / "recording.json"
+    RecordingStore.save(
+        path,
+        [
+            RecordedEvent(timestamp=0.0, kind="key_press", data={"key": "shift"}),
+            RecordedEvent(timestamp=10.0, kind="key_release", data={"key": "shift"}),
+        ],
+    )
+    calls = []
+    sleeps = 0
+
+    async def sleep(seconds):
+        nonlocal sleeps
+        del seconds
+        sleeps += 1
+        if sleeps == 2:
+            raise RuntimeError("cancelled")
+
+    class Backend:
+        def keyDown(self, key):
+            calls.append(("keyDown", key))
+
+        def keyUp(self, key):
+            calls.append(("keyUp", key))
+
+    with pytest.raises(RuntimeError, match="cancelled"):
+        await RecordingPlayer(sleep=sleep, backend=Backend())(
+            path,
+            speed=1.0,
+            max_gap=10.0,
+        )
+
+    assert calls == [("keyDown", "shift"), ("keyUp", "shift")]
+
+
 def test_recording_recorder_captures_timed_events_and_saves(tmp_path):
     callbacks = {}
 
@@ -249,11 +357,26 @@ async def test_pyautogui_devices_translate_actions_to_backend_calls():
         def scroll(self, units):
             self.calls.append(("scroll", units))
 
+        def mouseDown(self, **kwargs):
+            self.calls.append(("mouseDown", kwargs))
+
+        def mouseUp(self, **kwargs):
+            self.calls.append(("mouseUp", kwargs))
+
+        def dragTo(self, *args, **kwargs):
+            self.calls.append(("dragTo", args, kwargs))
+
         def press(self, key, presses, interval):
             self.calls.append(("press", key, presses, interval))
 
         def hotkey(self, *keys):
             self.calls.append(("hotkey", keys))
+
+        def keyDown(self, key):
+            self.calls.append(("keyDown", key))
+
+        def keyUp(self, key):
+            self.calls.append(("keyUp", key))
 
         def write(self, text, interval):
             self.calls.append(("write", text, interval))
@@ -264,11 +387,56 @@ async def test_pyautogui_devices_translate_actions_to_backend_calls():
 
     await mouse.click(position=(1, 2), button="left", clicks=2, interval=0.1)
     await mouse.scroll(position=(3, 4), units=-5)
+    await mouse.button_down(position=(5, 6), button="right")
+    await mouse.button_up(position=(5, 6), button="right")
+    await mouse.drag(position=(7, 8), button="left", duration=0.25)
     await keyboard.hotkey(("ctrl", "s"))
+    await keyboard.key_down("shift")
+    await keyboard.key_up("shift")
 
     assert backend.calls == [
         ("click", {"x": 1, "y": 2, "button": "left", "clicks": 2, "interval": 0.1}),
         ("moveTo", (3, 4), {}),
         ("scroll", -5),
+        ("mouseDown", {"x": 5, "y": 6, "button": "right"}),
+        ("mouseUp", {"x": 5, "y": 6, "button": "right"}),
+        ("dragTo", (7, 8), {"duration": 0.25, "button": "left"}),
         ("hotkey", ("ctrl", "s")),
+        ("keyDown", "shift"),
+        ("keyUp", "shift"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_pyautogui_devices_release_tracked_held_inputs():
+    class Backend:
+        def __init__(self):
+            self.calls = []
+
+        def mouseDown(self, **kwargs):
+            self.calls.append(("mouseDown", kwargs))
+
+        def mouseUp(self, **kwargs):
+            self.calls.append(("mouseUp", kwargs))
+
+        def keyDown(self, key):
+            self.calls.append(("keyDown", key))
+
+        def keyUp(self, key):
+            self.calls.append(("keyUp", key))
+
+    backend = Backend()
+    mouse = PyAutoGuiMouseDevice(backend)
+    keyboard = PyAutoGuiKeyboardDevice(backend)
+    await mouse.button_down(position=(5, 6), button="left")
+    await keyboard.key_down("shift")
+
+    mouse.release_all()
+    keyboard.release_all()
+
+    assert backend.calls == [
+        ("mouseDown", {"x": 5, "y": 6, "button": "left"}),
+        ("keyDown", "shift"),
+        ("mouseUp", {"button": "left"}),
+        ("keyUp", "shift"),
     ]

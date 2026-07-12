@@ -27,6 +27,7 @@ class RunnerBridge(QObject):
     eventReceived = Signal(object)
     finished = Signal(object)
     failed = Signal(str)
+    terminated = Signal()
 
     def __init__(self, runner: Runner) -> None:
         super().__init__()
@@ -130,6 +131,7 @@ class RunnerBridge(QObject):
             self._loop = None
             self._thread = None
             loop.close()
+            self._post("terminated", object())
 
     def _post(self, kind: str, payload: object) -> None:
         self._messages.put((kind, payload))
@@ -153,5 +155,7 @@ class RunnerBridge(QObject):
                 self.eventReceived.emit(payload)
             elif kind == "finished":
                 self.finished.emit(payload)
+            elif kind == "terminated":
+                self.terminated.emit()
             else:
                 self.failed.emit(str(payload))
