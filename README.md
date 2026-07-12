@@ -36,6 +36,17 @@ $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m flow_runner.app
 ```
 
+The default project path is `project.json` in the current directory. Visual styling is loaded
+application-wide from `flow_runner/resources/styles/base.qss`; final visual design will be applied
+from the user-provided `DESIGN.md` in a separate pass.
+
+## Real Windows acceptance
+
+Automated tests use fake capture, OCR, input, window, and process adapters. Before release, execute
+every item in `REAL_ENVIRONMENT_CHECKLIST.md` on the target Windows/game environment. PaddleOCR-json
+requires a client implementing the adapter protocol; Tesseract requires `pytesseract`, the Tesseract
+executable, and the requested language data.
+
 ## Architecture
 
 - `flow_runner/domain`: validated project, workflow, condition, action, policy, and routing models
