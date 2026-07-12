@@ -3,7 +3,10 @@ import asyncio
 import pytest
 
 from flow_runner.capabilities.actions.window import WindowAction, WindowActionConfig
-from flow_runner.domain.enums import StepOutcome
+from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.actions import ActionSpec
+from flow_runner.domain.conditions import LeafCondition
+from flow_runner.domain.enums import ConditionOutcome, StepOutcome
 from flow_runner.domain.project import (
     AutomationStep,
     FlowGroup,
@@ -11,10 +14,11 @@ from flow_runner.domain.project import (
     Project,
     Workflow,
 )
-from flow_runner.domain.results import StepResult
-from flow_runner.engine.context import TaskContext
+from flow_runner.domain.results import ActionResult, ConditionResult, StepResult
+from flow_runner.engine.context import StepContext, TaskContext
 from flow_runner.engine.parallel import ParallelMonitorGroup
 from flow_runner.engine.runner import Runner
+from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController
 
 
@@ -173,3 +177,90 @@ async def test_stopping_parallel_block_cancels_all_child_workflows():
 
     assert trace.terminal_outcome is StepOutcome.CANCELLED
     assert all(item.terminal_outcome is StepOutcome.CANCELLED for item in trace.workflow_traces)
+
+
+@pytest.mark.asyncio
+async def test_runner_parallel_children_share_task_variables_through_step_executor():
+    shared_written = asyncio.Event()
+
+    class WriteShared:
+        name = "test.write_shared"
+        config_model = WindowActionConfig
+
+        async def execute(self, config, context):
+            context.task_variables["ready"] = True
+            shared_written.set()
+            return ActionResult(outcome=StepOutcome.SUCCESS)
+
+        def required_resources(self, config):
+            return frozenset()
+
+    class ReadShared:
+        name = "test.read_shared"
+        config_model = WindowActionConfig
+
+        async def evaluate(self, config, context):
+            await shared_written.wait()
+            outcome = (
+                ConditionOutcome.MATCH
+                if context.task_variables.get("ready") is True
+                else ConditionOutcome.NO_MATCH
+            )
+            return ConditionResult(node_id="shared", outcome=outcome)
+
+        def required_resources(self, config):
+            return frozenset()
+
+    registry = CapabilityRegistry()
+    registry.register_action(WriteShared())
+    registry.register_condition(ReadShared())
+    writer = Workflow(
+        name="writer",
+        steps=[
+            AutomationStep(
+                name="write",
+                actions=[
+                    ActionSpec(
+                        capability="test.write_shared",
+                        config={"operation": "activate", "title": "unused"},
+                    )
+                ],
+            )
+        ],
+    )
+    reader = Workflow(
+        name="reader",
+        steps=[
+            AutomationStep(
+                name="read",
+                condition=LeafCondition(
+                    id="shared",
+                    capability="test.read_shared",
+                    config={"operation": "activate", "title": "unused"},
+                ),
+            )
+        ],
+    )
+    block = ParallelBlock(name="shared", workflow_ids=[writer.id, reader.id])
+    project = Project(
+        name="parallel",
+        groups=[FlowGroup(name="g", workflows=[writer, reader])],
+        parallel_blocks=[block],
+    )
+
+    def executor_factory(token):
+        return StepExecutor(
+            StepRuntime(
+                registry=registry,
+                context=StepContext(),
+                cancellation=token,
+            )
+        )
+
+    trace = await Runner(step_executor_factory=executor_factory).start_parallel(
+        project,
+        block.id,
+    )
+
+    assert trace.terminal_outcome is StepOutcome.SUCCESS
+    assert all(item.terminal_outcome is StepOutcome.SUCCESS for item in trace.workflow_traces)
