@@ -35,4 +35,3 @@ class ConditionGroup(BaseModel):
 ConditionNode = Annotated[LeafCondition | ConditionGroup, Field(discriminator="kind")]
 
 ConditionGroup.model_rebuild()
-

@@ -58,8 +58,7 @@ def test_project_reports_broken_workflow_reference_without_mutation():
     errors = project.validate_references()
 
     assert errors == [
-        f"workflow 'A1' step '调用缺失流程' references missing workflow "
-        f"{missing_workflow_id}"
+        f"workflow 'A1' step '调用缺失流程' references missing workflow {missing_workflow_id}"
     ]
     assert step.routes[0].target.workflow_id == missing_workflow_id
 

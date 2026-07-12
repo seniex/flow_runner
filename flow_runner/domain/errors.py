@@ -28,4 +28,3 @@ class ConfigurationError(FlowRunnerError):
 
 class Cancelled(FlowRunnerError):
     """Execution was cancelled cooperatively by the caller."""
-

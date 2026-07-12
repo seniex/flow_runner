@@ -61,4 +61,3 @@ class RouteRule(BaseModel):
 
     outcome: StepOutcome
     target: RouteTarget
-

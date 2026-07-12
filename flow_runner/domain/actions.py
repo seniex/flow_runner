@@ -8,4 +8,3 @@ class ActionSpec(BaseModel):
 
     capability: str = Field(min_length=1)
     config: dict[str, Any] = Field(default_factory=dict)
-

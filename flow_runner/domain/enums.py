@@ -18,4 +18,3 @@ class StepOutcome(StrEnum):
 class ConditionMode(StrEnum):
     ONCE = "once"
     UNTIL = "until"
-

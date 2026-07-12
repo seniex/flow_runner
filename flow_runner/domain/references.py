@@ -13,4 +13,3 @@ class StepRef(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     step_id: UUID
-
