@@ -6,8 +6,10 @@ from flow_runner.domain.enums import ConditionOutcome
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.routing import ComparisonOperator
+from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCaptureMode
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
+from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
 
 
@@ -243,6 +245,69 @@ def test_application_selects_paddle_ocr_from_project_settings(qtbot, tmp_path):
     assert composition.ocr_client is not None
     assert composition.ocr_client.executable == executable.resolve()
     assert isinstance(composition.registry.condition("vision.ocr").engine, PaddleJsonOcr)
+
+
+def test_application_configures_background_window_capture_from_project_settings(
+    qtbot,
+    tmp_path,
+):
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(
+        Project(
+            name="p",
+            settings={
+                "window_capture_mode": "background",
+                "window_capture_fallback": False,
+                "window_capture_timeout_seconds": 1.25,
+            },
+        )
+    )
+
+    composition = create_application([], project_path=path)
+    qtbot.addWidget(composition.window)
+    capture = composition.resource_coordinator.perception.capture
+
+    assert isinstance(capture, TargetCapture)
+    assert capture.default_window_mode is WindowCaptureMode.BACKGROUND
+    assert not capture.fallback_to_foreground
+    assert capture.background_window.timeout_seconds == 1.25
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {"window_capture_mode": "unknown"},
+        {"window_capture_timeout_seconds": 0},
+        {"window_capture_fallback": "false"},
+    ],
+)
+def test_application_rejects_invalid_window_capture_settings(tmp_path, settings):
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="p", settings=settings))
+
+    with pytest.raises(ConfigurationError, match="window capture"):
+        create_application([], project_path=path)
+
+
+def test_settings_dialog_round_trips_window_capture_options(qtbot):
+    dialog = SettingsDialog(
+        HotkeyConfig(),
+        {
+            "window_capture_mode": "background",
+            "window_capture_fallback": False,
+            "window_capture_timeout_seconds": 1.5,
+        },
+    )
+    qtbot.addWidget(dialog)
+    assert dialog.window_capture_mode_combo.currentData() == "background"
+    assert not dialog.window_capture_fallback_check.isChecked()
+    dialog.window_capture_timeout_spin.setValue(2.25)
+
+    settings = dialog.project_settings()
+
+    assert settings["window_capture_mode"] == "background"
+    assert settings["window_capture_fallback"] is False
+    assert settings["window_capture_timeout_seconds"] == 2.25
 
 
 def test_application_loads_hotkeys_from_project_settings(qtbot, tmp_path):

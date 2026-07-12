@@ -1,9 +1,11 @@
 from typing import Any
 
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QLabel,
     QLineEdit,
@@ -26,6 +28,29 @@ class SettingsDialog(QDialog):
         self.paddle_path_edit = QLineEdit(str(self.settings.get("paddle_exe_path", "")))
         layout.addRow("OCR 引擎", self.ocr_engine_combo)
         layout.addRow("PaddleOCR-json.exe", self.paddle_path_edit)
+        self.window_capture_mode_combo = QComboBox()
+        self.window_capture_mode_combo.addItem("前台可见像素（BitBlt）", "foreground")
+        self.window_capture_mode_combo.addItem(
+            "后台窗口内容（Windows Graphics Capture）",
+            "background",
+        )
+        capture_mode = str(self.settings.get("window_capture_mode", "foreground")).casefold()
+        self.window_capture_mode_combo.setCurrentIndex(
+            max(0, self.window_capture_mode_combo.findData(capture_mode))
+        )
+        self.window_capture_fallback_check = QCheckBox("后台失败时回退到前台模式")
+        self.window_capture_fallback_check.setChecked(
+            bool(self.settings.get("window_capture_fallback", True))
+        )
+        self.window_capture_timeout_spin = QDoubleSpinBox()
+        self.window_capture_timeout_spin.setRange(0.1, 60.0)
+        self.window_capture_timeout_spin.setDecimals(2)
+        self.window_capture_timeout_spin.setValue(
+            float(self.settings.get("window_capture_timeout_seconds", 3.0))
+        )
+        layout.addRow("窗口截图模式", self.window_capture_mode_combo)
+        layout.addRow("截图回退", self.window_capture_fallback_check)
+        layout.addRow("后台截图超时（秒）", self.window_capture_timeout_spin)
         for action, value in hotkeys.model_dump().items():
             entry = QLineEdit(value)
             self.entries[action] = entry
@@ -61,6 +86,9 @@ class SettingsDialog(QDialog):
             {
                 "ocr_engine": str(self.ocr_engine_combo.currentData()),
                 "paddle_exe_path": self.paddle_path_edit.text().strip(),
+                "window_capture_mode": str(self.window_capture_mode_combo.currentData()),
+                "window_capture_fallback": self.window_capture_fallback_check.isChecked(),
+                "window_capture_timeout_seconds": self.window_capture_timeout_spin.value(),
                 "hotkeys": self.hotkey_config().model_dump(),
             }
         )

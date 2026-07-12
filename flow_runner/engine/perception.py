@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import OrderedDict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from PIL.Image import Image
 
+from flow_runner.domain.capture_targets import canonical_capture_target
 from flow_runner.infrastructure.capture.base import CaptureAdapter, CapturedFrame
 
 Region = tuple[int, int, int, int]
@@ -37,6 +38,7 @@ class PerceptionSnapshot:
     captured_at: float
     image: Image
     origin: tuple[int, int]
+    metadata: Mapping[str, Any]
 
     @property
     def dimensions(self) -> tuple[int, int]:
@@ -132,6 +134,7 @@ class PerceptionService:
         captured = await self.capture.capture(target)
         image = captured.image if isinstance(captured, CapturedFrame) else captured
         origin = captured.origin if isinstance(captured, CapturedFrame) else (0, 0)
+        metadata = captured.metadata if isinstance(captured, CapturedFrame) else {}
         snapshot = PerceptionSnapshot(
             target=target,
             frame_id=str(uuid4()),
@@ -139,6 +142,7 @@ class PerceptionService:
             captured_at=monotonic(),
             image=image,
             origin=origin,
+            metadata=metadata,
         )
         if self.current_generation(target) == generation:
             self._latest[target] = snapshot
@@ -180,15 +184,18 @@ class PerceptionService:
         return result
 
     def current_generation(self, target: str) -> int:
-        return self._generations.get(target, 0)
+        return self._generations.get(canonical_capture_target(target), 0)
 
     def snapshot_by_frame(self, frame_id: str) -> PerceptionSnapshot | None:
         return self._frame_cache.get(frame_id)
 
     def mark_scene_changed(self, target: str) -> int:
+        target = canonical_capture_target(target)
         generation = self.current_generation(target) + 1
         self._generations[target] = generation
-        self._latest.pop(target, None)
+        for cached_target in tuple(self._latest):
+            if canonical_capture_target(cached_target) == target:
+                self._latest.pop(cached_target, None)
         self._ocr_cache.clear()
         return generation
 

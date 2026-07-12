@@ -22,6 +22,7 @@
 - A1→A2→A3 循环后转 B1，B3 再转 C1 的自动化覆盖。
 - 全局感知快照/检测缓存、场景代次、独占动作和陈旧坐标锁内重检。
 - Per-Monitor V2 DPI 感知、完整虚拟桌面/Win32 窗口捕获和负坐标原点换算。
+- 前台 BitBlt 与后台 Windows Graphics Capture 双模式；支持项目默认、目标覆盖、显式回退诊断及共享窗口锁/场景代次。
 - 显式并行块，共享任务变量和资源，隔离流程变量和调用栈。
 - 资源竞争的开始、完成和取消诊断；取消多资源等待不会泄漏锁。
 - 三栏编辑器、检测/执行/控制添加入口、条件树/动作/策略/路由引导编辑。
@@ -42,7 +43,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 192 passed
+# 205 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -59,7 +60,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `D516E37D43BD0D2C157E60A9F6A15ED5D009BF17C35C16117C42730AACAFCAC5`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，100 个条目，包含 `base.qss`、`capture_targets.py` 和 `windows_graphics.py`；SHA-256 为 `831281CD056BC2D0C3D492A33CFE6FB9AADAD8BAA3254278D3096469BC935D22`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
@@ -81,6 +82,8 @@ $env:QT_QPA_PLATFORM='offscreen'
 已读取的目标机环境：Windows 10 `10.0.19045`、单显示器 `2560×1440`，虚拟桌面原点 `(0, 0)`；新进程 DPI 初始化返回 `per_monitor_v2`。多显示器与三档 DPI 实测因当前硬件/设置不可用而记录为 `BLOCKED`。Tesseract 与 `pytesseract` 未安装，相关验收同样为 `BLOCKED`。
 
 只读真实游戏环境检查已通过：前台 `懒人修仙传2` 窗口截图非空且原点/尺寸正确；真实桌面模板匹配、像素容差内外判断、游戏窗口连续帧区域变化，以及真实窗口/进程条件均产生预期结果。
+
+后台 Windows Graphics Capture 已在同一游戏窗口实测：Chrome 完全遮挡游戏时，后台帧与遮挡前游戏帧平均像素差为 `0.037`，与屏幕可见遮挡内容的平均像素差为 `40.87`；测试结束后游戏窗口恢复前台。
 
 配置恢复与原子保存已在一次性真实文件目录复验：连续保存只保留 5 份备份；损坏主 JSON 后最新备份可加载；模拟 `os.replace` 失败时原文件字节保持不变且 `.tmp` 已清理。
 

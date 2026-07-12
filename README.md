@@ -49,7 +49,10 @@ stdin/stdout JSON protocol and is started lazily on the first OCR request:
 {
   "settings": {
     "ocr_engine": "paddle",
-    "paddle_exe_path": "PaddleOCR-json_v1.4.1/PaddleOCR-json.exe"
+    "paddle_exe_path": "PaddleOCR-json_v1.4.1/PaddleOCR-json.exe",
+    "window_capture_mode": "background",
+    "window_capture_fallback": true,
+    "window_capture_timeout_seconds": 3.0
   }
 }
 ```
@@ -81,9 +84,17 @@ matched OR branch exposes `$result.primary`; AND, NOT, and ambiguous OR results 
 named child such as `$result.children["ocr_a"].position`.
 
 Visual targets use `desktop` for the complete virtual desktop or `window:窗口标题` for a matching
-visible Win32 window. Captures retain their virtual-screen/window origin, so OCR, template, and pixel
-positions exposed to mouse actions are absolute screen coordinates even when a monitor is left of
-the primary display. The application enables Per-Monitor V2 DPI awareness before constructing Qt.
+visible Win32 window. The project setting `window_capture_mode` chooses the default window backend:
+`foreground` reads the currently visible pixels with BitBlt, while `background` uses Windows
+Graphics Capture and continues receiving the target window while another window covers it. A target
+can override the project default with `window:foreground:窗口标题` or
+`window:background:窗口标题`. If configured, background failures fall back to foreground capture and
+the condition result reports the requested mode, actual mode, and failure reason instead of hiding
+the fallback. Both target forms share one scene generation and resource lock.
+
+Captures retain their virtual-screen/window origin, so OCR, template, and pixel positions exposed to
+mouse actions are absolute screen coordinates even when a monitor is left of the primary display.
+The application enables Per-Monitor V2 DPI awareness before constructing Qt.
 
 ## Editor and runtime controls
 

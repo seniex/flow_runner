@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from time import monotonic
 from typing import Protocol, TypeVar
 
+from flow_runner.domain.capture_targets import canonical_capture_target
 from flow_runner.engine.perception import PerceptionService
 
 
@@ -88,6 +89,7 @@ class ResourceCoordinator:
 
     @asynccontextmanager
     async def observe(self, target: str) -> AsyncIterator[None]:
+        target = canonical_capture_target(target)
         target_lock = self._target_lock(target)
         waiting = self._desktop_hierarchy.read_would_wait or target_lock.read_would_wait
         started_at = self._begin_wait(target, "observe", (target,)) if waiting else None
@@ -110,6 +112,7 @@ class ResourceCoordinator:
         *,
         resources: Iterable[str] = (),
     ) -> AsyncIterator[None]:
+        target = canonical_capture_target(target)
         resource_names = tuple(sorted(set(resources)))
         diagnostic_resources = (*resource_names, target)
         target_lock = self._target_lock(target)

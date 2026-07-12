@@ -25,6 +25,7 @@ from flow_runner.capabilities.conditions.time import TimeCondition
 from flow_runner.capabilities.conditions.variables import VariableCondition
 from flow_runner.capabilities.conditions.window import WindowCondition
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.capture_targets import WindowCaptureMode
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import Project
 from flow_runner.engine.context import StepContext
@@ -33,7 +34,11 @@ from flow_runner.engine.resources import ResourceCoordinator
 from flow_runner.engine.runner import Runner
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
-from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCapture
+from flow_runner.infrastructure.capture.targets import (
+    TargetCapture,
+    WindowCapture,
+)
+from flow_runner.infrastructure.capture.windows_graphics import WindowsGraphicsCapture
 from flow_runner.infrastructure.input.keyboard import KeyboardDevice, PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import MouseDevice, PyAutoGuiMouseDevice
 from flow_runner.infrastructure.input.recording import (
@@ -115,7 +120,7 @@ def create_application(
     path = project_path or Path.cwd() / "project.json"
     store = ProjectStore(path)
     project = store.load() if path.exists() else Project(name="新项目")
-    perception = PerceptionService(TargetCapture(DesktopCapture(), WindowCapture()))
+    perception = PerceptionService(_build_capture(project))
     resource_coordinator = ResourceCoordinator(perception)
     ocr_provider, ocr_client = _build_ocr_provider(project, path.parent)
     mouse = mouse_device or PyAutoGuiMouseDevice()
@@ -222,6 +227,31 @@ def _build_registry(
     registry.register_action(PlaybackScriptAction(RecordingPlayer(sleep=sleep)))
     registry.register_action(WindowAction(Win32WindowController()))
     return registry
+
+
+def _build_capture(project: Project) -> TargetCapture:
+    try:
+        mode = WindowCaptureMode(
+            str(project.settings.get("window_capture_mode", "foreground")).casefold()
+        )
+        timeout_value = project.settings.get("window_capture_timeout_seconds", 3.0)
+        if isinstance(timeout_value, bool):
+            raise ValueError("window capture timeout must be numeric")
+        timeout_seconds = float(timeout_value)
+        if timeout_seconds <= 0:
+            raise ValueError("window capture timeout must be positive")
+        fallback = project.settings.get("window_capture_fallback", True)
+        if not isinstance(fallback, bool):
+            raise ValueError("window capture fallback must be boolean")
+    except (TypeError, ValueError) as error:
+        raise ConfigurationError(f"invalid window capture settings: {error}") from error
+    return TargetCapture(
+        DesktopCapture(),
+        WindowCapture(),
+        background_window=WindowsGraphicsCapture(timeout_seconds=timeout_seconds),
+        default_window_mode=mode,
+        fallback_to_foreground=fallback,
+    )
 
 
 def _build_ocr_provider(

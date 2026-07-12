@@ -48,7 +48,7 @@ class RegionChangeCondition:
             target=config.target,
             frame_id=snapshot.frame_id,
             scene_generation=snapshot.scene_generation,
-            provider_data={"frame_id": snapshot.frame_id},
+            provider_data={**snapshot.metadata, "frame_id": snapshot.frame_id},
         )
 
     def required_resources(self, config: RegionChangeConditionConfig) -> frozenset[str]:

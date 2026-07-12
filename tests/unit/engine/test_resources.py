@@ -66,6 +66,28 @@ async def test_same_target_interactions_are_serialized():
 
 
 @pytest.mark.asyncio
+async def test_foreground_and_background_modes_share_the_same_window_lock():
+    coordinator = ResourceCoordinator()
+    active = 0
+    peak = 0
+
+    async def use(target):
+        nonlocal active, peak
+        async with coordinator.interact(target):
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+
+    await asyncio.gather(
+        use("window:foreground:Game"),
+        use("window:background:Game"),
+    )
+
+    assert peak == 1
+
+
+@pytest.mark.asyncio
 async def test_contended_interaction_emits_wait_started_and_finished_events():
     events = []
     coordinator = ResourceCoordinator(event_sink=events.append)

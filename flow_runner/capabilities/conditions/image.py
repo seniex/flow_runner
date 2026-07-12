@@ -67,6 +67,7 @@ class ImageCondition:
             frame_id=snapshot.frame_id,
             scene_generation=snapshot.scene_generation,
             provider_data={
+                **snapshot.metadata,
                 "frame_id": snapshot.frame_id,
                 "template_path": str(config.template_path),
             },

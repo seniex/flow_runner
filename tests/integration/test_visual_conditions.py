@@ -11,7 +11,16 @@ from flow_runner.domain.errors import ConditionError
 from flow_runner.engine.perception import PerceptionService
 from flow_runner.infrastructure.capture.base import CapturedFrame
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
-from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCapture
+from flow_runner.infrastructure.capture.targets import (
+    TargetCapture,
+    WindowCapture,
+    WindowCaptureMode,
+    canonical_capture_target,
+)
+from flow_runner.infrastructure.capture.windows_graphics import (
+    WindowsCaptureFrameSource,
+    WindowsGraphicsCapture,
+)
 from flow_runner.infrastructure.ocr.base import OcrItem, OcrObservation
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
@@ -84,6 +93,32 @@ async def test_visual_condition_translates_target_local_coordinates_to_screen_co
 
     assert result.bounds == (-1880, 125, -1820, 155)
     assert result.position == (-1850, 140)
+
+
+@pytest.mark.asyncio
+async def test_visual_result_reports_capture_mode_and_fallback_reason():
+    class FallbackCapture:
+        async def capture(self, target):
+            return CapturedFrame(
+                Image.new("RGB", (100, 50), "white"),
+                (10, 20),
+                {
+                    "requested_capture_mode": "background",
+                    "capture_mode": "foreground",
+                    "fallback_reason": "graphics timeout",
+                },
+            )
+
+    provider = OcrCondition(
+        PerceptionService(FallbackCapture()),
+        FakeOcr(OcrObservation(text="开始", items=[OcrItem(text="开始")])),
+    )
+
+    result = await provider.evaluate(OcrConditionConfig(keywords="开始"), None)
+
+    assert result.provider_data["requested_capture_mode"] == "background"
+    assert result.provider_data["capture_mode"] == "foreground"
+    assert result.provider_data["fallback_reason"] == "graphics timeout"
 
 
 @pytest.mark.asyncio
@@ -175,6 +210,175 @@ async def test_target_capture_routes_desktop_and_window_targets():
     await capture.capture("window:Game")
 
     assert calls == [("desktop", "desktop"), ("window", "window:Game")]
+
+
+@pytest.mark.asyncio
+async def test_target_capture_selects_default_and_explicit_window_modes():
+    calls = []
+
+    class Adapter:
+        def __init__(self, name):
+            self.name = name
+
+        async def capture(self, target):
+            calls.append((self.name, target))
+            return CapturedFrame(Image.new("RGB", (2, 2)), (10, 20))
+
+    capture = TargetCapture(
+        Adapter("desktop"),
+        Adapter("foreground"),
+        background_window=Adapter("background"),
+        default_window_mode=WindowCaptureMode.BACKGROUND,
+    )
+
+    default = await capture.capture("window:Game")
+    foreground = await capture.capture("window:foreground:Game")
+    background = await capture.capture("window:background:Game")
+
+    assert calls == [
+        ("background", "window:Game"),
+        ("foreground", "window:Game"),
+        ("background", "window:Game"),
+    ]
+    assert default.metadata["capture_mode"] == "background"
+    assert foreground.metadata["capture_mode"] == "foreground"
+    assert background.metadata["capture_mode"] == "background"
+    assert canonical_capture_target("window:background:Game") == "window:Game"
+
+
+@pytest.mark.asyncio
+async def test_background_capture_fallback_is_explicit_in_frame_metadata():
+    class Foreground:
+        async def capture(self, target):
+            return CapturedFrame(Image.new("RGB", (2, 2)), (1, 2))
+
+    class Background:
+        async def capture(self, target):
+            raise ConditionError("graphics capture unavailable")
+
+    capture = TargetCapture(
+        StaticCapture(Image.new("RGB", (1, 1))),
+        Foreground(),
+        background_window=Background(),
+        default_window_mode=WindowCaptureMode.BACKGROUND,
+        fallback_to_foreground=True,
+    )
+
+    frame = await capture.capture("window:Game")
+
+    assert frame.metadata["requested_capture_mode"] == "background"
+    assert frame.metadata["capture_mode"] == "foreground"
+    assert "graphics capture unavailable" in frame.metadata["fallback_reason"]
+
+
+@pytest.mark.asyncio
+async def test_background_capture_can_disable_foreground_fallback():
+    class Foreground:
+        async def capture(self, target):
+            raise AssertionError("foreground fallback must stay disabled")
+
+    class Background:
+        async def capture(self, target):
+            raise ConditionError("graphics timeout")
+
+    capture = TargetCapture(
+        StaticCapture(Image.new("RGB", (1, 1))),
+        Foreground(),
+        background_window=Background(),
+        default_window_mode=WindowCaptureMode.BACKGROUND,
+        fallback_to_foreground=False,
+    )
+
+    with pytest.raises(ConditionError, match="graphics timeout"):
+        await capture.capture("window:Game")
+
+
+@pytest.mark.asyncio
+async def test_windows_graphics_capture_returns_rgb_frame_with_window_origin():
+    calls = []
+
+    class Locator:
+        def locate(self, title):
+            assert title == "Game"
+            return 123, (-20, 30, 180, 130)
+
+    class Source:
+        async def capture(self, handle, timeout_seconds):
+            calls.append((handle, timeout_seconds))
+            return Image.new("RGB", (200, 100), (1, 2, 3))
+
+    frame = await WindowsGraphicsCapture(
+        locator=Locator(),
+        source=Source(),
+        timeout_seconds=1.5,
+    ).capture("window:Game")
+
+    assert frame.origin == (-20, 30)
+    assert frame.image.getpixel((0, 0)) == (1, 2, 3)
+    assert frame.metadata == {
+        "capture_backend": "windows_graphics_capture",
+        "window_handle": 123,
+        "window_bounds": (-20, 30, 180, 130),
+    }
+    assert calls == [(123, 1.5)]
+
+
+@pytest.mark.asyncio
+async def test_windows_capture_frame_source_copies_bgra_and_stops_session():
+    import numpy as np
+
+    created = []
+
+    class ExternalControl:
+        def __init__(self):
+            self.stop_calls = 0
+            self.wait_calls = 0
+
+        def stop(self):
+            self.stop_calls += 1
+
+        def wait(self):
+            self.wait_calls += 1
+
+    class InternalControl:
+        def __init__(self):
+            self.stopped = False
+
+        def stop(self):
+            self.stopped = True
+
+    class Capture:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.handlers = {}
+            self.external = ExternalControl()
+            self.internal = InternalControl()
+            created.append(self)
+
+        def event(self, handler):
+            self.handlers[handler.__name__] = handler
+            return handler
+
+        def start_free_threaded(self):
+            frame = type(
+                "Frame",
+                (),
+                {"frame_buffer": np.array([[[10, 20, 30, 255]]], dtype=np.uint8)},
+            )()
+            self.handlers["on_frame_arrived"](frame, self.internal)
+            return self.external
+
+    image = await WindowsCaptureFrameSource(Capture).capture(321, 1.0)
+
+    assert image.getpixel((0, 0)) == (30, 20, 10)
+    assert created[0].kwargs == {
+        "cursor_capture": False,
+        "draw_border": None,
+        "window_hwnd": 321,
+    }
+    assert created[0].internal.stopped
+    assert created[0].external.stop_calls == 1
+    assert created[0].external.wait_calls == 1
 
 
 @pytest.mark.asyncio

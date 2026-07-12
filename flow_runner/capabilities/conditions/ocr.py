@@ -53,6 +53,7 @@ class OcrCondition:
                 target=config.target,
                 frame_id=snapshot.frame_id,
                 scene_generation=snapshot.scene_generation,
+                provider_data={**snapshot.metadata, "frame_id": snapshot.frame_id},
             )
         bounds = _offset_bounds(matched_item.bounds, config.region)
         if bounds is not None:
@@ -68,7 +69,7 @@ class OcrCondition:
             target=config.target,
             frame_id=snapshot.frame_id,
             scene_generation=snapshot.scene_generation,
-            provider_data={"frame_id": snapshot.frame_id},
+            provider_data={**snapshot.metadata, "frame_id": snapshot.frame_id},
         )
 
     def required_resources(self, config: OcrConditionConfig) -> frozenset[str]:

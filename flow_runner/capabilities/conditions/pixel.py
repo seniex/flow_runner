@@ -39,7 +39,11 @@ class PixelCondition:
             target=config.target,
             frame_id=snapshot.frame_id,
             scene_generation=snapshot.scene_generation,
-            provider_data={"actual": actual, "frame_id": snapshot.frame_id},
+            provider_data={
+                **snapshot.metadata,
+                "actual": actual,
+                "frame_id": snapshot.frame_id,
+            },
         )
 
     def required_resources(self, config: PixelConditionConfig) -> frozenset[str]:

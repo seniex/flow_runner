@@ -17,6 +17,7 @@ dependencies = [
   "pyautogui>=0.9.54,<1",
   "pynput>=1.7.7,<2",
   "pywin32>=308; platform_system == 'Windows'",
+  "windows-capture>=2,<3; platform_system == 'Windows'",
 ]
 
 [project.optional-dependencies]

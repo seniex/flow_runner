@@ -1,14 +1,27 @@
 import asyncio
 import importlib
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Protocol
 
 from PIL import Image as PillowImage
 from PIL import ImageGrab
 from PIL.Image import Image
 
+from flow_runner.domain.capture_targets import (
+    WindowCaptureMode,
+    canonical_capture_target,
+    parse_window_capture_target,
+)
 from flow_runner.domain.errors import ConditionError
 from flow_runner.infrastructure.capture.base import CaptureAdapter, CapturedFrame
+
+__all__ = [
+    "TargetCapture",
+    "WindowCapture",
+    "WindowCaptureMode",
+    "canonical_capture_target",
+]
 
 
 class WindowBounds(Protocol):
@@ -26,11 +39,7 @@ class WindowCapture:
         self.grabber = grabber or self._grab_bounds
 
     async def capture(self, target: str) -> CapturedFrame:
-        if not target.startswith("window:"):
-            raise ConditionError(f"window capture cannot capture target '{target}'")
-        title = target.removeprefix("window:").strip()
-        if not title:
-            raise ConditionError("window capture target requires a title")
+        _mode, title = parse_window_capture_target(target)
         try:
             bounds = await asyncio.to_thread(self.bounds.bounds, title)
             left, top, right, bottom = bounds
@@ -50,16 +59,68 @@ class WindowCapture:
 
 
 class TargetCapture:
-    def __init__(self, desktop: CaptureAdapter, window: CaptureAdapter) -> None:
+    def __init__(
+        self,
+        desktop: CaptureAdapter,
+        window: CaptureAdapter,
+        *,
+        background_window: CaptureAdapter | None = None,
+        default_window_mode: WindowCaptureMode = WindowCaptureMode.FOREGROUND,
+        fallback_to_foreground: bool = True,
+    ) -> None:
         self.desktop = desktop
         self.window = window
+        self.background_window = background_window
+        self.default_window_mode = WindowCaptureMode(default_window_mode)
+        self.fallback_to_foreground = fallback_to_foreground
 
     async def capture(self, target: str) -> Image | CapturedFrame:
         if target == "desktop":
             return await self.desktop.capture(target)
         if target.startswith("window:"):
-            return await self.window.capture(target)
+            mode, title = parse_window_capture_target(target, self.default_window_mode)
+            canonical = f"window:{title}"
+            if mode is WindowCaptureMode.FOREGROUND:
+                frame = await self.window.capture(canonical)
+                return _capture_mode_frame(frame, mode)
+            if self.background_window is None:
+                error: Exception = ConditionError("background window capture is not configured")
+            else:
+                try:
+                    frame = await self.background_window.capture(canonical)
+                except Exception as caught:
+                    error = caught
+                else:
+                    return _capture_mode_frame(frame, mode)
+            if not self.fallback_to_foreground:
+                raise ConditionError(f"background capture failed for '{title}': {error}") from error
+            foreground = await self.window.capture(canonical)
+            captured = _as_captured_frame(foreground)
+            return replace(
+                captured,
+                metadata={
+                    **captured.metadata,
+                    "requested_capture_mode": WindowCaptureMode.BACKGROUND.value,
+                    "capture_mode": WindowCaptureMode.FOREGROUND.value,
+                    "fallback_reason": str(error),
+                },
+            )
         raise ConditionError(f"unsupported capture target '{target}'")
+
+
+def _capture_mode_frame(
+    frame: Image | CapturedFrame,
+    mode: WindowCaptureMode,
+) -> CapturedFrame:
+    captured = _as_captured_frame(frame)
+    return replace(
+        captured,
+        metadata={**captured.metadata, "capture_mode": mode.value},
+    )
+
+
+def _as_captured_frame(frame: Image | CapturedFrame) -> CapturedFrame:
+    return frame if isinstance(frame, CapturedFrame) else CapturedFrame(frame)
 
 
 class _PyWin32WindowBounds:

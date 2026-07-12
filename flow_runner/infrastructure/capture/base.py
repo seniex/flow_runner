@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-from typing import Protocol
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any, Protocol
 
 from PIL.Image import Image
 
@@ -8,6 +9,7 @@ from PIL.Image import Image
 class CapturedFrame:
     image: Image
     origin: tuple[int, int] = (0, 0)
+    metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
 class CaptureAdapter(Protocol):

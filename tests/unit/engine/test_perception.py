@@ -100,6 +100,20 @@ async def test_scene_change_invalidates_frame_and_ocr_cache():
 
 
 @pytest.mark.asyncio
+async def test_window_capture_modes_share_one_scene_generation():
+    capture = FakeCapture()
+    service = PerceptionService(capture)
+
+    foreground = await service.snapshot("window:foreground:Game")
+    service.mark_scene_changed("window:background:Game")
+    background = await service.snapshot("window:background:Game")
+
+    assert foreground.scene_generation == 0
+    assert background.scene_generation == 1
+    assert service.current_generation("window:Game") == 1
+
+
+@pytest.mark.asyncio
 async def test_recent_frames_remain_available_for_diagnostics_with_bounded_cache():
     service = PerceptionService(FakeCapture(), frame_cache_limit=2)
     first = await service.snapshot("desktop")
