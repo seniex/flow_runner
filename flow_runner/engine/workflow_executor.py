@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import UUID
@@ -21,6 +22,12 @@ class StepExecutorLike(Protocol):
     async def execute(self, step: AutomationStep) -> StepResult: ...
 
 
+TransitionObserver = Callable[
+    [str, Workflow, AutomationStep, StepResult | None, RouteRule | None],
+    None,
+]
+
+
 @dataclass(frozen=True, slots=True)
 class WorkflowTrace:
     workflow_names: tuple[str, ...]
@@ -36,6 +43,7 @@ class WorkflowExecutor:
         *,
         transition_limit: int = 10_000,
         task_context: TaskContext | None = None,
+        observer: TransitionObserver | None = None,
     ) -> None:
         if transition_limit <= 0:
             raise ValueError("transition_limit must be positive")
@@ -46,6 +54,7 @@ class WorkflowExecutor:
         self.step_executor = step_executor
         self.transition_limit = transition_limit
         self.task_context = task_context or TaskContext()
+        self.observer = observer
         self._workflows = {
             workflow.id: workflow for group in project.groups for workflow in group.workflows
         }
@@ -67,9 +76,13 @@ class WorkflowExecutor:
 
             self._step_counts[step.id] = self._step_counts.get(step.id, 0) + 1
             step_names.append(step.name)
+            if self.observer is not None:
+                self.observer("step.started", workflow, step, None, None)
             result = await self.step_executor.execute(step)
             terminal_outcome = result.outcome
             route = self._select_route(workflow, step, result)
+            if self.observer is not None:
+                self.observer("step.finished", workflow, step, result, route)
 
             if route is None:
                 step = self._sequential_next(workflow, step)

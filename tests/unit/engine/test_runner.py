@@ -59,10 +59,15 @@ async def test_runner_emits_lifecycle_events_and_completes():
 
     assert trace.terminal_outcome is StepOutcome.SUCCESS
     assert runner.state is RunnerState.COMPLETED
-    assert [event.state for event in events.events] == [
-        RunnerState.RUNNING,
-        RunnerState.COMPLETED,
+    assert [event.kind for event in events.events] == [
+        "runner.state",
+        "step.started",
+        "step.finished",
+        "runner.state",
     ]
+    assert events.events[2].step_id == workflow.steps[0].id
+    assert events.events[2].outcome is StepOutcome.SUCCESS
+    assert events.events[2].details["result"]["outcome"] == "success"
     assert all(event.task_id == runner.task_id for event in events.events)
     assert events.events[0].workflow_id == workflow.id
 
@@ -129,7 +134,12 @@ async def test_json_lines_sink_writes_valid_event_objects(tmp_path):
     await runner.start(project, workflow.id)
 
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-    assert [row["state"] for row in rows] == ["running", "completed"]
+    assert [row["kind"] for row in rows] == [
+        "runner.state",
+        "step.started",
+        "step.finished",
+        "runner.state",
+    ]
     assert all(row["task_id"] == str(runner.task_id) for row in rows)
 
 

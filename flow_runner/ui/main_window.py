@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QInputDialog, QMainWindow, QMessageBox, QSplitter,
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import RunnerState
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.ui.dialogs.diagnostics_dialog import DiagnosticsDialog
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig
@@ -54,6 +55,7 @@ class MainWindow(QMainWindow):
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
         self.property_panel = PropertyPanel()
+        self.diagnostics_dialog = DiagnosticsDialog(self)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self.flow_tree)
         splitter.addWidget(self.step_list)
@@ -119,13 +121,22 @@ class MainWindow(QMainWindow):
         self.stop_action.setObjectName("stopWorkflowAction")
         self.record_action = QAction("录制", self)
         self.record_action.setObjectName("recordAction")
+        self.diagnostics_action = QAction("诊断", self)
+        self.diagnostics_action.setObjectName("diagnosticsAction")
         self.runtime_toolbar.addActions(
-            [self.start_action, self.pause_action, self.stop_action, self.record_action]
+            [
+                self.start_action,
+                self.pause_action,
+                self.stop_action,
+                self.record_action,
+                self.diagnostics_action,
+            ]
         )
         self.start_action.triggered.connect(self._start_selected_workflow)
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
         self.record_action.triggered.connect(self.recordRequested.emit)
+        self.diagnostics_action.triggered.connect(self.diagnostics_dialog.show)
         self.save_action.triggered.connect(self._save_project)
         self.undo_action.triggered.connect(self.view_model.undo)
         self.add_step_action.triggered.connect(self._add_step)
@@ -143,6 +154,7 @@ class MainWindow(QMainWindow):
         self.run_view_model.stateChanged.connect(self._update_runtime_actions)
         if self.runner_bridge is not None:
             self.runner_bridge.eventReceived.connect(self.run_view_model.consume)
+            self.runner_bridge.eventReceived.connect(self.diagnostics_dialog.update_event)
             self.runner_bridge.failed.connect(self.statusBar().showMessage)
         self._update_runtime_actions(self.run_view_model.state)
 

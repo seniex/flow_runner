@@ -7,8 +7,9 @@ from uuid import UUID, uuid4
 
 from flow_runner.domain.enums import RunnerState, StepOutcome
 from flow_runner.domain.errors import Cancelled, FlowRunnerError
-from flow_runner.domain.project import AutomationStep, Project
-from flow_runner.domain.results import StepResult
+from flow_runner.domain.project import AutomationStep, Project, Workflow
+from flow_runner.domain.results import ConditionResult, StepResult
+from flow_runner.domain.routing import RouteRule
 from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.workflow_executor import (
     StepExecutorLike,
@@ -55,7 +56,11 @@ class Runner:
         if delegate is None:
             raise RuntimeError("runner step executor was not configured")
         gated_executor = _GatedStepExecutor(self, delegate)
-        workflow_executor = WorkflowExecutor(project, gated_executor)
+        workflow_executor = WorkflowExecutor(
+            project,
+            gated_executor,
+            observer=self._observe_transition,
+        )
 
         try:
             trace = await workflow_executor.run(entry_workflow_id)
@@ -131,6 +136,37 @@ class Runner:
             )
         )
 
+    def _observe_transition(
+        self,
+        kind: str,
+        workflow: Workflow,
+        step: AutomationStep,
+        result: StepResult | None,
+        route: RouteRule | None,
+    ) -> None:
+        if self.task_id is None:
+            return
+        details: dict[str, object] = {}
+        if result is not None:
+            details["result"] = result.model_dump(mode="json")
+        if route is not None:
+            details["route"] = route.model_dump(mode="json")
+        self.event_sink.emit(
+            RuntimeEvent(
+                task_id=self.task_id,
+                kind=kind,
+                state=self.state,
+                monotonic_timestamp=monotonic(),
+                workflow_id=workflow.id,
+                step_id=step.id,
+                outcome=result.outcome if result is not None else None,
+                frame_id=_condition_frame_id(
+                    result.condition_result if result is not None else None
+                ),
+                details=details,
+            )
+        )
+
 
 class _GatedStepExecutor:
     def __init__(self, runner: Runner, delegate: StepExecutorLike) -> None:
@@ -143,3 +179,15 @@ class _GatedStepExecutor:
             return await self.delegate.execute(step)
         except Cancelled as error:
             return StepResult(outcome=StepOutcome.CANCELLED, error=str(error))
+
+
+def _condition_frame_id(result: ConditionResult | None) -> str | None:
+    if result is None:
+        return None
+    if result.frame_id is not None:
+        return result.frame_id
+    for child in result.children.values():
+        frame_id = _condition_frame_id(child)
+        if frame_id is not None:
+            return frame_id
+    return None

@@ -35,9 +35,11 @@ def test_runner_bridge_delivers_events_and_completion_on_qt_thread(qtbot):
         bridge.start(project, workflow.id)
 
     assert blocker.args[0].terminal_outcome is StepOutcome.SUCCESS
-    assert [event.state for event in events] == [
-        RunnerState.RUNNING,
-        RunnerState.COMPLETED,
+    assert [event.kind for event in events] == [
+        "runner.state",
+        "step.started",
+        "step.finished",
+        "runner.state",
     ]
     assert all(thread is bridge.thread() for thread in received_threads)
 
@@ -78,11 +80,17 @@ def test_runner_bridge_shutdown_cancels_and_joins_runtime_thread(qtbot):
 def test_diagnostics_dialog_displays_structured_event(qtbot):
     dialog = DiagnosticsDialog()
     qtbot.addWidget(dialog)
+    task_id = uuid4()
+    workflow_id = uuid4()
+    step_id = uuid4()
     event = RuntimeEvent(
-        task_id=uuid4(),
-        kind="runner.state",
+        task_id=task_id,
+        kind="step.finished",
         state=RunnerState.RUNNING,
         monotonic_timestamp=monotonic(),
+        workflow_id=workflow_id,
+        step_id=step_id,
+        outcome=StepOutcome.SUCCESS,
         frame_id="frame-1",
         details={"retry": 2},
     )
@@ -90,6 +98,11 @@ def test_diagnostics_dialog_displays_structured_event(qtbot):
     dialog.update_event(event)
 
     assert dialog.state_value.text() == "running"
+    assert dialog.kind_value.text() == "step.finished"
+    assert dialog.task_value.text() == str(task_id)
+    assert dialog.workflow_value.text() == str(workflow_id)
+    assert dialog.step_value.text() == str(step_id)
+    assert dialog.outcome_value.text() == "success"
     assert dialog.frame_value.text() == "frame-1"
     assert "retry" in dialog.details_value.toPlainText()
 
