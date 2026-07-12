@@ -24,6 +24,7 @@
 - 资源竞争的开始、完成和取消诊断；取消多资源等待不会泄漏锁。
 - 三栏编辑器、检测/执行/控制添加入口、条件树/动作/策略/路由引导编辑。
 - 区域、坐标和文件路径使用专用表单控件；动作坐标可直接保存 `$result...` 运行时绑定。
+- 已有动作、路由和策略层每轮前/未命中后动作可在引导编辑器中加载、修改和重新排序。
 - 保存、备份、撤销、脏关闭确认、项目设置、F6–F9 热键和输入录制。
 - 启动/暂停/继续/停止、单步运行、条件预览和结构化诊断截图通道。
 - PaddleOCR-json v1.4.x 进程生命周期和 stdin/stdout JSON 协议。
@@ -36,7 +37,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 177 passed
+# 180 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -58,11 +59,11 @@ $env:QT_QPA_PLATFORM='offscreen'
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
 - 三个旧脚本与主工作区副本逐行内容一致，仅工作树换行格式不同。
-- PaddleOCR-json 客户端已识别生成的“开始游戏”图片，返回文本、坐标和 0.9574 置信度，并正常终止子进程。
+- PaddleOCR-json 客户端已识别生成的“开始游戏”图片；随后对用户提供的实际桌面/游戏截图识别 148 项，样本“无响应”边界为 `[794, 560, 837, 582]`、置信度为 `0.999757`，并正常终止子进程。
 
 ## 尚需真实环境验收
 
-按 `REAL_ENVIRONMENT_CHECKLIST.md` 执行并记录：
+按 `REAL_ENVIRONMENT_CHECKLIST.md` 继续执行并记录（单显示器桌面捕获和 PaddleOCR-json 已通过）：
 
 - 100%/125%/150% DPI 与多显示器坐标；
 - 真实游戏窗口、全屏截图和模板匹配；
