@@ -20,6 +20,7 @@ log/
 
 # Local visual brainstorming artifacts
 .superpowers/
+.worktrees/
 
 # Editors and operating system files
 .idea/
