@@ -34,6 +34,8 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 ```powershell
 .\.venv\Scripts\python.exe -m flow_runner.app
+# or, after installation
+flow-runner
 ```
 
 The default project path is `project.json` in the current directory. Visual styling is loaded
@@ -56,6 +58,57 @@ Relative executable paths are resolved from the directory containing `project.js
 `PaddleOCR-json_v*/` folder is intentionally ignored by Git because it contains large third-party
 binaries. Use `"ocr_engine": "tesseract"` to use the Tesseract adapter instead.
 
+Tesseract additionally requires `pytesseract`, a locally installed Tesseract executable, and the
+language data named by each OCR condition. These are real-environment dependencies and are not
+started or downloaded by Flow Runner.
+
+## Workflow model
+
+Each `AutomationStep` combines four independent parts:
+
+- an optional leaf or AND/OR/NOT condition tree;
+- actions that run only after the condition matches;
+- condition/action attempt and timeout policies;
+- ordered result routes for success, one-shot no-match, timeout, failure, and cancellation.
+
+Routes use stable UUID references and can continue within the current workflow, jump or call any
+workflow across groups, return to a caller, or end the task. Optional route predicates can compare
+task/workflow variables and workflow/step execution counts. ONCE evaluates once and produces
+`not_matched`; UNTIL polls until it matches or produces `timeout`.
+
+Condition results remain available to actions and routes for the current step. A leaf or uniquely
+matched OR branch exposes `$result.primary`; AND, NOT, and ambiguous OR results require an explicit
+named child such as `$result.children["ocr_a"].position`.
+
+## Editor and runtime controls
+
+The main window uses a three-pane layout: groups/workflows on the left, steps in the center, and the
+selected step's condition, actions, policies, and routes on the right. New steps start from only
+three guided categories: `检测`, `执行`, and `控制`. Conditions can later switch capabilities or be
+combined in the guided AND/OR/NOT tree without changing the surrounding policy and routes. Advanced
+JSON remains available for direct schema-level editing.
+
+The project toolbar supports group/workflow/step editing, undo, validated save, settings, and
+explicit parallel blocks. Parallel execution is never inferred from routes: create a parallel block
+and select the workflows that should monitor concurrently. Children share task variables and runtime
+resources while retaining separate workflow-local variables and call stacks.
+
+The runtime toolbar provides start, pause/resume, stop, input recording, selected-step execution,
+condition preview, and structured diagnostics. Diagnostics include step results, selected routes,
+frame/scene identifiers, retry data, errors, and resource wait events. Default global hotkeys are
+F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings can change or disable them.
+
+Recordings are stored by default at `recordings/latest.json` beside the project. The playback action
+can reuse a recording with configurable speed and maximum gap.
+
+## Persistence and safety
+
+Project JSON is validated before use. Saves write and validate a temporary sibling file, flush it,
+rotate the five newest backups, and atomically replace the main file. Desktop/window interactions
+are coordinated so read-only detection can share frames while conflicting input is serialized.
+Screen-derived coordinates are revalidated under the exclusive interaction lease if another action
+has changed the scene.
+
 ## Real Windows acceptance
 
 Automated tests use fake capture, OCR, input, window, and process adapters. Before release, execute
@@ -73,3 +126,6 @@ the Tesseract executable, and the requested language data.
 
 The legacy `flow_runner_p1.py`, `flow_runner_p2.py`, and `flow_runner_p3.py` files remain
 reference-only during the refactor. The new package must not import them.
+
+Generating a new project configuration from the legacy configuration and applying the future
+`DESIGN.md` visual design are intentionally separate follow-up tasks requested by the user.
