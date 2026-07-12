@@ -10,6 +10,7 @@ from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import switch_condition_capability
+from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 
@@ -134,6 +135,31 @@ def test_guided_dialog_accepts_json_config_and_returns_step(qtbot):
 
     assert dialog.result() == GuidedAddDialog.DialogCode.Accepted
     assert dialog.step().condition.capability == "vision.ocr"
+
+
+def test_model_form_builds_editors_from_pydantic_fields(qtbot):
+    form = ModelForm(OcrConditionConfig)
+    qtbot.addWidget(form)
+
+    form.editor("keywords").setText("开始")
+    values = form.values()
+
+    assert values["keywords"] == "开始"
+    assert values["target"] == "desktop"
+    assert values["region"] is None
+
+
+def test_guided_dialog_builds_step_from_generated_form(qtbot):
+    dialog = GuidedAddDialog(registry())
+    qtbot.addWidget(dialog)
+    index = dialog.capability_combo.findData("vision.ocr")
+    dialog.capability_combo.setCurrentIndex(index)
+    dialog.config_form.editor("keywords").setText("开始")
+
+    dialog.accept()
+
+    assert dialog.result() == GuidedAddDialog.DialogCode.Accepted
+    assert dialog.step().condition.config["keywords"] == "开始"
 
 
 def test_policy_editor_exposes_once_and_until(qtbot):

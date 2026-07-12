@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QLabel,
     QPlainTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from flow_runner.capabilities.registry import CapabilityRegistry
@@ -17,6 +19,7 @@ from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.project import AutomationStep
 from flow_runner.domain.routing import RouteRule, RouteTarget
+from flow_runner.ui.editors.model_form import ModelForm
 
 CONTROL_CAPABILITIES = (
     ("下一步骤", "next_step"),
@@ -35,7 +38,11 @@ class GuidedAddDialog(QDialog):
         self.category_combo = QComboBox()
         self.category_combo.addItems(["检测", "执行", "控制"])
         self.capability_combo = QComboBox()
+        self.form_container = QWidget()
+        self.form_layout = QVBoxLayout(self.form_container)
+        self.config_form: ModelForm | None = None
         self.category_combo.currentTextChanged.connect(self._populate_capabilities)
+        self.capability_combo.currentIndexChanged.connect(self._rebuild_form)
         self._populate_capabilities(self.category_combo.currentText())
         self.config_edit = QPlainTextEdit("{}")
         self.config_edit.setObjectName("guidedStepConfigEditor")
@@ -49,13 +56,21 @@ class GuidedAddDialog(QDialog):
         layout = QFormLayout(self)
         layout.addRow("类别", self.category_combo)
         layout.addRow("能力", self.capability_combo)
-        layout.addRow("最小配置", self.config_edit)
+        layout.addRow("配置", self.form_container)
+        layout.addRow("高级 JSON 覆盖", self.config_edit)
         layout.addRow("", self.error_label)
         layout.addRow(self.buttons)
 
     def accept(self) -> None:
         try:
-            config = json.loads(self.config_edit.toPlainText())
+            advanced = self.config_edit.toPlainText().strip()
+            config = (
+                json.loads(advanced)
+                if advanced not in {"", "{}"}
+                else self.config_form.values()
+                if self.config_form is not None
+                else {}
+            )
             if not isinstance(config, dict):
                 raise ValueError("配置必须是 JSON 对象")
             capability = self.capability_combo.currentData()
@@ -119,6 +134,30 @@ class GuidedAddDialog(QDialog):
             items = list(CONTROL_CAPABILITIES)
         for label, capability in items:
             self.capability_combo.addItem(label, capability)
+        self._rebuild_form()
+
+    def _rebuild_form(self) -> None:
+        while self.form_layout.count():
+            item = self.form_layout.takeAt(0)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.config_form = None
+        category = self.category_combo.currentText()
+        capability = self.capability_combo.currentData()
+        if not isinstance(capability, str) or category == "控制":
+            self.form_container.setVisible(False)
+            return
+        provider = (
+            self.registry.condition(capability)
+            if category == "检测"
+            else self.registry.action(capability)
+        )
+        self.config_form = ModelForm(provider.config_model)
+        self.form_layout.addWidget(self.config_form)
+        self.form_container.setVisible(True)
 
 
 def _control_target(capability: str, config: dict[str, Any]) -> RouteTarget:
