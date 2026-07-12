@@ -11,6 +11,7 @@ from flow_runner.domain.project import AutomationStep, Project, Workflow
 from flow_runner.domain.results import ConditionResult, StepResult
 from flow_runner.domain.routing import RouteRule
 from flow_runner.engine.cancellation import CancellationToken
+from flow_runner.engine.context import WorkflowContext
 from flow_runner.engine.workflow_executor import (
     StepExecutorLike,
     WorkflowExecutor,
@@ -172,6 +173,11 @@ class _GatedStepExecutor:
     def __init__(self, runner: Runner, delegate: StepExecutorLike) -> None:
         self.runner = runner
         self.delegate = delegate
+
+    def bind_workflow_context(self, context: WorkflowContext) -> None:
+        binder = getattr(self.delegate, "bind_workflow_context", None)
+        if binder is not None:
+            binder(context)
 
     async def execute(self, step: AutomationStep) -> StepResult:
         try:

@@ -12,6 +12,7 @@ from flow_runner.domain.routing import (
     RouteRule,
     RouteTarget,
 )
+from flow_runner.engine.context import StepContext, WorkflowContext
 from flow_runner.engine.workflow_executor import WorkflowExecutor
 
 
@@ -171,3 +172,44 @@ async def test_transition_limit_stops_a_busy_route_loop():
             SuccessfulStepExecutor(),
             transition_limit=5,
         ).run(loop.id)
+
+
+@pytest.mark.asyncio
+async def test_executor_context_switches_workflow_variables_and_shares_runtime_counts():
+    second = workflow("B", RouteTarget.end())
+    first = workflow("A", RouteTarget.jump_workflow(second.id))
+    project = Project(
+        name="contexts",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+    )
+
+    class ContextAwareExecutor:
+        def __init__(self):
+            self.context = StepContext()
+            self.observations = []
+
+        def bind_workflow_context(self, context: WorkflowContext):
+            self.context = StepContext.from_workflow(context)
+
+        async def execute(self, step):
+            self.observations.append(
+                {
+                    "name": step.name,
+                    "workflow_variables": dict(self.context.workflow_variables),
+                    "workflow_counts": dict(self.context.workflow_counts),
+                    "step_counts": dict(self.context.step_counts),
+                }
+            )
+            if step.name == "A":
+                self.context.workflow_variables["local"] = "A-only"
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    executor = ContextAwareExecutor()
+
+    await WorkflowExecutor(project, executor).run(first.id)
+
+    first_observation, second_observation = executor.observations
+    assert first_observation["workflow_counts"] == {first.id: 1}
+    assert first_observation["step_counts"] == {first.steps[0].id: 1}
+    assert second_observation["workflow_counts"] == {first.id: 1, second.id: 1}
+    assert "local" not in second_observation["workflow_variables"]

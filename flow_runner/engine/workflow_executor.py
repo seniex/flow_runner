@@ -15,7 +15,7 @@ from flow_runner.domain.routing import (
     RouteRule,
     RouteTargetKind,
 )
-from flow_runner.engine.context import CallFrame, TaskContext
+from flow_runner.engine.context import CallFrame, TaskContext, WorkflowContext
 
 
 class StepExecutorLike(Protocol):
@@ -76,6 +76,16 @@ class WorkflowExecutor:
 
             self._step_counts[step.id] = self._step_counts.get(step.id, 0) + 1
             step_names.append(step.name)
+            binder = getattr(self.step_executor, "bind_workflow_context", None)
+            if binder is not None:
+                binder(
+                    WorkflowContext(
+                        task=self.task_context,
+                        workflow_variables=self._workflow_variables[workflow.id],
+                        workflow_counts=self._workflow_counts,
+                        step_counts=self._step_counts,
+                    )
+                )
             if self.observer is not None:
                 self.observer("step.started", workflow, step, None, None)
             result = await self.step_executor.execute(step)

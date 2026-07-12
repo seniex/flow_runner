@@ -15,7 +15,7 @@ from flow_runner.domain.project import AutomationStep
 from flow_runner.domain.results import ActionResult, ConditionResult, StepResult
 from flow_runner.engine.bindings import resolve_binding
 from flow_runner.engine.cancellation import CancellationToken
-from flow_runner.engine.context import StepContext
+from flow_runner.engine.context import StepContext, WorkflowContext
 from flow_runner.engine.resources import ResourceCoordinator
 
 SleepCallable = Callable[[float], Awaitable[None]]
@@ -44,6 +44,9 @@ class StepRuntime:
 class StepExecutor:
     def __init__(self, runtime: StepRuntime) -> None:
         self.runtime = runtime
+
+    def bind_workflow_context(self, context: WorkflowContext) -> None:
+        self.runtime.context = StepContext.from_workflow(context)
 
     async def execute(self, step: AutomationStep) -> StepResult:
         try:
