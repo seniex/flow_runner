@@ -84,6 +84,45 @@ def test_guided_dialog_builds_a_valid_detection_step(qtbot):
     assert step.actions == []
 
 
+def test_guided_dialog_builds_execution_and_control_steps(qtbot):
+    dialog = GuidedAddDialog(registry())
+    qtbot.addWidget(dialog)
+
+    execution = dialog.build_step(
+        category="执行",
+        capability="system.wait",
+        config={"keywords": "等待"},
+    )
+    control = dialog.build_step(category="控制", capability="end", config={})
+
+    assert execution.condition is None
+    assert execution.actions == [
+        ActionSpec(
+            capability="system.wait",
+            config={
+                "keywords": "等待",
+                "target": "desktop",
+                "region": None,
+                "language": "chi_sim",
+                "preprocessing": "",
+            },
+        )
+    ]
+    assert control.condition is None
+    assert control.actions == []
+    assert control.routes[0].outcome is StepOutcome.SUCCESS
+    assert control.routes[0].target == RouteTarget.end()
+
+
+def test_guided_dialog_category_switches_available_capabilities(qtbot):
+    dialog = GuidedAddDialog(registry())
+    qtbot.addWidget(dialog)
+
+    dialog.category_combo.setCurrentText("执行")
+
+    assert dialog.capability_combo.itemData(0) == "system.wait"
+
+
 def test_policy_editor_exposes_once_and_until(qtbot):
     editor = PolicyEditor()
     qtbot.addWidget(editor)
