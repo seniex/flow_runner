@@ -96,7 +96,11 @@ class WorkflowExecutor:
                 self.observer("step.finished", workflow, step, result, route)
 
             if route is None:
-                step = self._sequential_next(workflow, step)
+                step = (
+                    self._sequential_next(workflow, step)
+                    if result.outcome is StepOutcome.SUCCESS
+                    else None
+                )
                 continue
 
             target = route.target

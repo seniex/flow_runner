@@ -25,6 +25,16 @@ class SuccessfulStepExecutor:
         return StepResult(outcome=StepOutcome.SUCCESS)
 
 
+class OutcomeStepExecutor:
+    def __init__(self, outcomes):
+        self.outcomes = iter(outcomes)
+        self.step_names = []
+
+    async def execute(self, step):
+        self.step_names.append(step.name)
+        return StepResult(outcome=next(self.outcomes))
+
+
 def workflow(name, target=None, routes=None):
     step = AutomationStep(
         name=name,
@@ -88,6 +98,42 @@ async def test_dynamic_cross_group_route_reaches_c1():
         "C1",
     )
     assert steps.step_names == list(trace.workflow_names)
+
+
+@pytest.mark.asyncio
+async def test_non_success_without_matching_route_stops_instead_of_implicit_ignore():
+    first = AutomationStep(name="first")
+    second = AutomationStep(name="second")
+    workflow = Workflow(name="main", steps=[first, second])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    steps = OutcomeStepExecutor([StepOutcome.FAILURE, StepOutcome.SUCCESS])
+
+    trace = await WorkflowExecutor(project, steps).run(workflow.id)
+
+    assert trace.step_names == ("first",)
+    assert trace.terminal_outcome is StepOutcome.FAILURE
+
+
+@pytest.mark.asyncio
+async def test_explicit_failure_route_can_continue_to_another_step():
+    second = AutomationStep(name="second")
+    first = AutomationStep(
+        name="first",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.FAILURE,
+                target=RouteTarget.next_step(second.id),
+            )
+        ],
+    )
+    workflow = Workflow(name="main", steps=[first, second])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    steps = OutcomeStepExecutor([StepOutcome.FAILURE, StepOutcome.SUCCESS])
+
+    trace = await WorkflowExecutor(project, steps).run(workflow.id)
+
+    assert trace.step_names == ("first", "second")
+    assert trace.terminal_outcome is StepOutcome.SUCCESS
 
 
 @pytest.mark.asyncio
