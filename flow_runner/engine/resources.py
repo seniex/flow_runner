@@ -123,9 +123,7 @@ class ResourceCoordinator:
             or target_lock.write_would_wait
             or any(lock.locked() for lock in named_locks)
         )
-        started_at = (
-            self._begin_wait(target, "interact", diagnostic_resources) if waiting else None
-        )
+        started_at = self._begin_wait(target, "interact", diagnostic_resources) if waiting else None
         hierarchy_lease = (
             self._desktop_hierarchy.write()
             if target == "desktop"

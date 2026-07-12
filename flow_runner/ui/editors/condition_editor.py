@@ -276,9 +276,7 @@ class ConditionEditor(QWidget):
             parent = self._node_at(self._root, parent_path)
             if not isinstance(parent, ConditionGroup):
                 return
-            children = [
-                child for index, child in enumerate(parent.children) if index != path[-1]
-            ]
+            children = [child for index, child in enumerate(parent.children) if index != path[-1]]
             if not children:
                 self.message_label.setText("组合条件至少保留一个子节点")
                 return

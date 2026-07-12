@@ -89,9 +89,7 @@ class RouteEditor(QWidget):
         self.up_button.clicked.connect(lambda: self._move_current(-1))
         self.down_button.clicked.connect(lambda: self._move_current(1))
         self.target_combo.currentIndexChanged.connect(lambda _: self._update_controls())
-        self.predicate_source_combo.currentIndexChanged.connect(
-            lambda _: self._update_controls()
-        )
+        self.predicate_source_combo.currentIndexChanged.connect(lambda _: self._update_controls())
         if project is not None:
             self.set_project(project)
         self._update_controls()
@@ -226,9 +224,7 @@ class RouteEditor(QWidget):
         )
         self.step_combo.setVisible(target is RouteTargetKind.NEXT_STEP)
         source = self.predicate_source_combo.currentData()
-        self.predicate_key_edit.setVisible(
-            source in {"task_variable", "workflow_variable"}
-        )
+        self.predicate_key_edit.setVisible(source in {"task_variable", "workflow_variable"})
         self.predicate_workflow_combo.setVisible(source == "workflow_count")
         self.predicate_step_combo.setVisible(source == "step_count")
 

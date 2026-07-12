@@ -117,9 +117,7 @@ async def test_cancelled_multi_resource_wait_releases_partial_leases():
 
     blocker_task = asyncio.create_task(blocker())
     await blocker_entered.wait()
-    contender = asyncio.create_task(
-        _hold_resources(coordinator, "window:contender", {"a", "z"})
-    )
+    contender = asyncio.create_task(_hold_resources(coordinator, "window:contender", {"a", "z"}))
     await asyncio.wait_for(
         _wait_until(lambda: any(event.kind == "resource.wait.started" for event in events)),
         timeout=1,
