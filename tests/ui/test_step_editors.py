@@ -308,6 +308,35 @@ def test_policy_editor_preserves_tick_hooks_when_editing_limits(qtbot):
     assert action.max_attempts == 2
 
 
+def test_policy_editor_guides_before_and_after_attempt_actions(qtbot):
+    editor = PolicyEditor(registry())
+    qtbot.addWidget(editor)
+    before = ActionSpec(
+        capability="system.wait",
+        config=OcrConditionConfig(keywords="轮询前").model_dump(mode="python"),
+    )
+    after = ActionSpec(
+        capability="system.wait",
+        config=OcrConditionConfig(keywords="未命中").model_dump(mode="python"),
+    )
+    editor.set_policies(
+        ConditionPolicy(
+            mode=ConditionMode.UNTIL,
+            max_attempts=2,
+            before_attempt_actions=[before],
+            after_no_match_actions=[after],
+        ),
+        ActionPolicy(),
+    )
+
+    editor.before_actions_editor.config_form.editor("keywords").setText("更新后的轮询前")
+    editor.before_actions_editor.update_button.click()
+    condition, _action = editor.policies()
+
+    assert condition.before_attempt_actions[0].config["keywords"] == "更新后的轮询前"
+    assert condition.after_no_match_actions == [after]
+
+
 def test_action_and_route_editors_round_trip_models(qtbot):
     actions = ActionEditor(registry())
     routes = RouteEditor()
@@ -351,6 +380,25 @@ def test_action_editor_preserves_runtime_coordinate_binding(qtbot):
     assert editor.action_specs()[0].config["position"] == "$result.primary.position"
 
 
+def test_action_editor_loads_and_updates_an_existing_action(qtbot):
+    editor = ActionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_actions(
+        [
+            ActionSpec(
+                capability="system.wait",
+                config=OcrConditionConfig(keywords="旧值").model_dump(mode="python"),
+            )
+        ]
+    )
+
+    editor.config_form.editor("keywords").setText("新值")
+    editor.update_button.click()
+
+    assert len(editor.action_specs()) == 1
+    assert editor.action_specs()[0].config["keywords"] == "新值"
+
+
 def test_route_editor_selects_cross_group_workflow_target(qtbot):
     first = Workflow(name="A1")
     second = Workflow(name="B1")
@@ -368,6 +416,25 @@ def test_route_editor_selects_cross_group_workflow_target(qtbot):
 
     editor.add_button.click()
 
+    assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
+
+
+def test_route_editor_loads_and_updates_an_existing_route(qtbot):
+    first = Workflow(name="A")
+    second = Workflow(name="B")
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+    )
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.set_routes([RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end())])
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.JUMP_WORKFLOW))
+    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(second.id))
+
+    editor.update_button.click()
+
+    assert len(editor.routes()) == 1
     assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
 
 

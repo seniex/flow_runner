@@ -26,6 +26,7 @@ class ActionEditor(QWidget):
         self.config_form: ModelForm | None = None
         self.action_list = QListWidget()
         self.add_button = QPushButton("添加动作")
+        self.update_button = QPushButton("更新动作")
         self.remove_button = QPushButton("删除动作")
         self.up_button = QPushButton("上移")
         self.down_button = QPushButton("下移")
@@ -37,6 +38,7 @@ class ActionEditor(QWidget):
         buttons = QHBoxLayout()
         for button in (
             self.add_button,
+            self.update_button,
             self.remove_button,
             self.up_button,
             self.down_button,
@@ -45,7 +47,9 @@ class ActionEditor(QWidget):
         layout.addLayout(buttons)
         layout.addWidget(self.error_label)
         self.capability_combo.currentIndexChanged.connect(self._rebuild_form)
+        self.action_list.currentRowChanged.connect(self._load_current)
         self.add_button.clicked.connect(self._add_current)
+        self.update_button.clicked.connect(self._update_current)
         self.remove_button.clicked.connect(self._remove_current)
         self.up_button.clicked.connect(lambda: self._move_current(-1))
         self.down_button.clicked.connect(lambda: self._move_current(1))
@@ -54,6 +58,8 @@ class ActionEditor(QWidget):
     def set_actions(self, actions: list[ActionSpec]) -> None:
         self._actions = list(actions)
         self._refresh_list()
+        if self._actions:
+            self.action_list.setCurrentRow(0)
 
     def action_specs(self) -> list[ActionSpec]:
         return list(self._actions)
@@ -74,9 +80,29 @@ class ActionEditor(QWidget):
         self.config_layout.addWidget(self.config_form)
 
     def _add_current(self) -> None:
+        action = self._current_action()
+        if action is None:
+            return
+        self._actions.append(action)
+        self._refresh_list()
+        self.action_list.setCurrentRow(len(self._actions) - 1)
+
+    def _update_current(self) -> None:
+        row = self.action_list.currentRow()
+        if not 0 <= row < len(self._actions):
+            self.error_label.setText("请先选择要更新的动作")
+            return
+        action = self._current_action()
+        if action is None:
+            return
+        self._actions[row] = action
+        self._refresh_list()
+        self.action_list.setCurrentRow(row)
+
+    def _current_action(self) -> ActionSpec | None:
         capability = self.capability_combo.currentData()
         if not isinstance(capability, str) or self.config_form is None:
-            return
+            return None
         try:
             config = self.registry.validated_action_config(
                 capability,
@@ -84,11 +110,25 @@ class ActionEditor(QWidget):
             )
         except ValueError as error:
             self.error_label.setText(str(error))
-            return
+            return None
         self.error_label.clear()
-        self._actions.append(ActionSpec(capability=capability, config=config))
-        self._refresh_list()
-        self.action_list.setCurrentRow(len(self._actions) - 1)
+        return ActionSpec(capability=capability, config=config)
+
+    def _load_current(self, row: int) -> None:
+        if not 0 <= row < len(self._actions):
+            return
+        action = self._actions[row]
+        index = self.capability_combo.findData(action.capability)
+        if index < 0:
+            self.error_label.setText(f"未知动作能力：{action.capability}")
+            return
+        self.capability_combo.blockSignals(True)
+        self.capability_combo.setCurrentIndex(index)
+        self.capability_combo.blockSignals(False)
+        self._rebuild_form()
+        if self.config_form is not None:
+            self.config_form.set_values(action.config)
+        self.error_label.clear()
 
     def _remove_current(self) -> None:
         row = self.action_list.currentRow()

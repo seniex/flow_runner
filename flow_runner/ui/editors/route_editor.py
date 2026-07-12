@@ -56,6 +56,7 @@ class RouteEditor(QWidget):
         self.predicate_expected_edit = QLineEdit()
         self.route_list = QListWidget()
         self.add_button = QPushButton("添加路由")
+        self.update_button = QPushButton("更新路由")
         self.remove_button = QPushButton("删除路由")
         self.up_button = QPushButton("上移")
         self.down_button = QPushButton("下移")
@@ -77,6 +78,7 @@ class RouteEditor(QWidget):
         buttons = QHBoxLayout()
         for button in (
             self.add_button,
+            self.update_button,
             self.remove_button,
             self.up_button,
             self.down_button,
@@ -85,11 +87,13 @@ class RouteEditor(QWidget):
         layout.addLayout(buttons)
         layout.addWidget(self.error_label)
         self.add_button.clicked.connect(self._add_current)
+        self.update_button.clicked.connect(self._update_current)
         self.remove_button.clicked.connect(self._remove_current)
         self.up_button.clicked.connect(lambda: self._move_current(-1))
         self.down_button.clicked.connect(lambda: self._move_current(1))
         self.target_combo.currentIndexChanged.connect(lambda _: self._update_controls())
         self.predicate_source_combo.currentIndexChanged.connect(lambda _: self._update_controls())
+        self.route_list.currentRowChanged.connect(self._load_current)
         if project is not None:
             self.set_project(project)
         self._update_controls()
@@ -147,11 +151,33 @@ class RouteEditor(QWidget):
     def set_routes(self, routes: list[RouteRule]) -> None:
         self._routes = list(routes)
         self._refresh_list()
+        if self._routes:
+            self.route_list.setCurrentRow(0)
 
     def routes(self) -> list[RouteRule]:
         return list(self._routes)
 
     def _add_current(self) -> None:
+        route = self._current_route()
+        if route is None:
+            return
+        self._routes.append(route)
+        self._refresh_list()
+        self.route_list.setCurrentRow(len(self._routes) - 1)
+
+    def _update_current(self) -> None:
+        row = self.route_list.currentRow()
+        if not 0 <= row < len(self._routes):
+            self.error_label.setText("请先选择要更新的路由")
+            return
+        route = self._current_route()
+        if route is None:
+            return
+        self._routes[row] = route
+        self._refresh_list()
+        self.route_list.setCurrentRow(row)
+
+    def _current_route(self) -> RouteRule | None:
         try:
             kind = RouteTargetKind(self.target_combo.currentData())
             target = self._target(kind)
@@ -162,11 +188,45 @@ class RouteEditor(QWidget):
             )
         except (ValueError, TypeError) as error:
             self.error_label.setText(str(error))
-            return
+            return None
         self.error_label.clear()
-        self._routes.append(route)
-        self._refresh_list()
-        self.route_list.setCurrentRow(len(self._routes) - 1)
+        return route
+
+    def _load_current(self, row: int) -> None:
+        if not 0 <= row < len(self._routes):
+            return
+        route = self._routes[row]
+        self.outcome_combo.setCurrentIndex(self.outcome_combo.findData(route.outcome))
+        self.target_combo.setCurrentIndex(self.target_combo.findData(route.target.kind))
+        if route.target.workflow_id is not None:
+            self.workflow_combo.setCurrentIndex(
+                self.workflow_combo.findData(route.target.workflow_id)
+            )
+        if route.target.step_id is not None:
+            self.step_combo.setCurrentIndex(self.step_combo.findData(route.target.step_id))
+        predicate = route.predicate
+        source = "" if predicate is None else predicate.source
+        self.predicate_source_combo.setCurrentIndex(self.predicate_source_combo.findData(source))
+        self.predicate_key_edit.clear()
+        self.predicate_expected_edit.clear()
+        if predicate is None:
+            self.error_label.clear()
+            return
+        if predicate.source == "workflow_count":
+            self.predicate_workflow_combo.setCurrentIndex(
+                self.predicate_workflow_combo.findData(UUID(predicate.key))
+            )
+        elif predicate.source == "step_count":
+            self.predicate_step_combo.setCurrentIndex(
+                self.predicate_step_combo.findData(UUID(predicate.key))
+            )
+        else:
+            self.predicate_key_edit.setText(predicate.key)
+        self.predicate_operator_combo.setCurrentIndex(
+            self.predicate_operator_combo.findData(predicate.operator)
+        )
+        self.predicate_expected_edit.setText(json.dumps(predicate.expected, ensure_ascii=False))
+        self.error_label.clear()
 
     def _target(self, kind: RouteTargetKind) -> RouteTarget:
         if kind is RouteTargetKind.END:

@@ -1,11 +1,13 @@
 from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QFormLayout, QSpinBox, QWidget
 
+from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import ConditionMode
 from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
+from flow_runner.ui.editors.action_editor import ActionEditor
 
 
 class PolicyEditor(QWidget):
-    def __init__(self) -> None:
+    def __init__(self, registry: CapabilityRegistry | None = None) -> None:
         super().__init__()
         self.mode_combo = QComboBox()
         self.mode_combo.addItem("检查一次", ConditionMode.ONCE)
@@ -27,6 +29,10 @@ class PolicyEditor(QWidget):
         self.action_retry_spin.setDecimals(3)
         self._condition_policy = ConditionPolicy()
         self._action_policy = ActionPolicy()
+        self.before_actions_editor = ActionEditor(registry) if registry is not None else None
+        self.after_no_match_actions_editor = (
+            ActionEditor(registry) if registry is not None else None
+        )
         layout = QFormLayout(self)
         layout.addRow("检测模式", self.mode_combo)
         layout.addRow("轮询间隔（秒）", self.interval_spin)
@@ -34,6 +40,10 @@ class PolicyEditor(QWidget):
         layout.addRow("检测超时（秒）", self.timeout_spin)
         layout.addRow("动作最大尝试", self.action_attempts_spin)
         layout.addRow("动作重试间隔", self.action_retry_spin)
+        if self.before_actions_editor is not None:
+            layout.addRow("每轮检测前动作", self.before_actions_editor)
+        if self.after_no_match_actions_editor is not None:
+            layout.addRow("每轮未命中后动作", self.after_no_match_actions_editor)
         self.mode_combo.currentIndexChanged.connect(self._mode_changed)
         self.set_policies(self._condition_policy, self._action_policy)
 
@@ -57,6 +67,10 @@ class PolicyEditor(QWidget):
         self.timeout_spin.setValue(condition_policy.timeout_seconds or 0.0)
         self.action_attempts_spin.setValue(action_policy.max_attempts)
         self.action_retry_spin.setValue(action_policy.retry_interval_seconds)
+        if self.before_actions_editor is not None:
+            self.before_actions_editor.set_actions(condition_policy.before_attempt_actions)
+        if self.after_no_match_actions_editor is not None:
+            self.after_no_match_actions_editor.set_actions(condition_policy.after_no_match_actions)
 
     def policies(self) -> tuple[ConditionPolicy, ActionPolicy]:
         mode = self.mode()
@@ -66,8 +80,16 @@ class PolicyEditor(QWidget):
             interval_seconds=self.interval_spin.value(),
             max_attempts=max_attempts,
             timeout_seconds=self.timeout_spin.value() or None,
-            before_attempt_actions=self._condition_policy.before_attempt_actions,
-            after_no_match_actions=self._condition_policy.after_no_match_actions,
+            before_attempt_actions=(
+                self.before_actions_editor.action_specs()
+                if self.before_actions_editor is not None
+                else self._condition_policy.before_attempt_actions
+            ),
+            after_no_match_actions=(
+                self.after_no_match_actions_editor.action_specs()
+                if self.after_no_match_actions_editor is not None
+                else self._condition_policy.after_no_match_actions
+            ),
         )
         action = ActionPolicy(
             max_attempts=self.action_attempts_spin.value(),

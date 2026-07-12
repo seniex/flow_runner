@@ -58,7 +58,7 @@ class PropertyPanel(QWidget):
         self.action_editor = ActionEditor(registry) if registry is not None else None
         self.condition_editor = ConditionEditor(registry) if registry is not None else None
         self.route_editor = RouteEditor(project) if registry is not None else None
-        self.policy_editor = PolicyEditor()
+        self.policy_editor = PolicyEditor(registry)
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
         layout = QVBoxLayout(self)
