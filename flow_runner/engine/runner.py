@@ -383,6 +383,9 @@ class _GatedStepExecutor:
     def __init__(self, runner: Runner, delegate: StepExecutorLike) -> None:
         self.runner = runner
         self.delegate = delegate
+        binder = getattr(delegate, "bind_execution_gate", None)
+        if binder is not None:
+            binder(runner.wait_until_active)
 
     def bind_workflow_context(self, context: WorkflowContext) -> None:
         binder = getattr(self.delegate, "bind_workflow_context", None)

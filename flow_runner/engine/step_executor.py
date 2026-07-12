@@ -33,6 +33,7 @@ class StepRuntime:
     sleep: SleepCallable | None = None
     clock: ClockCallable = monotonic
     resources: ResourceCoordinator | None = None
+    activation_gate: Callable[[], Awaitable[None]] | None = None
 
     def __post_init__(self) -> None:
         if self.sleep is None:
@@ -42,6 +43,13 @@ class StepRuntime:
         if self.sleep is None:
             raise RuntimeError("step runtime sleep callable was not initialized")
         await self.sleep(seconds)
+        await self.wait_until_active()
+
+    async def wait_until_active(self) -> None:
+        self.cancellation.raise_if_cancelled()
+        if self.activation_gate is not None:
+            await self.activation_gate()
+        self.cancellation.raise_if_cancelled()
 
 
 class StepExecutor:
@@ -51,11 +59,14 @@ class StepExecutor:
     def bind_workflow_context(self, context: WorkflowContext) -> None:
         self.runtime.context = StepContext.from_workflow(context)
 
+    def bind_execution_gate(self, gate: Callable[[], Awaitable[None]]) -> None:
+        self.runtime.activation_gate = gate
+
     async def preview_condition(self, step: AutomationStep) -> ConditionResult:
         if step.condition is None:
             raise ValueError("condition preview requires a step condition")
         try:
-            self.runtime.cancellation.raise_if_cancelled()
+            await self.runtime.wait_until_active()
             result = await self._evaluate_condition(step.condition)
             self.runtime.context.result = result
             return result
@@ -78,7 +89,7 @@ class StepExecutor:
 
     async def execute(self, step: AutomationStep) -> StepResult:
         try:
-            self.runtime.cancellation.raise_if_cancelled()
+            await self.runtime.wait_until_active()
             if not step.enabled:
                 return StepResult(outcome=StepOutcome.SUCCESS)
             condition = step.condition
@@ -109,7 +120,7 @@ class StepExecutor:
         last_result: ConditionResult | None = None
 
         while True:
-            self.runtime.cancellation.raise_if_cancelled()
+            await self.runtime.wait_until_active()
             self.runtime.context.clear_result()
             hook_results, hooks_succeeded = await self._execute_actions(
                 policy.before_attempt_actions,
@@ -126,6 +137,7 @@ class StepExecutor:
             attempt += 1
             last_result = await self._evaluate_condition(condition)
             self.runtime.context.result = last_result
+            await self.runtime.wait_until_active()
 
             if last_result.outcome is ConditionOutcome.MATCH:
                 action_results, succeeded = await self._execute_actions(
@@ -185,6 +197,7 @@ class StepExecutor:
         *,
         acquire_resources: bool = True,
     ) -> ConditionResult:
+        await self.runtime.wait_until_active()
         if isinstance(condition, LeafCondition):
             provider = self.runtime.registry.condition(condition.capability)
             config = provider.config_model.model_validate(condition.config)
@@ -250,7 +263,7 @@ class StepExecutor:
         for action in actions:
             final_result: ActionResult | None = None
             for attempt in range(1, max_attempts + 1):
-                self.runtime.cancellation.raise_if_cancelled()
+                await self.runtime.wait_until_active()
                 final_result = await self._execute_action(
                     action,
                     revalidate_condition=revalidate_condition,

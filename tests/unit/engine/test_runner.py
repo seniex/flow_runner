@@ -3,13 +3,17 @@ import base64
 import json
 
 import pytest
+from pydantic import BaseModel
 
+from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import ConditionOutcome, RunnerState, StepOutcome
 from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
-from flow_runner.domain.results import ConditionResult, StepResult
+from flow_runner.domain.results import ActionResult, ConditionResult, StepResult
+from flow_runner.engine.context import StepContext
 from flow_runner.engine.resources import ResourceEvent
 from flow_runner.engine.runner import Runner
+from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.logging.sinks import JsonLinesEventSink, MemoryEventSink
 
 
@@ -94,6 +98,78 @@ async def test_runner_pauses_before_starting_the_next_step():
     await run_task
     assert executor.calls == 2
     assert runner.state is RunnerState.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_runner_pause_blocks_action_after_condition_match():
+    evaluated = asyncio.Event()
+    release_condition = asyncio.Event()
+    action_started = asyncio.Event()
+
+    class EmptyConfig(BaseModel):
+        pass
+
+    class Condition:
+        name = "test.condition"
+        config_model = EmptyConfig
+
+        async def evaluate(self, config, context):
+            evaluated.set()
+            await release_condition.wait()
+            return ConditionResult(
+                node_id="condition",
+                outcome=ConditionOutcome.MATCH,
+            )
+
+        def required_resources(self, config):
+            return frozenset()
+
+    class Action:
+        name = "test.action"
+        config_model = EmptyConfig
+
+        async def execute(self, config, context):
+            action_started.set()
+            return ActionResult(outcome=StepOutcome.SUCCESS)
+
+        def required_resources(self, config):
+            return frozenset()
+
+    registry = CapabilityRegistry()
+    registry.register_condition(Condition())
+    registry.register_action(Action())
+    step = AutomationStep.model_validate(
+        {
+            "name": "condition then action",
+            "condition": {"id": "condition", "capability": "test.condition", "config": {}},
+            "actions": [{"capability": "test.action", "config": {}}],
+        }
+    )
+    workflow = Workflow(name="main", steps=[step])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+
+    def factory(token):
+        return StepExecutor(
+            StepRuntime(
+                registry=registry,
+                context=StepContext(),
+                cancellation=token,
+            )
+        )
+
+    runner = Runner(step_executor_factory=factory)
+    run_task = asyncio.create_task(runner.start(project, workflow.id))
+    await evaluated.wait()
+
+    runner.pause()
+    release_condition.set()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    assert not action_started.is_set()
+    runner.resume()
+    await run_task
+    assert action_started.is_set()
 
 
 @pytest.mark.asyncio
