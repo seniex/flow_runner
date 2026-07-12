@@ -124,6 +124,7 @@ def create_application(
         )
 
     runner = Runner(step_executor_factory=step_executor_factory)
+    resource_coordinator.event_sink = runner.report_resource_event
     runner_bridge = RunnerBridge(runner)
     window = MainWindow(
         project,

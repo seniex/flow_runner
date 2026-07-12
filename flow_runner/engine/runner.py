@@ -14,6 +14,7 @@ from flow_runner.domain.routing import RouteRule
 from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.context import TaskContext, WorkflowContext
 from flow_runner.engine.parallel import ParallelMonitorGroup, ParallelWorkflowTrace
+from flow_runner.engine.resources import ResourceEvent
 from flow_runner.engine.workflow_executor import (
     StepExecutorLike,
     WorkflowExecutor,
@@ -287,6 +288,24 @@ class Runner:
             return
         self.cancellation.cancel()
         self._pause_gate.set()
+
+    def report_resource_event(self, event: ResourceEvent) -> None:
+        if self.task_id is None:
+            return
+        self.event_sink.emit(
+            RuntimeEvent(
+                task_id=self.task_id,
+                kind=event.kind,
+                state=self.state,
+                monotonic_timestamp=monotonic(),
+                details={
+                    "target": event.target,
+                    "mode": event.mode,
+                    "resources": list(event.resources),
+                    "wait_seconds": event.wait_seconds,
+                },
+            )
+        )
 
     async def wait_until_active(self) -> None:
         self.cancellation.raise_if_cancelled()

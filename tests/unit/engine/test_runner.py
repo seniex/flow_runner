@@ -7,6 +7,7 @@ from flow_runner.domain.enums import RunnerState, StepOutcome
 from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.results import StepResult
+from flow_runner.engine.resources import ResourceEvent
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.logging.sinks import JsonLinesEventSink, MemoryEventSink
 
@@ -174,3 +175,30 @@ async def test_runner_can_execute_one_selected_step_without_following_sequence()
 
     assert result.outcome is StepOutcome.SUCCESS
     assert calls == [workflow.steps[1].id]
+
+
+def test_runner_translates_resource_events_to_runtime_diagnostics():
+    sink = MemoryEventSink()
+    runner = Runner(ImmediateExecutor(), event_sink=sink)
+    runner.task_id = project_with_steps()[1].id
+    runner.state = RunnerState.RUNNING
+
+    runner.report_resource_event(
+        ResourceEvent(
+            kind="resource.wait.finished",
+            target="window:game",
+            mode="interact",
+            resources=("mouse", "window:game"),
+            wait_seconds=0.25,
+        )
+    )
+
+    event = sink.events[0]
+    assert event.kind == "resource.wait.finished"
+    assert event.state is RunnerState.RUNNING
+    assert event.details == {
+        "target": "window:game",
+        "mode": "interact",
+        "resources": ["mouse", "window:game"],
+        "wait_seconds": 0.25,
+    }

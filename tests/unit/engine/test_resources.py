@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 from dataclasses import dataclass
 
 import pytest
@@ -65,6 +66,79 @@ async def test_same_target_interactions_are_serialized():
 
 
 @pytest.mark.asyncio
+async def test_contended_interaction_emits_wait_started_and_finished_events():
+    events = []
+    coordinator = ResourceCoordinator(event_sink=events.append)
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def first():
+        async with coordinator.interact("window:game", resources={"mouse"}):
+            first_entered.set()
+            await release_first.wait()
+
+    async def second():
+        await first_entered.wait()
+        async with coordinator.interact("window:game", resources={"mouse"}):
+            pass
+
+    first_task = asyncio.create_task(first())
+    await first_entered.wait()
+    second_task = asyncio.create_task(second())
+    await asyncio.wait_for(
+        _wait_until(lambda: any(event.kind == "resource.wait.started" for event in events)),
+        timeout=1,
+    )
+    release_first.set()
+    await asyncio.gather(first_task, second_task)
+
+    assert [event.kind for event in events] == [
+        "resource.wait.started",
+        "resource.wait.finished",
+    ]
+    assert events[0].target == "window:game"
+    assert events[0].mode == "interact"
+    assert events[0].resources == ("mouse", "window:game")
+    assert events[1].wait_seconds is not None
+    assert events[1].wait_seconds >= 0
+
+
+@pytest.mark.asyncio
+async def test_cancelled_multi_resource_wait_releases_partial_leases():
+    events = []
+    coordinator = ResourceCoordinator(event_sink=events.append)
+    blocker_entered = asyncio.Event()
+    release_blocker = asyncio.Event()
+
+    async def blocker():
+        async with coordinator.interact("window:blocker", resources={"z"}):
+            blocker_entered.set()
+            await release_blocker.wait()
+
+    blocker_task = asyncio.create_task(blocker())
+    await blocker_entered.wait()
+    contender = asyncio.create_task(
+        _hold_resources(coordinator, "window:contender", {"a", "z"})
+    )
+    await asyncio.wait_for(
+        _wait_until(lambda: any(event.kind == "resource.wait.started" for event in events)),
+        timeout=1,
+    )
+
+    contender.cancel()
+    with suppress(asyncio.CancelledError):
+        await contender
+    await asyncio.wait_for(
+        _hold_resources(coordinator, "window:probe", {"a"}),
+        timeout=1,
+    )
+    release_blocker.set()
+    await blocker_task
+
+    assert events[-1].kind == "resource.wait.cancelled"
+
+
+@pytest.mark.asyncio
 async def test_desktop_interaction_blocks_window_interaction():
     coordinator = ResourceCoordinator()
     desktop_entered = asyncio.Event()
@@ -122,3 +196,13 @@ async def test_stale_result_is_revalidated_under_interaction_lease():
     assert position == (20, 30)
     assert revalidation_calls == 1
     assert perception.current_generation("window:game") == 2
+
+
+async def _wait_until(predicate):
+    while not predicate():
+        await asyncio.sleep(0)
+
+
+async def _hold_resources(coordinator, target, resources):
+    async with coordinator.interact(target, resources=resources):
+        pass
