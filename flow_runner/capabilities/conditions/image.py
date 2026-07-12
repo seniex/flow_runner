@@ -61,6 +61,9 @@ class ImageCondition:
             bounds=bounds,
             position=_center(bounds) if bounds else None,
             confidence=score,
+            target=config.target,
+            frame_id=snapshot.frame_id,
+            scene_generation=snapshot.scene_generation,
             provider_data={
                 "frame_id": snapshot.frame_id,
                 "template_path": str(config.template_path),

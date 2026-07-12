@@ -101,10 +101,11 @@ class StepExecutor:
                     step.actions,
                     step.action_policy.max_attempts,
                     step.action_policy.retry_interval_seconds,
+                    revalidate_condition=condition,
                 )
                 return StepResult(
                     outcome=StepOutcome.SUCCESS if succeeded else StepOutcome.FAILURE,
-                    condition_result=last_result,
+                    condition_result=self.runtime.context.result or last_result,
                     action_results=action_results,
                 )
 
@@ -147,13 +148,18 @@ class StepExecutor:
         timeout = step.condition_policy.timeout_seconds
         return timeout is not None and self.runtime.clock() - started_at >= timeout
 
-    async def _evaluate_condition(self, condition: ConditionNode) -> ConditionResult:
+    async def _evaluate_condition(
+        self,
+        condition: ConditionNode,
+        *,
+        acquire_resources: bool = True,
+    ) -> ConditionResult:
         if isinstance(condition, LeafCondition):
             provider = self.runtime.registry.condition(condition.capability)
             config = provider.config_model.model_validate(condition.config)
             try:
                 async with AsyncExitStack() as stack:
-                    if self.runtime.resources is not None:
+                    if acquire_resources and self.runtime.resources is not None:
                         required = provider.required_resources(config)
                         targets = [
                             resource.removeprefix("observe:")
@@ -178,7 +184,10 @@ class StepExecutor:
                 return result.model_copy(update={"node_id": condition.id})
             return result
 
-        children = [await self._evaluate_condition(child) for child in condition.children]
+        children = [
+            await self._evaluate_condition(child, acquire_resources=acquire_resources)
+            for child in condition.children
+        ]
         return self._combine_group(condition, children)
 
     @staticmethod
@@ -197,13 +206,18 @@ class StepExecutor:
         actions: list[ActionSpec],
         max_attempts: int,
         retry_interval_seconds: float,
+        *,
+        revalidate_condition: ConditionNode | None = None,
     ) -> tuple[tuple[ActionResult, ...], bool]:
         completed: list[ActionResult] = []
         for action in actions:
             final_result: ActionResult | None = None
             for attempt in range(1, max_attempts + 1):
                 self.runtime.cancellation.raise_if_cancelled()
-                final_result = await self._execute_action(action)
+                final_result = await self._execute_action(
+                    action,
+                    revalidate_condition=revalidate_condition,
+                )
                 if final_result.outcome is StepOutcome.SUCCESS:
                     break
                 if attempt < max_attempts:
@@ -215,7 +229,12 @@ class StepExecutor:
                 return tuple(completed), False
         return tuple(completed), True
 
-    async def _execute_action(self, action: ActionSpec) -> ActionResult:
+    async def _execute_action(
+        self,
+        action: ActionSpec,
+        *,
+        revalidate_condition: ConditionNode | None = None,
+    ) -> ActionResult:
         provider = self.runtime.registry.action(action.capability)
         resolved_config = _resolve_config(action.config, self.runtime.context)
         config = provider.config_model.model_validate(resolved_config)
@@ -229,12 +248,23 @@ class StepExecutor:
             window_targets = sorted(
                 resource for resource in required if resource.startswith("window:")
             )
-            target = window_targets[0] if window_targets else "desktop"
+            scene_target = _single_scene_target(self.runtime.context.result)
+            target = window_targets[0] if window_targets else scene_target or "desktop"
             named_resources = required.difference(window_targets)
             async with self.runtime.resources.interact(
                 target,
                 resources=named_resources,
             ):
+                if not await self._refresh_stale_condition(
+                    revalidate_condition,
+                    target,
+                ):
+                    return ActionResult(
+                        outcome=StepOutcome.FAILURE,
+                        error="screen result no longer matches after stale revalidation",
+                    )
+                resolved_config = _resolve_config(action.config, self.runtime.context)
+                config = provider.config_model.model_validate(resolved_config)
                 try:
                     return cast(
                         ActionResult,
@@ -249,6 +279,24 @@ class StepExecutor:
         except Exception as error:
             return ActionResult(outcome=StepOutcome.FAILURE, error=str(error))
 
+    async def _refresh_stale_condition(
+        self,
+        condition: ConditionNode | None,
+        target: str,
+    ) -> bool:
+        coordinator = self.runtime.resources
+        result = self.runtime.context.result
+        if condition is None or coordinator is None or coordinator.perception is None:
+            return True
+        generations = _scene_generations(result, target)
+        if not generations:
+            return True
+        if coordinator.perception.current_generation(target) in generations:
+            return True
+        fresh = await self._evaluate_condition(condition, acquire_resources=False)
+        self.runtime.context.result = fresh
+        return fresh.outcome is ConditionOutcome.MATCH
+
 
 def _resolve_config(value: Any, context: StepContext) -> Any:
     if isinstance(value, str) and value.startswith("$"):
@@ -260,3 +308,30 @@ def _resolve_config(value: Any, context: StepContext) -> Any:
     if isinstance(value, tuple):
         return tuple(_resolve_config(item, context) for item in value)
     return value
+
+
+def _single_scene_target(result: ConditionResult | None) -> str | None:
+    targets = _scene_targets(result)
+    return next(iter(targets)) if len(targets) == 1 else None
+
+
+def _scene_targets(result: ConditionResult | None) -> set[str]:
+    if result is None:
+        return set()
+    targets = {result.target} if result.target is not None else set()
+    for child in result.children.values():
+        targets.update(_scene_targets(child))
+    return targets
+
+
+def _scene_generations(result: ConditionResult | None, target: str) -> set[int]:
+    if result is None:
+        return set()
+    generations = (
+        {result.scene_generation}
+        if result.target == target and result.scene_generation is not None
+        else set()
+    )
+    for child in result.children.values():
+        generations.update(_scene_generations(child, target))
+    return generations

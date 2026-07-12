@@ -45,6 +45,9 @@ class RegionChangeCondition:
             if ratio >= config.threshold
             else ConditionOutcome.NO_MATCH,
             confidence=ratio,
+            target=config.target,
+            frame_id=snapshot.frame_id,
+            scene_generation=snapshot.scene_generation,
             provider_data={"frame_id": snapshot.frame_id},
         )
 

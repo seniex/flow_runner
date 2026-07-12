@@ -17,6 +17,9 @@ class ConditionResult(BaseModel):
     position: tuple[int, int] | None = None
     bounds: tuple[int, int, int, int] | None = None
     confidence: float | None = None
+    target: str | None = None
+    frame_id: str | None = None
+    scene_generation: int | None = None
     provider_data: dict[str, Any] = Field(default_factory=dict)
     children: dict[str, ConditionResult] = Field(default_factory=dict)
     group_operator: Literal["and", "or", "not"] | None = None

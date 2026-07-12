@@ -50,6 +50,9 @@ class OcrCondition:
                 node_id=self.name,
                 outcome=ConditionOutcome.NO_MATCH,
                 text=observation.text,
+                target=config.target,
+                frame_id=snapshot.frame_id,
+                scene_generation=snapshot.scene_generation,
             )
         bounds = _offset_bounds(matched_item.bounds, config.region)
         position = _center(bounds) if bounds else None
@@ -60,6 +63,9 @@ class OcrCondition:
             bounds=bounds,
             position=position,
             confidence=matched_item.confidence,
+            target=config.target,
+            frame_id=snapshot.frame_id,
+            scene_generation=snapshot.scene_generation,
             provider_data={"frame_id": snapshot.frame_id},
         )
 

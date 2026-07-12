@@ -10,6 +10,7 @@ from flow_runner.domain.project import AutomationStep
 from flow_runner.domain.results import ActionResult, ConditionResult
 from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.context import StepContext
+from flow_runner.engine.perception import PerceptionService
 from flow_runner.engine.resources import ResourceCoordinator
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 
@@ -129,6 +130,90 @@ async def test_shared_resource_coordinator_serializes_exclusive_actions():
     await asyncio.gather(executor().execute(step), executor().execute(step))
 
     assert maximum_active == 1
+
+
+@pytest.mark.asyncio
+async def test_stale_visual_result_is_revalidated_before_bound_mouse_action():
+    class Capture:
+        async def capture(self, target):
+            raise AssertionError("capture is not needed by this fake condition")
+
+    perception = PerceptionService(Capture())
+    coordinator = ResourceCoordinator(perception)
+
+    class VisualCondition:
+        name = "visual"
+        config_model = EmptyConfig
+
+        def __init__(self):
+            self.calls = 0
+
+        async def evaluate(self, config, context):
+            self.calls += 1
+            generation = perception.current_generation("desktop")
+            result = ConditionResult(
+                node_id=self.name,
+                outcome=ConditionOutcome.MATCH,
+                position=(10, 10) if self.calls == 1 else (20, 30),
+                target="desktop",
+                frame_id=f"frame-{self.calls}",
+                scene_generation=generation,
+            )
+            if self.calls == 1:
+                perception.mark_scene_changed("desktop")
+            return result
+
+        def required_resources(self, config):
+            return frozenset({"observe:desktop"})
+
+    class PositionConfig(BaseModel):
+        position: tuple[int, int]
+
+    class MouseAction:
+        name = "mouse"
+        config_model = PositionConfig
+
+        def __init__(self):
+            self.positions = []
+
+        async def execute(self, config, context):
+            self.positions.append(config.position)
+            return ActionResult(outcome=StepOutcome.SUCCESS)
+
+        def required_resources(self, config):
+            return frozenset({"mouse"})
+
+    condition = VisualCondition()
+    action = MouseAction()
+    registry = CapabilityRegistry()
+    registry.register_condition(condition)
+    registry.register_action(action)
+    step = AutomationStep.model_validate(
+        {
+            "name": "fresh click",
+            "condition": {"id": "screen", "capability": "visual", "config": {}},
+            "actions": [
+                {
+                    "capability": "mouse",
+                    "config": {"position": "$result.primary.position"},
+                }
+            ],
+        }
+    )
+    runtime = StepRuntime(
+        registry=registry,
+        context=StepContext(),
+        cancellation=CancellationToken(),
+        resources=coordinator,
+    )
+
+    result = await StepExecutor(runtime).execute(step)
+
+    assert result.outcome is StepOutcome.SUCCESS
+    assert result.condition_result is not None
+    assert result.condition_result.position == (20, 30)
+    assert condition.calls == 2
+    assert action.positions == [(20, 30)]
 
 
 @pytest.mark.asyncio

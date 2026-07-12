@@ -35,6 +35,9 @@ class PixelCondition:
         return ConditionResult(
             node_id=self.name,
             outcome=ConditionOutcome.MATCH if matched else ConditionOutcome.NO_MATCH,
+            target=config.target,
+            frame_id=snapshot.frame_id,
+            scene_generation=snapshot.scene_generation,
             provider_data={"actual": actual, "frame_id": snapshot.frame_id},
         )
 
