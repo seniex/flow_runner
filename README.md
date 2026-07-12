@@ -80,6 +80,11 @@ Condition results remain available to actions and routes for the current step. A
 matched OR branch exposes `$result.primary`; AND, NOT, and ambiguous OR results require an explicit
 named child such as `$result.children["ocr_a"].position`.
 
+Visual targets use `desktop` for the complete virtual desktop or `window:窗口标题` for a matching
+visible Win32 window. Captures retain their virtual-screen/window origin, so OCR, template, and pixel
+positions exposed to mouse actions are absolute screen coordinates even when a monitor is left of
+the primary display. The application enables Per-Monitor V2 DPI awareness before constructing Qt.
+
 ## Editor and runtime controls
 
 The main window uses a three-pane layout: groups/workflows on the left, steps in the center, and the

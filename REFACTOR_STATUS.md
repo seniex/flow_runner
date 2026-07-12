@@ -19,6 +19,7 @@
 - 跨组 UUID 路由、调用/返回、变量与流程/步骤计数条件路由。
 - A1→A2→A3 循环后转 B1，B3 再转 C1 的自动化覆盖。
 - 全局感知快照/检测缓存、场景代次、独占动作和陈旧坐标锁内重检。
+- Per-Monitor V2 DPI 感知、完整虚拟桌面/Win32 窗口捕获和负坐标原点换算。
 - 显式并行块，共享任务变量和资源，隔离流程变量和调用栈。
 - 资源竞争的开始、完成和取消诊断；取消多资源等待不会泄漏锁。
 - 三栏编辑器、检测/执行/控制添加入口、条件树/动作/策略/路由引导编辑。
@@ -34,16 +35,16 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 168 passed
+# 174 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
 
 .\.venv\Scripts\python.exe -m ruff format --check flow_runner tests
-# 112 files already formatted
+# 115 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
-# Success: no issues found in 91 source files
+# Success: no issues found in 93 source files
 
 .\.venv\Scripts\python.exe -m pip check
 # No broken requirements found
@@ -51,7 +52,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，96 个条目，包含 `base.qss`；SHA-256 为 `BB3BBF3207461D10BC6DDFFEF15A74E290995ED13F91EF1F8006B58C8434D8FE`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `6DA1A1DA1C1730F47E29B71164981C0D397E2542E581813108A6EB8DE81AB6FA`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
