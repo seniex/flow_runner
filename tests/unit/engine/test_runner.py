@@ -156,3 +156,21 @@ async def test_runner_factory_receives_each_tasks_current_cancellation_token():
     await runner.start(project, workflow.id)
 
     assert tokens == [runner.cancellation]
+
+
+@pytest.mark.asyncio
+async def test_runner_can_execute_one_selected_step_without_following_sequence():
+    project, workflow = project_with_steps(count=2)
+    calls = []
+
+    class Executor:
+        async def execute(self, step):
+            calls.append(step.id)
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    runner = Runner(step_executor_factory=lambda token: Executor())
+
+    result = await runner.run_step(project, workflow.id, workflow.steps[1].id)
+
+    assert result.outcome is StepOutcome.SUCCESS
+    assert calls == [workflow.steps[1].id]

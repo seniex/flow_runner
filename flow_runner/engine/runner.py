@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from time import monotonic
+from typing import cast
 from uuid import UUID, uuid4
 
 from flow_runner.domain.enums import RunnerState, StepOutcome
@@ -146,6 +147,74 @@ class Runner:
             terminal_outcome=terminal_outcome,
         )
 
+    async def run_step(
+        self,
+        project: Project,
+        workflow_id: UUID,
+        step_id: UUID,
+    ) -> StepResult:
+        workflow, step = self._debug_target(project, workflow_id, step_id)
+        self._begin_debug_task(workflow_id)
+        delegate = self._build_step_delegate()
+        self._bind_debug_context(delegate, workflow, step)
+        gated = _GatedStepExecutor(self, delegate)
+        self._observe_transition("step.started", workflow, step, None, None)
+        try:
+            result = await gated.execute(step)
+        except Exception:
+            self._set_state(RunnerState.FAILED, workflow_id=workflow_id)
+            raise
+        self._observe_transition("step.finished", workflow, step, result, None)
+        final_state = (
+            RunnerState.CANCELLED
+            if result.outcome is StepOutcome.CANCELLED
+            else RunnerState.FAILED
+            if result.outcome is StepOutcome.FAILURE
+            else RunnerState.COMPLETED
+        )
+        self._set_state(final_state, workflow_id=workflow_id, outcome=result.outcome)
+        return result
+
+    async def preview_condition(
+        self,
+        project: Project,
+        workflow_id: UUID,
+        step_id: UUID,
+    ) -> ConditionResult:
+        workflow, step = self._debug_target(project, workflow_id, step_id)
+        self._begin_debug_task(workflow_id)
+        delegate = self._build_step_delegate()
+        self._bind_debug_context(delegate, workflow, step)
+        raw_previewer = getattr(delegate, "preview_condition", None)
+        if raw_previewer is None:
+            self._set_state(RunnerState.FAILED, workflow_id=workflow_id)
+            raise FlowRunnerError("step executor does not support condition preview")
+        previewer = cast(
+            Callable[[AutomationStep], Awaitable[ConditionResult]],
+            raw_previewer,
+        )
+        await self.wait_until_active()
+        try:
+            result = await previewer(step)
+        except Exception:
+            self._set_state(RunnerState.FAILED, workflow_id=workflow_id)
+            raise
+        if self.task_id is not None:
+            self.event_sink.emit(
+                RuntimeEvent(
+                    task_id=self.task_id,
+                    kind="condition.preview",
+                    state=self.state,
+                    monotonic_timestamp=monotonic(),
+                    workflow_id=workflow.id,
+                    step_id=step.id,
+                    frame_id=_condition_frame_id(result),
+                    details={"condition_result": result.model_dump(mode="json")},
+                )
+            )
+        self._set_state(RunnerState.COMPLETED, workflow_id=workflow_id)
+        return result
+
     def _build_step_delegate(self) -> StepExecutorLike:
         delegate = (
             self.step_executor_factory(self.cancellation)
@@ -155,6 +224,51 @@ class Runner:
         if delegate is None:
             raise RuntimeError("runner step executor was not configured")
         return delegate
+
+    def _begin_debug_task(self, workflow_id: UUID) -> None:
+        if self.state in {RunnerState.RUNNING, RunnerState.PAUSED}:
+            raise FlowRunnerError("runner is already running")
+        self.task_id = uuid4()
+        self.cancellation = CancellationToken()
+        self._pause_gate = asyncio.Event()
+        self._pause_gate.set()
+        self._set_state(RunnerState.RUNNING, workflow_id=workflow_id)
+
+    @staticmethod
+    def _debug_target(
+        project: Project,
+        workflow_id: UUID,
+        step_id: UUID,
+    ) -> tuple[Workflow, AutomationStep]:
+        errors = project.validate_references()
+        if errors:
+            raise FlowRunnerError("; ".join(errors))
+        for group in project.groups:
+            for workflow in group.workflows:
+                if workflow.id != workflow_id:
+                    continue
+                for step in workflow.steps:
+                    if step.id == step_id:
+                        return workflow, step
+                raise FlowRunnerError(f"workflow '{workflow.name}' has no step {step_id}")
+        raise FlowRunnerError(f"missing workflow {workflow_id}")
+
+    @staticmethod
+    def _bind_debug_context(
+        delegate: StepExecutorLike,
+        workflow: Workflow,
+        step: AutomationStep,
+    ) -> None:
+        binder = getattr(delegate, "bind_workflow_context", None)
+        if binder is None:
+            return
+        binder(
+            WorkflowContext(
+                task=TaskContext(),
+                workflow_counts={workflow.id: 1},
+                step_counts={step.id: 1},
+            )
+        )
 
     def pause(self) -> None:
         if self.state is not RunnerState.RUNNING:

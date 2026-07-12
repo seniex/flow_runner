@@ -2,7 +2,9 @@ import pytest
 from pydantic import ValidationError
 
 from flow_runner.app import create_application
-from flow_runner.domain.project import FlowGroup, Project, Workflow
+from flow_runner.domain.enums import ConditionOutcome
+from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.domain.routing import ComparisonOperator
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
@@ -172,8 +174,6 @@ def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_pat
 
 
 def test_application_save_action_persists_property_edits(qtbot, tmp_path):
-    from flow_runner.domain.project import AutomationStep
-
     workflow = Workflow(name="main", steps=[AutomationStep(name="old")])
     project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
     path = tmp_path / "project.json"
@@ -243,3 +243,33 @@ def test_application_loads_hotkeys_from_project_settings(qtbot, tmp_path):
     composition.start_services()
 
     assert composition.hotkey_service.bindings == {"F10": "start"}
+
+
+def test_application_condition_preview_does_not_run_full_workflow(qtbot, tmp_path):
+    step = AutomationStep.model_validate(
+        {
+            "name": "preview",
+            "condition": {
+                "id": "count",
+                "capability": "runtime.count",
+                "config": {
+                    "counter": "step",
+                    "target_id": "00000000-0000-0000-0000-000000000001",
+                    "operator": ComparisonOperator.EQ,
+                    "expected": 0,
+                },
+            },
+        }
+    )
+    workflow = Workflow(name="main", steps=[step])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])]))
+    composition = create_application([], project_path=path)
+    qtbot.addWidget(composition.window)
+    composition.window.flow_tree.select_workflow(workflow.id)
+    composition.window.step_list.select_step(step.id)
+
+    with qtbot.waitSignal(composition.runner_bridge.finished, timeout=3000) as blocker:
+        composition.window.preview_action.trigger()
+
+    assert blocker.args[0].outcome is ConditionOutcome.MATCH

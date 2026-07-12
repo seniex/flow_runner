@@ -217,6 +217,28 @@ async def test_stale_visual_result_is_revalidated_before_bound_mouse_action():
 
 
 @pytest.mark.asyncio
+async def test_condition_preview_does_not_execute_main_actions():
+    condition = QueuedCondition(
+        [ConditionResult(node_id="provider", outcome=ConditionOutcome.MATCH, text="ready")]
+    )
+    action = CountingAction("action")
+    runtime, _ = build_runtime(condition, action)
+    step = AutomationStep.model_validate(
+        {
+            "name": "preview",
+            "condition": {"id": "screen", "capability": condition.name, "config": {}},
+            "actions": [{"capability": action.name, "config": {}}],
+        }
+    )
+
+    result = await StepExecutor(runtime).preview_condition(step)
+
+    assert result.outcome is ConditionOutcome.MATCH
+    assert result.text == "ready"
+    assert action.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_until_runs_after_no_match_hook_and_times_out():
     condition = QueuedCondition(
         [

@@ -262,3 +262,25 @@ def test_parallel_block_toolbar_adds_and_deletes_explicit_block(qtbot):
 
     window.delete_parallel_action.trigger()
     assert window.view_model.project.parallel_blocks == []
+
+
+def test_single_step_action_runs_only_selected_step(qtbot):
+    project = sample_project()
+    workflow = project.groups[0].workflows[0]
+    calls = []
+
+    class Executor:
+        async def execute(self, step):
+            calls.append(step.id)
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    bridge = RunnerBridge(Runner(step_executor_factory=lambda token: Executor()))
+    window = MainWindow(project, runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(workflow.steps[1].id)
+
+    with qtbot.waitSignal(bridge.finished, timeout=3000):
+        window.run_step_action.trigger()
+
+    assert calls == [workflow.steps[1].id]

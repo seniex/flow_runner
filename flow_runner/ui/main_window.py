@@ -134,12 +134,18 @@ class MainWindow(QMainWindow):
         self.record_action.setObjectName("recordAction")
         self.diagnostics_action = QAction("诊断", self)
         self.diagnostics_action.setObjectName("diagnosticsAction")
+        self.run_step_action = QAction("单步运行", self)
+        self.run_step_action.setObjectName("runSelectedStepAction")
+        self.preview_action = QAction("预览条件", self)
+        self.preview_action.setObjectName("previewConditionAction")
         self.runtime_toolbar.addActions(
             [
                 self.start_action,
                 self.pause_action,
                 self.stop_action,
                 self.record_action,
+                self.run_step_action,
+                self.preview_action,
                 self.diagnostics_action,
             ]
         )
@@ -147,6 +153,8 @@ class MainWindow(QMainWindow):
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
         self.record_action.triggered.connect(self.recordRequested.emit)
+        self.run_step_action.triggered.connect(self._run_selected_step)
+        self.preview_action.triggered.connect(self._preview_selected_condition)
         self.diagnostics_action.triggered.connect(self.diagnostics_dialog.show)
         self.save_action.triggered.connect(self._save_project)
         self.undo_action.triggered.connect(self.view_model.undo)
@@ -423,6 +431,34 @@ class MainWindow(QMainWindow):
         else:
             self.runner_bridge.pause()
 
+    def _run_selected_step(self) -> None:
+        if (
+            self.runner_bridge is None
+            or self._workflow_id is None
+            or self.property_panel.step_id is None
+        ):
+            self.statusBar().showMessage("请先选择要运行的步骤")
+            return
+        self.runner_bridge.run_step(
+            self.view_model.project,
+            self._workflow_id,
+            self.property_panel.step_id,
+        )
+
+    def _preview_selected_condition(self) -> None:
+        if (
+            self.runner_bridge is None
+            or self._workflow_id is None
+            or self.property_panel.step_id is None
+        ):
+            self.statusBar().showMessage("请先选择要预览的检测步骤")
+            return
+        self.runner_bridge.preview_condition(
+            self.view_model.project,
+            self._workflow_id,
+            self.property_panel.step_id,
+        )
+
     def _stop_runtime(self) -> None:
         if self.runner_bridge is not None:
             self.runner_bridge.stop()
@@ -432,6 +468,8 @@ class MainWindow(QMainWindow):
         self.start_action.setEnabled(not active)
         self.pause_action.setEnabled(active)
         self.stop_action.setEnabled(active)
+        self.run_step_action.setEnabled(not active)
+        self.preview_action.setEnabled(not active)
         self.pause_action.setText("继续" if state is RunnerState.PAUSED else "暂停")
 
     def closeEvent(self, event: QCloseEvent) -> None:

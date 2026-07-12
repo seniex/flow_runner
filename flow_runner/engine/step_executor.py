@@ -48,6 +48,17 @@ class StepExecutor:
     def bind_workflow_context(self, context: WorkflowContext) -> None:
         self.runtime.context = StepContext.from_workflow(context)
 
+    async def preview_condition(self, step: AutomationStep) -> ConditionResult:
+        if step.condition is None:
+            raise ValueError("condition preview requires a step condition")
+        try:
+            self.runtime.cancellation.raise_if_cancelled()
+            result = await self._evaluate_condition(step.condition)
+            self.runtime.context.result = result
+            return result
+        finally:
+            self.runtime.context.clear_result()
+
     async def execute(self, step: AutomationStep) -> StepResult:
         try:
             self.runtime.cancellation.raise_if_cancelled()

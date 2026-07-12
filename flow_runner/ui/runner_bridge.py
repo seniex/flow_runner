@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import queue
 import threading
+from collections.abc import Coroutine
+from typing import Any
 from uuid import UUID
 
 from PySide6.QtCore import QMetaObject, QObject, Qt, Signal, Slot
@@ -41,14 +43,26 @@ class RunnerBridge(QObject):
     def start_parallel(self, project: Project, block_id: UUID) -> None:
         self._start_thread("parallel", project, block_id)
 
-    def _start_thread(self, mode: str, project: Project, entry_id: UUID) -> None:
+    def run_step(self, project: Project, workflow_id: UUID, step_id: UUID) -> None:
+        self._start_thread("step", project, workflow_id, step_id)
+
+    def preview_condition(self, project: Project, workflow_id: UUID, step_id: UUID) -> None:
+        self._start_thread("preview", project, workflow_id, step_id)
+
+    def _start_thread(
+        self,
+        mode: str,
+        project: Project,
+        entry_id: UUID,
+        step_id: UUID | None = None,
+    ) -> None:
         if self._running:
             self._post("failed", "runner is already running")
             return
         self._running = True
         self._thread = threading.Thread(
             target=self._run,
-            args=(mode, project, entry_id),
+            args=(mode, project, entry_id, step_id),
             daemon=True,
             name="FlowRunnerRuntime",
         )
@@ -82,16 +96,30 @@ class RunnerBridge(QObject):
             self._post("failed", "runner did not stop before shutdown timeout")
         self._drain_messages()
 
-    def _run(self, mode: str, project: Project, entry_id: UUID) -> None:
+    def _run(
+        self,
+        mode: str,
+        project: Project,
+        entry_id: UUID,
+        step_id: UUID | None,
+    ) -> None:
         loop = asyncio.new_event_loop()
         self._loop = loop
         asyncio.set_event_loop(loop)
         try:
-            operation = (
-                self.runner.start_parallel(project, entry_id)
-                if mode == "parallel"
-                else self.runner.start(project, entry_id)
-            )
+            if mode in {"step", "preview"} and step_id is None:
+                raise ValueError(f"{mode} mode requires a step id")
+            operation: Coroutine[Any, Any, object]
+            if mode == "parallel":
+                operation = self.runner.start_parallel(project, entry_id)
+            elif mode == "step":
+                assert step_id is not None
+                operation = self.runner.run_step(project, entry_id, step_id)
+            elif mode == "preview":
+                assert step_id is not None
+                operation = self.runner.preview_condition(project, entry_id, step_id)
+            else:
+                operation = self.runner.start(project, entry_id)
             trace = loop.run_until_complete(operation)
         except Exception as error:
             self._post("failed", str(error))
