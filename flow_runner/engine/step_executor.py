@@ -317,7 +317,11 @@ class StepExecutor:
             window_targets = sorted(
                 resource for resource in required if resource.startswith("window:")
             )
-            scene_target = _single_scene_target(self.runtime.context.result)
+            scene_target = (
+                _single_scene_target(self.runtime.context.result)
+                if bool(getattr(provider, "binds_to_scene", False))
+                else None
+            )
             target = window_targets[0] if window_targets else scene_target or "desktop"
             named_resources = required.difference(window_targets)
             async with _cancellable_context(

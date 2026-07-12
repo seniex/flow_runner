@@ -22,6 +22,7 @@ class MouseActionConfig(BaseModel):
 class MouseAction:
     name = "input.mouse"
     config_model = MouseActionConfig
+    binds_to_scene = True
 
     def __init__(self, device: MouseDevice) -> None:
         self.device = device

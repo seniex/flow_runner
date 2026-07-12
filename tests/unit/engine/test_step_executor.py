@@ -1,6 +1,7 @@
 import asyncio
 import base64
 from collections import deque
+from contextlib import asynccontextmanager
 from io import BytesIO
 
 import pytest
@@ -133,6 +134,74 @@ async def test_shared_resource_coordinator_serializes_exclusive_actions():
     await asyncio.gather(executor().execute(step), executor().execute(step))
 
     assert maximum_active == 1
+
+
+@pytest.mark.asyncio
+async def test_global_action_defaults_to_desktop_unless_provider_binds_to_scene():
+    targets = []
+
+    class RecordingCoordinator(ResourceCoordinator):
+        @asynccontextmanager
+        async def interact(self, target, *, resources=()):
+            targets.append(target)
+            yield
+
+    class VisualCondition(QueuedCondition):
+        pass
+
+    class GlobalAction(CountingAction):
+        def required_resources(self, config):
+            return frozenset({"keyboard"})
+
+    class SceneAction(CountingAction):
+        binds_to_scene = True
+
+        def required_resources(self, config):
+            return frozenset({"mouse"})
+
+    condition = VisualCondition(
+        [
+            ConditionResult(
+                node_id="visual",
+                outcome=ConditionOutcome.MATCH,
+                target="window:game",
+                frame_id="frame",
+                scene_generation=0,
+            ),
+            ConditionResult(
+                node_id="visual",
+                outcome=ConditionOutcome.MATCH,
+                target="window:game",
+                frame_id="frame",
+                scene_generation=0,
+            ),
+        ]
+    )
+    global_action = GlobalAction("global")
+    scene_action = SceneAction("scene")
+    registry = CapabilityRegistry()
+    registry.register_condition(condition)
+    registry.register_action(global_action)
+    registry.register_action(scene_action)
+    executor = StepExecutor(
+        StepRuntime(
+            registry=registry,
+            context=StepContext(),
+            cancellation=CancellationToken(),
+            resources=RecordingCoordinator(),
+        )
+    )
+
+    for capability in (global_action.name, scene_action.name):
+        step = AutomationStep(
+            name=capability,
+            condition={"id": "visual", "capability": condition.name, "config": {}},
+            actions=[{"capability": capability, "config": {}}],
+        )
+        result = await executor.execute(step)
+        assert result.outcome is StepOutcome.SUCCESS
+
+    assert targets == ["desktop", "window:game"]
 
 
 @pytest.mark.asyncio
