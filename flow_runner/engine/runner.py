@@ -216,6 +216,7 @@ class Runner:
                     workflow_id=workflow.id,
                     step_id=step.id,
                     frame_id=_condition_frame_id(result),
+                    scene_generation=_condition_scene_generation(result),
                     diagnostic_capture_base64=diagnostic_capture,
                     details={"condition_result": result.model_dump(mode="json")},
                 )
@@ -403,6 +404,9 @@ class Runner:
                 frame_id=_condition_frame_id(
                     result.condition_result if result is not None else None
                 ),
+                scene_generation=_condition_scene_generation(
+                    result.condition_result if result is not None else None
+                ),
                 error_id=(
                     uuid4()
                     if result is not None and result.outcome is StepOutcome.FAILURE
@@ -443,4 +447,16 @@ def _condition_frame_id(result: ConditionResult | None) -> str | None:
         frame_id = _condition_frame_id(child)
         if frame_id is not None:
             return frame_id
+    return None
+
+
+def _condition_scene_generation(result: ConditionResult | None) -> int | None:
+    if result is None:
+        return None
+    if result.scene_generation is not None:
+        return result.scene_generation
+    for child in result.children.values():
+        generation = _condition_scene_generation(child)
+        if generation is not None:
+            return generation
     return None

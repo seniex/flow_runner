@@ -94,6 +94,7 @@ def test_diagnostics_dialog_displays_structured_event(qtbot):
         step_id=step_id,
         outcome=StepOutcome.SUCCESS,
         frame_id="frame-1",
+        scene_generation=4,
         details={"retry": 2},
     )
 
@@ -106,6 +107,7 @@ def test_diagnostics_dialog_displays_structured_event(qtbot):
     assert dialog.step_value.text() == str(step_id)
     assert dialog.outcome_value.text() == "success"
     assert dialog.frame_value.text() == "frame-1"
+    assert dialog.scene_value.text() == "4"
     assert "retry" in dialog.details_value.toPlainText()
 
 

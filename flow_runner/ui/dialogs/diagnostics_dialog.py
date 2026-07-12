@@ -19,6 +19,7 @@ class DiagnosticsDialog(QDialog):
         self.step_value = QLabel("")
         self.outcome_value = QLabel("")
         self.frame_value = QLabel("")
+        self.scene_value = QLabel("")
         self.capture_value = QLabel("")
         self.error_value = QLabel("")
         self.details_value = QTextEdit()
@@ -31,6 +32,7 @@ class DiagnosticsDialog(QDialog):
         layout.addRow("步骤", self.step_value)
         layout.addRow("结果", self.outcome_value)
         layout.addRow("帧", self.frame_value)
+        layout.addRow("场景代次", self.scene_value)
         layout.addRow("截图", self.capture_value)
         layout.addRow("错误 ID", self.error_value)
         layout.addRow("详情", self.details_value)
@@ -43,6 +45,9 @@ class DiagnosticsDialog(QDialog):
         self.step_value.setText(str(event.step_id or ""))
         self.outcome_value.setText(event.outcome.value if event.outcome is not None else "")
         self.frame_value.setText(event.frame_id or "")
+        self.scene_value.setText(
+            str(event.scene_generation) if event.scene_generation is not None else ""
+        )
         self._update_capture(
             event.diagnostic_capture_path,
             event.diagnostic_capture_base64,

@@ -18,6 +18,7 @@ class RuntimeEvent(BaseModel):
     step_id: UUID | None = None
     outcome: StepOutcome | None = None
     frame_id: str | None = None
+    scene_generation: int | None = None
     diagnostic_capture_path: str | None = None
     diagnostic_capture_base64: str | None = None
     error_id: UUID | None = None
