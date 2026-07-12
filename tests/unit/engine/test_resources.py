@@ -162,6 +162,32 @@ async def test_desktop_interaction_blocks_window_interaction():
     assert window_entered.is_set()
 
 
+@pytest.mark.asyncio
+async def test_desktop_interaction_blocks_window_observation():
+    coordinator = ResourceCoordinator()
+    desktop_entered = asyncio.Event()
+    release_desktop = asyncio.Event()
+    observation_entered = asyncio.Event()
+
+    async def desktop():
+        async with coordinator.interact("desktop"):
+            desktop_entered.set()
+            await release_desktop.wait()
+
+    async def observe_window():
+        await desktop_entered.wait()
+        async with coordinator.observe("window:game"):
+            observation_entered.set()
+
+    tasks = [asyncio.create_task(desktop()), asyncio.create_task(observe_window())]
+    await desktop_entered.wait()
+    await asyncio.sleep(0)
+    assert not observation_entered.is_set()
+    release_desktop.set()
+    await asyncio.gather(*tasks)
+    assert observation_entered.is_set()
+
+
 @dataclass(frozen=True)
 class PositionedResult:
     scene_generation: int

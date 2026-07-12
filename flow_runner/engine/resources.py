@@ -89,14 +89,15 @@ class ResourceCoordinator:
     @asynccontextmanager
     async def observe(self, target: str) -> AsyncIterator[None]:
         target_lock = self._target_lock(target)
-        waiting = target_lock.read_would_wait
+        waiting = self._desktop_hierarchy.read_would_wait or target_lock.read_would_wait
         started_at = self._begin_wait(target, "observe", (target,)) if waiting else None
         acquired = False
         try:
-            async with target_lock.read():
-                acquired = True
-                self._finish_wait(target, "observe", (target,), started_at)
-                yield
+            async with self._desktop_hierarchy.read():
+                async with target_lock.read():
+                    acquired = True
+                    self._finish_wait(target, "observe", (target,), started_at)
+                    yield
         except BaseException:
             if not acquired:
                 self._cancel_wait(target, "observe", (target,), started_at)
