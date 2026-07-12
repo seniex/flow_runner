@@ -2,7 +2,7 @@
 
 记录测试日期、Windows 版本、Python 版本、显示器数量、DPI 比例、OCR 引擎路径和测试项目路径。每项填写 `PASS`、`FAIL` 或 `BLOCKED`，并附截图或日志路径。
 
-自动化基线（2026-07-13）：`180 passed`，Ruff、格式检查、严格 mypy、`pip check` 和 wheel 构建均通过。此结果不替代下列真实桌面/游戏环境验收。
+自动化基线（2026-07-13）：`181 passed`，Ruff、格式检查、严格 mypy、`pip check` 和 wheel 构建均通过。此结果不替代下列真实桌面/游戏环境验收。
 
 当前实机环境记录（2026-07-13）：Windows 10 专业版 `10.0.19045`，单显示器，虚拟桌面原点 `(0, 0)`、尺寸 `2560×1440`。独立进程调用 DPI 初始化返回 `per_monitor_v2`。PaddleOCR-json 可执行文件存在；Tesseract 与 `pytesseract` 均未安装。
 

@@ -206,6 +206,26 @@ def test_guided_dialog_builds_execution_and_control_steps(qtbot):
     assert control.routes[0].target == RouteTarget.end()
 
 
+def test_guided_dialog_selects_control_target_without_uuid_json(qtbot):
+    target_step = AutomationStep(name="目标步骤")
+    current = Workflow(name="当前流程", steps=[target_step])
+    other = Workflow(name="其他流程")
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="组", workflows=[current, other])],
+    )
+    dialog = GuidedAddDialog(registry(), project, current_workflow_id=current.id)
+    qtbot.addWidget(dialog)
+    dialog.category_combo.setCurrentText("控制")
+    dialog.capability_combo.setCurrentIndex(dialog.capability_combo.findData("next_step"))
+    dialog.control_step_combo.setCurrentIndex(dialog.control_step_combo.findData(target_step.id))
+
+    dialog.accept()
+
+    assert dialog.result() == GuidedAddDialog.DialogCode.Accepted
+    assert dialog.step().routes[0].target == RouteTarget.next_step(target_step.id)
+
+
 def test_guided_dialog_category_switches_available_capabilities(qtbot):
     dialog = GuidedAddDialog(registry())
     qtbot.addWidget(dialog)

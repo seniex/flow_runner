@@ -299,7 +299,11 @@ class MainWindow(QMainWindow):
         if self.registry is None:
             self.statusBar().showMessage("未配置能力注册表")
             return None
-        dialog = GuidedAddDialog(self.registry)
+        dialog = GuidedAddDialog(
+            self.registry,
+            self.view_model.project,
+            current_workflow_id=self._workflow_id,
+        )
         if dialog.exec() != GuidedAddDialog.DialogCode.Accepted:
             return None
         return dialog.step()
