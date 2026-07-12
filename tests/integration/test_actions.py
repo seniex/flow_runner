@@ -10,7 +10,12 @@ from flow_runner.domain.enums import StepOutcome
 from flow_runner.engine.context import StepContext
 from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
-from flow_runner.infrastructure.input.recording import RecordedEvent, RecordingStore
+from flow_runner.infrastructure.input.recording import (
+    RecordedEvent,
+    RecordingPlayer,
+    RecordingStore,
+)
+from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 
 
 @pytest.mark.asyncio
@@ -130,6 +135,27 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
     assert playbacks == [(script.resolve(), 2.0, 1.5)]
 
 
+@pytest.mark.asyncio
+async def test_windows_process_launcher_selects_normal_or_admin_backend(tmp_path):
+    calls = []
+
+    def popen(command):
+        calls.append(("popen", command))
+
+    def shell_execute(path, arguments):
+        calls.append(("admin", path, arguments))
+
+    launcher = WindowsProcessLauncher(popen=popen, shell_execute=shell_execute)
+    path = (tmp_path / "game.exe").resolve()
+    await launcher(path, ("--safe",), False)
+    await launcher(path, ("--admin",), True)
+
+    assert calls == [
+        ("popen", [str(path), "--safe"]),
+        ("admin", path, "--admin"),
+    ]
+
+
 def test_recording_store_round_trips_typed_events(tmp_path):
     path = tmp_path / "recording.json"
     events = [RecordedEvent(timestamp=0.25, kind="mouse_click", data={"x": 1, "y": 2})]
@@ -137,6 +163,38 @@ def test_recording_store_round_trips_typed_events(tmp_path):
     RecordingStore.save(path, events)
 
     assert RecordingStore.load(path) == events
+
+
+@pytest.mark.asyncio
+async def test_recording_player_applies_speed_gap_and_dispatches(tmp_path):
+    path = tmp_path / "recording.json"
+    RecordingStore.save(
+        path,
+        [
+            RecordedEvent(timestamp=0.0, kind="move", data={"x": 4, "y": 5}),
+            RecordedEvent(timestamp=4.0, kind="click", data={"x": 4, "y": 5, "button": "left"}),
+        ],
+    )
+    delays = []
+    calls = []
+
+    async def sleep(seconds):
+        delays.append(seconds)
+
+    class Backend:
+        def moveTo(self, x, y):
+            calls.append(("move", x, y))
+
+        def click(self, **kwargs):
+            calls.append(("click", kwargs))
+
+    await RecordingPlayer(sleep=sleep, backend=Backend())(path, speed=2.0, max_gap=1.0)
+
+    assert delays == [0.0, 1.0]
+    assert calls == [
+        ("move", 4, 5),
+        ("click", {"x": 4, "y": 5, "button": "left"}),
+    ]
 
 
 @pytest.mark.asyncio

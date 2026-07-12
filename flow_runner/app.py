@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import sys
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,7 +10,11 @@ from PySide6.QtWidgets import QApplication
 
 from flow_runner.capabilities.actions.keyboard import KeyboardAction
 from flow_runner.capabilities.actions.mouse import MouseAction
+from flow_runner.capabilities.actions.process import LaunchProcessAction
+from flow_runner.capabilities.actions.script import PlaybackScriptAction
 from flow_runner.capabilities.actions.variables import SetVariableAction
+from flow_runner.capabilities.actions.wait import WaitAction
+from flow_runner.capabilities.actions.window import WindowAction
 from flow_runner.capabilities.conditions.count import CountCondition
 from flow_runner.capabilities.conditions.image import ImageCondition
 from flow_runner.capabilities.conditions.ocr import OcrCondition
@@ -26,8 +31,11 @@ from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
 from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
+from flow_runner.infrastructure.input.recording import RecordingPlayer
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
+from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
+from flow_runner.infrastructure.windowing.win32 import Win32WindowController
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.theme_manager import ThemeManager
@@ -54,16 +62,17 @@ def create_application(
     store = ProjectStore(path)
     project = store.load() if path.exists() else Project(name="新项目")
     perception = PerceptionService(DesktopCapture())
-    registry = _build_registry(perception)
+    registry = _build_registry(perception, asyncio.sleep)
 
     def step_executor_factory(token: object) -> StepExecutor:
         from flow_runner.engine.cancellation import CancellationToken
 
         if not isinstance(token, CancellationToken):
             raise TypeError("runner supplied an invalid cancellation token")
+        execution_registry = _build_registry(perception, token.sleep)
         return StepExecutor(
             StepRuntime(
-                registry=registry,
+                registry=execution_registry,
                 context=StepContext(),
                 cancellation=token,
             )
@@ -84,7 +93,10 @@ def create_application(
     )
 
 
-def _build_registry(perception: PerceptionService) -> CapabilityRegistry:
+def _build_registry(
+    perception: PerceptionService,
+    sleep: Callable[[float], Awaitable[None]],
+) -> CapabilityRegistry:
     registry = CapabilityRegistry()
     for condition in (
         OcrCondition(perception, TesseractOcr()),
@@ -98,7 +110,11 @@ def _build_registry(perception: PerceptionService) -> CapabilityRegistry:
         registry.register_condition(condition)
     registry.register_action(MouseAction(PyAutoGuiMouseDevice()))
     registry.register_action(KeyboardAction(PyAutoGuiKeyboardDevice()))
+    registry.register_action(WaitAction(sleep))
     registry.register_action(SetVariableAction())
+    registry.register_action(LaunchProcessAction(WindowsProcessLauncher()))
+    registry.register_action(PlaybackScriptAction(RecordingPlayer(sleep=sleep)))
+    registry.register_action(WindowAction(Win32WindowController()))
     return registry
 
 

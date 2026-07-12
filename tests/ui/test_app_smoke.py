@@ -23,6 +23,15 @@ def test_application_starts_offscreen_with_injected_project_path(qtbot, tmp_path
         "vision.pixel",
     }
     assert composition.runner_bridge.runner is composition.runner
+    assert {item.name for item in composition.registry.action_metadata()} >= {
+        "input.mouse",
+        "input.keyboard",
+        "system.wait",
+        "variables.set",
+        "system.launch",
+        "recording.playback",
+        "system.window_action",
+    }
 
 
 def test_duplicate_hotkeys_are_rejected():

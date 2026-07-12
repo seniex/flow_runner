@@ -6,6 +6,7 @@ from flow_runner.capabilities.actions.window import WindowAction, WindowActionCo
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.engine.context import TaskContext
 from flow_runner.engine.parallel import ParallelMonitorGroup
+from flow_runner.infrastructure.windowing.win32 import Win32WindowController
 
 
 class FakeWindows:
@@ -36,6 +37,30 @@ async def test_window_action_declares_target_exclusivity_and_calls_adapter():
     assert result.outcome is StepOutcome.SUCCESS
     assert windows.calls == [("move_resize", "Game", (1, 2, 800, 600))]
     assert action.required_resources(config) == frozenset({"window:Game"})
+
+
+@pytest.mark.asyncio
+async def test_win32_window_controller_delegates_to_injected_backend():
+    calls = []
+
+    class Backend:
+        def activate(self, title):
+            calls.append(("activate", title))
+
+        def minimize(self, title):
+            calls.append(("minimize", title))
+
+        def restore(self, title):
+            calls.append(("restore", title))
+
+        def move_resize(self, title, geometry):
+            calls.append(("move_resize", title, geometry))
+
+    controller = Win32WindowController(Backend())
+    await controller.activate("Game")
+    await controller.move_resize("Game", (1, 2, 3, 4))
+
+    assert calls == [("activate", "Game"), ("move_resize", "Game", (1, 2, 3, 4))]
 
 
 @pytest.mark.asyncio
