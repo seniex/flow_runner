@@ -34,16 +34,16 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 152 passed
+# 168 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
 
 .\.venv\Scripts\python.exe -m ruff format --check flow_runner tests
-# 111 files already formatted
+# 112 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
-# Success: no issues found in 90 source files
+# Success: no issues found in 91 source files
 
 .\.venv\Scripts\python.exe -m pip check
 # No broken requirements found
@@ -51,7 +51,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，包含 Python 包和 `base.qss`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，96 个条目，包含 `base.qss`；SHA-256 为 `BB3BBF3207461D10BC6DDFFEF15A74E290995ED13F91EF1F8006B58C8434D8FE`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
