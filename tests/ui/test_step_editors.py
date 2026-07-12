@@ -6,6 +6,7 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import ConditionMode, StepOutcome
+from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.routing import RouteRule, RouteTarget, RouteTargetKind
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
@@ -172,6 +173,27 @@ def test_policy_editor_exposes_once_and_until(qtbot):
 
     assert editor.mode() is ConditionMode.UNTIL
     assert editor.mode_combo.count() == 2
+
+
+def test_policy_editor_preserves_tick_hooks_when_editing_limits(qtbot):
+    editor = PolicyEditor()
+    qtbot.addWidget(editor)
+    hook = ActionSpec(capability="system.wait", config={"keywords": "x"})
+    editor.set_policies(
+        ConditionPolicy(
+            mode=ConditionMode.UNTIL,
+            max_attempts=2,
+            before_attempt_actions=[hook],
+        ),
+        ActionPolicy(max_attempts=2, retry_interval_seconds=0.5),
+    )
+    editor.max_attempts_spin.setValue(5)
+
+    condition, action = editor.policies()
+
+    assert condition.max_attempts == 5
+    assert condition.before_attempt_actions == [hook]
+    assert action.max_attempts == 2
 
 
 def test_action_and_route_editors_round_trip_models(qtbot):

@@ -18,6 +18,7 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor
+from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 
 
@@ -37,6 +38,8 @@ class PropertyPanel(QWidget):
         self._condition_json_baseline = ""
         self._actions_json_baseline = ""
         self._routes_json_baseline = ""
+        self._condition_policy_json_baseline = ""
+        self._action_policy_json_baseline = ""
         self.title = QLabel("")
         self.name_edit = QLineEdit()
         self.name_edit.setObjectName("stepNameEditor")
@@ -55,6 +58,7 @@ class PropertyPanel(QWidget):
         self.action_editor = ActionEditor(registry) if registry is not None else None
         self.condition_editor = ConditionEditor(registry) if registry is not None else None
         self.route_editor = RouteEditor(project) if registry is not None else None
+        self.policy_editor = PolicyEditor()
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
         layout = QVBoxLayout(self)
@@ -68,6 +72,7 @@ class PropertyPanel(QWidget):
         if self.action_editor is not None:
             form.addRow("动作引导", self.action_editor)
         form.addRow("动作", self.actions_edit)
+        form.addRow("策略引导", self.policy_editor)
         form.addRow("检测策略", self.condition_policy_edit)
         form.addRow("动作策略", self.action_policy_edit)
         if self.route_editor is not None:
@@ -92,8 +97,11 @@ class PropertyPanel(QWidget):
         self.actions_edit.setPlainText(self._actions_json_baseline)
         if self.action_editor is not None:
             self.action_editor.set_actions(step.actions)
-        self.condition_policy_edit.setPlainText(_json(step.condition_policy))
-        self.action_policy_edit.setPlainText(_json(step.action_policy))
+        self._condition_policy_json_baseline = _json(step.condition_policy)
+        self.condition_policy_edit.setPlainText(self._condition_policy_json_baseline)
+        self._action_policy_json_baseline = _json(step.action_policy)
+        self.action_policy_edit.setPlainText(self._action_policy_json_baseline)
+        self.policy_editor.set_policies(step.condition_policy, step.action_policy)
         self._routes_json_baseline = _json(step.routes)
         self.routes_edit.setPlainText(self._routes_json_baseline)
         if self.route_editor is not None:
@@ -122,6 +130,7 @@ class PropertyPanel(QWidget):
         if self._step is None:
             return
         try:
+            guided_condition_policy, guided_action_policy = self.policy_editor.policies()
             step = AutomationStep.model_validate(
                 {
                     "id": self._step.id,
@@ -139,8 +148,18 @@ class PropertyPanel(QWidget):
                         and self.actions_edit.toPlainText() == self._actions_json_baseline
                         else json.loads(self.actions_edit.toPlainText())
                     ),
-                    "condition_policy": json.loads(self.condition_policy_edit.toPlainText()),
-                    "action_policy": json.loads(self.action_policy_edit.toPlainText()),
+                    "condition_policy": (
+                        guided_condition_policy
+                        if self.condition_policy_edit.toPlainText()
+                        == self._condition_policy_json_baseline
+                        else json.loads(self.condition_policy_edit.toPlainText())
+                    ),
+                    "action_policy": (
+                        guided_action_policy
+                        if self.action_policy_edit.toPlainText()
+                        == self._action_policy_json_baseline
+                        else json.loads(self.action_policy_edit.toPlainText())
+                    ),
                     "routes": (
                         self.route_editor.routes()
                         if self.route_editor is not None
