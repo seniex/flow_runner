@@ -18,3 +18,12 @@ class StepOutcome(StrEnum):
 class ConditionMode(StrEnum):
     ONCE = "once"
     UNTIL = "until"
+
+
+class RunnerState(StrEnum):
+    IDLE = "idle"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"

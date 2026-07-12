@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -14,6 +15,71 @@ class RouteTargetKind(StrEnum):
     CALL_WORKFLOW = "call_workflow"
     RETURN = "return"
     END = "end"
+
+
+class ComparisonOperator(StrEnum):
+    EQ = "eq"
+    NE = "ne"
+    LT = "lt"
+    LE = "le"
+    GT = "gt"
+    GE = "ge"
+
+
+class RoutePredicate(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    source: Literal[
+        "task_variable",
+        "workflow_variable",
+        "workflow_count",
+        "step_count",
+    ]
+    key: str
+    operator: ComparisonOperator
+    expected: Any
+
+    @classmethod
+    def workflow_count(
+        cls,
+        workflow_id: UUID,
+        operator: ComparisonOperator,
+        expected: int,
+    ) -> RoutePredicate:
+        return cls(
+            source="workflow_count",
+            key=str(workflow_id),
+            operator=operator,
+            expected=expected,
+        )
+
+    @classmethod
+    def step_count(
+        cls,
+        step_id: UUID,
+        operator: ComparisonOperator,
+        expected: int,
+    ) -> RoutePredicate:
+        return cls(
+            source="step_count",
+            key=str(step_id),
+            operator=operator,
+            expected=expected,
+        )
+
+    @classmethod
+    def task_variable(
+        cls,
+        name: str,
+        operator: ComparisonOperator,
+        expected: Any,
+    ) -> RoutePredicate:
+        return cls(
+            source="task_variable",
+            key=name,
+            operator=operator,
+            expected=expected,
+        )
 
 
 class RouteTarget(BaseModel):
@@ -60,4 +126,5 @@ class RouteRule(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     outcome: StepOutcome
+    predicate: RoutePredicate | None = None
     target: RouteTarget
