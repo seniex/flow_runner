@@ -9,7 +9,9 @@ from flow_runner.capabilities.conditions.ocr import OcrCondition, OcrConditionCo
 from flow_runner.domain.enums import ConditionOutcome
 from flow_runner.domain.errors import ConditionError
 from flow_runner.engine.perception import PerceptionService
+from flow_runner.infrastructure.capture.base import CapturedFrame
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
+from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCapture
 from flow_runner.infrastructure.ocr.base import OcrItem, OcrObservation
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
@@ -61,6 +63,30 @@ async def test_ocr_condition_preserves_or_and_keyword_grammar_and_position():
 
 
 @pytest.mark.asyncio
+async def test_visual_condition_translates_target_local_coordinates_to_screen_coordinates():
+    class OffsetCapture:
+        async def capture(self, target):
+            return CapturedFrame(
+                image=Image.new("RGB", (200, 100), "white"),
+                origin=(-1920, 100),
+            )
+
+    observation = OcrObservation(
+        text="开始",
+        items=[OcrItem(text="开始", bounds=(30, 20, 90, 50), confidence=0.96)],
+    )
+    provider = OcrCondition(PerceptionService(OffsetCapture()), FakeOcr(observation))
+
+    result = await provider.evaluate(
+        OcrConditionConfig(region=(10, 5, 110, 55), keywords="开始"),
+        None,
+    )
+
+    assert result.bounds == (-1880, 125, -1820, 155)
+    assert result.position == (-1850, 140)
+
+
+@pytest.mark.asyncio
 async def test_image_condition_returns_absolute_match_coordinates(tmp_path):
     screen = Image.new("RGB", (160, 100), "black")
     draw = ImageDraw.Draw(screen)
@@ -101,10 +127,54 @@ async def test_desktop_capture_uses_injected_grabber_without_import_side_effects
         calls += 1
         return Image.new("RGB", (12, 8), "blue")
 
-    image = await DesktopCapture(grabber=grabber).capture("desktop")
+    frame = await DesktopCapture(
+        grabber=grabber,
+        origin_provider=lambda: (-1280, 0),
+    ).capture("desktop")
 
-    assert image.size == (12, 8)
+    assert frame.image.size == (12, 8)
+    assert frame.origin == (-1280, 0)
     assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_window_capture_uses_window_bounds_and_preserves_origin():
+    calls = []
+
+    class Bounds:
+        def bounds(self, title):
+            assert title == "Game"
+            return (-100, 50, 300, 250)
+
+    def grabber(bounds):
+        calls.append(bounds)
+        return Image.new("RGB", (400, 200), "blue")
+
+    frame = await WindowCapture(bounds=Bounds(), grabber=grabber).capture("window:Game")
+
+    assert frame.origin == (-100, 50)
+    assert frame.image.size == (400, 200)
+    assert calls == [(-100, 50, 300, 250)]
+
+
+@pytest.mark.asyncio
+async def test_target_capture_routes_desktop_and_window_targets():
+    calls = []
+
+    class Adapter:
+        def __init__(self, name):
+            self.name = name
+
+        async def capture(self, target):
+            calls.append((self.name, target))
+            return CapturedFrame(Image.new("RGB", (1, 1)), (0, 0))
+
+    capture = TargetCapture(Adapter("desktop"), Adapter("window"))
+
+    await capture.capture("desktop")
+    await capture.capture("window:Game")
+
+    assert calls == [("desktop", "desktop"), ("window", "window:Game")]
 
 
 @pytest.mark.asyncio

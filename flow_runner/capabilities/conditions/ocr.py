@@ -55,6 +55,8 @@ class OcrCondition:
                 scene_generation=snapshot.scene_generation,
             )
         bounds = _offset_bounds(matched_item.bounds, config.region)
+        if bounds is not None:
+            bounds = snapshot.absolute_bounds(bounds)
         position = _center(bounds) if bounds else None
         return ConditionResult(
             node_id=self.name,

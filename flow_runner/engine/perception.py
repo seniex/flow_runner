@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from PIL.Image import Image
 
-from flow_runner.infrastructure.capture.base import CaptureAdapter
+from flow_runner.infrastructure.capture.base import CaptureAdapter, CapturedFrame
 
 Region = tuple[int, int, int, int]
 
@@ -36,10 +36,25 @@ class PerceptionSnapshot:
     scene_generation: int
     captured_at: float
     image: Image
+    origin: tuple[int, int]
 
     @property
     def dimensions(self) -> tuple[int, int]:
         return self.image.size
+
+    def absolute_position(self, position: tuple[int, int]) -> tuple[int, int]:
+        return (position[0] + self.origin[0], position[1] + self.origin[1])
+
+    def absolute_bounds(
+        self,
+        bounds: tuple[int, int, int, int],
+    ) -> tuple[int, int, int, int]:
+        return (
+            bounds[0] + self.origin[0],
+            bounds[1] + self.origin[1],
+            bounds[2] + self.origin[0],
+            bounds[3] + self.origin[1],
+        )
 
 
 class PerceptionService:
@@ -114,13 +129,16 @@ class PerceptionService:
                 self._inflight.pop(target, None)
 
     async def _capture(self, target: str, generation: int) -> PerceptionSnapshot:
-        image = await self.capture.capture(target)
+        captured = await self.capture.capture(target)
+        image = captured.image if isinstance(captured, CapturedFrame) else captured
+        origin = captured.origin if isinstance(captured, CapturedFrame) else (0, 0)
         snapshot = PerceptionSnapshot(
             target=target,
             frame_id=str(uuid4()),
             scene_generation=generation,
             captured_at=monotonic(),
             image=image,
+            origin=origin,
         )
         if self.current_generation(target) == generation:
             self._latest[target] = snapshot

@@ -55,6 +55,8 @@ class ImageCondition:
             if matched and local_bounds is not None
             else None
         )
+        if bounds is not None:
+            bounds = snapshot.absolute_bounds(bounds)
         return ConditionResult(
             node_id=self.name,
             outcome=(ConditionOutcome.MATCH if matched else ConditionOutcome.NO_MATCH),
