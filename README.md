@@ -104,7 +104,8 @@ can reuse a recording with configurable speed and maximum gap.
 
 ## Persistence and safety
 
-Project JSON is validated before use. Saves write and validate a temporary sibling file, flush it,
+Project JSON, UUID references, registered condition/action configs, policy hooks, and runtime binding
+syntax are validated on load and again before save. Saves write and validate a temporary sibling file, flush it,
 rotate the five newest backups, and atomically replace the main file. Desktop/window interactions
 are coordinated so read-only detection can share frames while conflicting input is serialized.
 Screen-derived coordinates are revalidated under the exclusive interaction lease if another action

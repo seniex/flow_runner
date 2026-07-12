@@ -1,24 +1,17 @@
-import re
 from typing import Any
 
+from flow_runner.domain.binding_expressions import (
+    CHILD_PATTERN,
+    PRIMARY_PATTERN,
+    VARIABLE_PATTERN,
+)
 from flow_runner.domain.errors import BindingError
 from flow_runner.domain.results import ConditionResult
 from flow_runner.engine.context import StepContext
 
-_PRIMARY_PATTERN = re.compile(
-    r"^\$result\.primary\.(?P<field>outcome|text|position|bounds|confidence|provider_data)$"
-)
-_CHILD_PATTERN = re.compile(
-    r'^\$result\.children\["(?P<alias>[^"\\]+)"\]\.'
-    r"(?P<field>outcome|text|position|bounds|confidence|provider_data)$"
-)
-_VARIABLE_PATTERN = re.compile(
-    r"^\$variables\.(?P<scope>task|workflow|persistent)\.(?P<name>[A-Za-z_][\w-]*)$"
-)
-
 
 def resolve_binding(expression: str, context: StepContext) -> Any:
-    primary_match = _PRIMARY_PATTERN.fullmatch(expression)
+    primary_match = PRIMARY_PATTERN.fullmatch(expression)
     if primary_match:
         result = _require_result(context)
         primary = result.primary
@@ -26,7 +19,7 @@ def resolve_binding(expression: str, context: StepContext) -> Any:
             raise BindingError("result primary is unavailable or ambiguous")
         return _result_field(primary, primary_match.group("field"))
 
-    child_match = _CHILD_PATTERN.fullmatch(expression)
+    child_match = CHILD_PATTERN.fullmatch(expression)
     if child_match:
         result = _require_result(context)
         alias = child_match.group("alias")
@@ -36,7 +29,7 @@ def resolve_binding(expression: str, context: StepContext) -> Any:
             raise BindingError(f"result child '{alias}' does not exist") from error
         return _result_field(child, child_match.group("field"))
 
-    variable_match = _VARIABLE_PATTERN.fullmatch(expression)
+    variable_match = VARIABLE_PATTERN.fullmatch(expression)
     if variable_match:
         scope = variable_match.group("scope")
         name = variable_match.group("name")

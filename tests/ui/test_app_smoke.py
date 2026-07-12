@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from flow_runner.app import create_application
 from flow_runner.domain.enums import ConditionOutcome
+from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.routing import ComparisonOperator
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
@@ -273,3 +274,76 @@ def test_application_condition_preview_does_not_run_full_workflow(qtbot, tmp_pat
         composition.window.preview_action.trigger()
 
     assert blocker.args[0].outcome is ConditionOutcome.MATCH
+
+
+def test_application_rejects_invalid_registered_capability_config(tmp_path):
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(
+        Project(
+            name="invalid",
+            groups=[
+                FlowGroup(
+                    name="g",
+                    workflows=[
+                        Workflow(
+                            name="w",
+                            steps=[
+                                AutomationStep.model_validate(
+                                    {
+                                        "name": "bad wait",
+                                        "actions": [
+                                            {
+                                                "capability": "system.wait",
+                                                "config": {"seconds": -1},
+                                            }
+                                        ],
+                                    }
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+
+    with pytest.raises(ConfigurationError, match="system.wait"):
+        create_application([], project_path=path)
+
+
+def test_application_save_boundary_revalidates_capability_configs(qtbot, tmp_path):
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="valid"))
+    composition = create_application([], project_path=path)
+    qtbot.addWidget(composition.window)
+    invalid = Project(
+        name="invalid",
+        groups=[
+            FlowGroup(
+                name="g",
+                workflows=[
+                    Workflow(
+                        name="w",
+                        steps=[
+                            AutomationStep.model_validate(
+                                {
+                                    "name": "bad wait",
+                                    "actions": [
+                                        {
+                                            "capability": "system.wait",
+                                            "config": {"seconds": -1},
+                                        }
+                                    ],
+                                }
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    with pytest.raises(ConfigurationError, match="system.wait"):
+        composition.window.save_project(invalid)
+
+    assert ProjectStore(path).load().name == "valid"

@@ -107,6 +107,11 @@ def create_application(
     resource_coordinator = ResourceCoordinator(perception)
     ocr_provider, ocr_client = _build_ocr_provider(project, path.parent)
     registry = _build_registry(perception, asyncio.sleep, ocr_provider)
+    registry.validate_project_or_raise(project)
+
+    def save_project(candidate: Project) -> None:
+        registry.validate_project_or_raise(candidate)
+        store.save(candidate)
 
     def step_executor_factory(token: object) -> StepExecutor:
         from flow_runner.engine.cancellation import CancellationToken
@@ -129,7 +134,7 @@ def create_application(
     window = MainWindow(
         project,
         runner_bridge=runner_bridge,
-        save_project=store.save,
+        save_project=save_project,
         registry=registry,
     )
     recorder = RecordingRecorder(listener_factory=recording_listener_factory)
