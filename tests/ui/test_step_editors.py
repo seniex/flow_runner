@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
@@ -131,6 +133,32 @@ def test_condition_editor_wraps_leaf_in_or_group_without_json(qtbot):
     assert condition.operator == "or"
     assert condition.children[0].id == "ocr_a"
     assert len(condition.children) == 2
+
+
+def test_condition_editor_validates_every_leaf_before_apply(qtbot):
+    editor = ConditionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_condition(
+        ConditionGroup(
+            id="all",
+            operator="and",
+            children=[
+                LeafCondition(
+                    id="ocr_a",
+                    capability="vision.ocr",
+                    config={"keywords": "开始"},
+                ),
+                LeafCondition(
+                    id="image_b",
+                    capability="vision.image",
+                    config={},
+                ),
+            ],
+        )
+    )
+
+    with pytest.raises(ValueError, match="image_b"):
+        editor.condition()
 
 
 def test_guided_dialog_builds_a_valid_detection_step(qtbot):

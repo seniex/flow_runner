@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.conditions import ConditionGroup, ConditionNode, LeafCondition
+from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep
 from flow_runner.ui.editors.model_form import ModelForm
 
@@ -99,6 +100,7 @@ class ConditionEditor(QWidget):
         self._commit_selected()
         if self._root is None:
             raise ValueError("请添加条件节点")
+        self._root = self._validate_node(self._root)
         return self._root
 
     def _selection_changed(
@@ -371,6 +373,23 @@ class ConditionEditor(QWidget):
             capability=capability,
             config={},
         )
+
+    def _validate_node(self, node: ConditionNode) -> ConditionNode:
+        if isinstance(node, ConditionGroup):
+            return ConditionGroup(
+                id=node.id,
+                operator=node.operator,
+                children=[self._validate_node(child) for child in node.children],
+            )
+        try:
+            config = (
+                self.registry.condition(node.capability)
+                .config_model.model_validate(node.config)
+                .model_dump(mode="python")
+            )
+        except (ValueError, ConfigurationError) as error:
+            raise ValueError(f"条件节点 '{node.id}' 配置无效：{error}") from error
+        return LeafCondition(id=node.id, capability=node.capability, config=config)
 
     def _default_capability(self) -> str:
         preferred = self.capability_combo.findData("vision.ocr")
