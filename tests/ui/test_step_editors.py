@@ -4,7 +4,7 @@ from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
-from flow_runner.domain.conditions import LeafCondition
+from flow_runner.domain.conditions import ConditionGroup, LeafCondition
 from flow_runner.domain.enums import ConditionMode, StepOutcome
 from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
@@ -78,6 +78,59 @@ def test_switching_ocr_to_image_preserves_common_fields_policy_and_routes():
     assert switched.condition_policy == step.condition_policy
     assert switched.routes == step.routes
     assert discarded == {"keywords": "开始"}
+
+
+def test_condition_editor_guides_named_children_in_composite_tree(qtbot):
+    editor = ConditionEditor(registry())
+    qtbot.addWidget(editor)
+    condition = ConditionGroup(
+        id="all",
+        operator="and",
+        children=[
+            LeafCondition(
+                id="ocr_a",
+                capability="vision.ocr",
+                config={"keywords": "开始"},
+            ),
+            LeafCondition(
+                id="image_b",
+                capability="vision.image",
+                config={"template_path": Path("button.png")},
+            ),
+        ],
+    )
+
+    editor.set_condition(condition)
+    image_item = editor.tree.topLevelItem(0).child(1)
+    editor.tree.setCurrentItem(image_item)
+    editor.node_id_edit.setText("button_image")
+
+    edited = editor.condition()
+
+    assert isinstance(edited, ConditionGroup)
+    assert edited.operator == "and"
+    assert [child.id for child in edited.children] == ["ocr_a", "button_image"]
+    assert editor.message_label.text() == ""
+
+
+def test_condition_editor_wraps_leaf_in_or_group_without_json(qtbot):
+    editor = ConditionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_condition(
+        LeafCondition(
+            id="ocr_a",
+            capability="vision.ocr",
+            config={"keywords": "开始"},
+        )
+    )
+
+    editor.add_or_button.click()
+
+    condition = editor.condition()
+    assert isinstance(condition, ConditionGroup)
+    assert condition.operator == "or"
+    assert condition.children[0].id == "ocr_a"
+    assert len(condition.children) == 2
 
 
 def test_guided_dialog_builds_a_valid_detection_step(qtbot):
