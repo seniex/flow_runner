@@ -168,3 +168,23 @@ def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_pat
 
     assert recording_listener.started and recording_listener.stopped
     assert path.exists()
+
+
+def test_application_save_action_persists_property_edits(qtbot, tmp_path):
+    from flow_runner.domain.project import AutomationStep
+
+    workflow = Workflow(name="main", steps=[AutomationStep(name="old")])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(project)
+    composition = create_application([], project_path=path)
+    qtbot.addWidget(composition.window)
+    composition.window.flow_tree.select_workflow(workflow.id)
+    composition.window.step_list.select_step(workflow.steps[0].id)
+
+    composition.window.property_panel.name_edit.setText("new")
+    composition.window.property_panel.apply_button.click()
+    composition.window.save_action.trigger()
+
+    assert ProjectStore(path).load().groups[0].workflows[0].steps[0].name == "new"
+    assert not composition.window.view_model.dirty

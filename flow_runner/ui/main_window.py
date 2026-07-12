@@ -1,8 +1,10 @@
+from collections.abc import Callable
+from typing import Literal
 from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent
-from PySide6.QtWidgets import QMainWindow, QSplitter, QToolBar
+from PySide6.QtWidgets import QMainWindow, QMessageBox, QSplitter, QToolBar
 
 from flow_runner.domain.enums import RunnerState
 from flow_runner.domain.project import AutomationStep, Project, Workflow
@@ -20,11 +22,21 @@ class MainWindow(QMainWindow):
     stopRequested = Signal()
     recordRequested = Signal()
 
-    def __init__(self, project: Project, *, runner_bridge: RunnerBridge | None = None) -> None:
+    def __init__(
+        self,
+        project: Project,
+        *,
+        runner_bridge: RunnerBridge | None = None,
+        save_project: Callable[[Project], None] | None = None,
+        confirm_close: Callable[[], Literal["save", "discard", "cancel"]] | None = None,
+    ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
         self.run_view_model = RunViewModel()
         self.runner_bridge = runner_bridge
+        self.save_project = save_project
+        self._confirm_close_injected = confirm_close is not None
+        self.confirm_close = confirm_close or self._confirm_dirty_close
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
         self.property_panel = PropertyPanel()
@@ -42,6 +54,13 @@ class MainWindow(QMainWindow):
         self.runtime_toolbar = QToolBar("运行", self)
         self.runtime_toolbar.setObjectName("runtimeToolbar")
         self.addToolBar(self.runtime_toolbar)
+        self.project_toolbar = QToolBar("项目", self)
+        self.project_toolbar.setObjectName("projectToolbar")
+        self.addToolBar(self.project_toolbar)
+        self.save_action = QAction("保存", self)
+        self.save_action.setObjectName("saveProjectAction")
+        self.project_toolbar.addAction(self.save_action)
+        self.save_action.setEnabled(False)
         self.start_action = QAction("启动", self)
         self.start_action.setObjectName("startWorkflowAction")
         self.pause_action = QAction("暂停", self)
@@ -57,6 +76,7 @@ class MainWindow(QMainWindow):
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
         self.record_action.triggered.connect(self.recordRequested.emit)
+        self.save_action.triggered.connect(self._save_project)
         self.startRequested.connect(self._start_selected_workflow)
         self.pauseRequested.connect(self._toggle_pause)
         self.stopRequested.connect(self._stop_runtime)
@@ -91,6 +111,7 @@ class MainWindow(QMainWindow):
         self.view_model.update_step(self._workflow_id, step)
 
     def _project_changed(self, project: Project) -> None:
+        self.save_action.setEnabled(self.view_model.dirty)
         self.flow_tree.set_project(project)
         if self._workflow_id is None:
             return
@@ -106,6 +127,20 @@ class MainWindow(QMainWindow):
                 self.step_list.select_step(self.property_panel.step_id)
             except KeyError:
                 pass
+
+    def _save_project(self) -> bool:
+        if self.save_project is None:
+            self.statusBar().showMessage("未配置项目保存服务")
+            return False
+        try:
+            self.save_project(self.view_model.project)
+        except Exception as error:
+            self.statusBar().showMessage(f"项目保存失败：{error}")
+            return False
+        self.view_model.mark_saved()
+        self.save_action.setEnabled(False)
+        self.statusBar().showMessage("项目已保存")
+        return True
 
     def _start_selected_workflow(self) -> None:
         if self.runner_bridge is None:
@@ -136,6 +171,11 @@ class MainWindow(QMainWindow):
         self.pause_action.setText("继续" if state is RunnerState.PAUSED else "暂停")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self.view_model.dirty and (self.isVisible() or self._confirm_close_injected):
+            decision = self.confirm_close()
+            if decision == "cancel" or (decision == "save" and not self._save_project()):
+                event.ignore()
+                return
         if self.runner_bridge is not None:
             self.runner_bridge.shutdown()
         super().closeEvent(event)
@@ -143,3 +183,19 @@ class MainWindow(QMainWindow):
     def set_recording_state(self, recording: bool) -> None:
         self.record_action.setText("停止录制" if recording else "录制")
         self.record_action.setProperty("status", "recording" if recording else "idle")
+
+    def _confirm_dirty_close(self) -> Literal["save", "discard", "cancel"]:
+        button = QMessageBox.warning(
+            self,
+            "未保存的更改",
+            "项目包含未保存的更改。",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+        if button is QMessageBox.StandardButton.Save:
+            return "save"
+        if button is QMessageBox.StandardButton.Discard:
+            return "discard"
+        return "cancel"

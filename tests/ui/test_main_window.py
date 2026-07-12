@@ -1,3 +1,5 @@
+from PySide6.QtGui import QCloseEvent
+
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.results import StepResult
@@ -93,9 +95,10 @@ def test_project_view_model_edits_steps_with_undo_boundary(qtbot):
     model.update_step(workflow.id, added.model_copy(update={"name": "已修改"}))
     model.remove_step(workflow.id, added.id)
 
-    assert model.dirty
+    assert not model.dirty
     assert len(model.project.groups[0].workflows[0].steps) == 2
     model.undo()
+    assert model.dirty
     assert model.project.groups[0].workflows[0].steps[-1].name == "已修改"
 
 
@@ -129,3 +132,15 @@ def test_property_panel_applies_validated_step_edits_to_project(qtbot):
     assert updated.name == "新检测"
     assert not updated.enabled
     assert window.step_list.list.item(0).text() == "新检测"
+
+
+def test_dirty_window_can_cancel_close_through_injected_confirmation(qtbot):
+    project = sample_project()
+    window = MainWindow(project, confirm_close=lambda: "cancel")
+    qtbot.addWidget(window)
+    window.view_model.rename_group(project.groups[0].id, "changed")
+    event = QCloseEvent()
+
+    window.closeEvent(event)
+
+    assert not event.isAccepted()

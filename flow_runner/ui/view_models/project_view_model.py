@@ -13,7 +13,12 @@ class ProjectViewModel(QObject):
     def __init__(self, project: Project) -> None:
         super().__init__()
         self.project = project
+        self._saved_project = project
         self._undo_stack: list[Project] = []
+        self.dirty = False
+
+    def mark_saved(self) -> None:
+        self._saved_project = self.project
         self.dirty = False
 
     def add_group(self, group: FlowGroup) -> None:
@@ -120,7 +125,7 @@ class ProjectViewModel(QObject):
         if not self._undo_stack:
             return
         self.project = self._undo_stack.pop()
-        self.dirty = bool(self._undo_stack)
+        self.dirty = self.project != self._saved_project
         self.projectChanged.emit(self.project)
 
     def move_workflow(self, workflow_id: UUID, direction: int) -> None:
@@ -172,5 +177,5 @@ class ProjectViewModel(QObject):
             raise ConfigurationError("; ".join(errors))
         self._undo_stack.append(self.project)
         self.project = project
-        self.dirty = True
+        self.dirty = self.project != self._saved_project
         self.projectChanged.emit(self.project)
