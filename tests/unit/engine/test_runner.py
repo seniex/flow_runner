@@ -319,3 +319,40 @@ def test_runner_translates_resource_events_to_runtime_diagnostics():
         "resources": ["mouse", "window:game"],
         "wait_seconds": 0.25,
     }
+
+
+@pytest.mark.asyncio
+async def test_failed_step_event_has_structured_error_id():
+    project, workflow = project_with_steps()
+
+    class FailedExecutor:
+        async def execute(self, step):
+            return StepResult(outcome=StepOutcome.FAILURE, error="action failed")
+
+    sink = MemoryEventSink()
+    runner = Runner(FailedExecutor(), event_sink=sink)
+
+    await runner.start(project, workflow.id)
+
+    event = next(event for event in sink.events if event.kind == "step.finished")
+    assert event.error_id is not None
+    assert event.details["result"]["error"] == "action failed"
+
+
+@pytest.mark.asyncio
+async def test_unhandled_runtime_exception_emits_structured_error_event():
+    project, workflow = project_with_steps()
+
+    class BrokenExecutor:
+        async def execute(self, step):
+            raise RuntimeError("boom")
+
+    sink = MemoryEventSink()
+    runner = Runner(BrokenExecutor(), event_sink=sink)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await runner.start(project, workflow.id)
+
+    event = next(event for event in sink.events if event.kind == "runner.error")
+    assert event.error_id is not None
+    assert event.details["message"] == "boom"

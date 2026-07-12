@@ -64,7 +64,8 @@ class Runner:
 
         try:
             trace = await workflow_executor.run(entry_workflow_id)
-        except Exception:
+        except Exception as error:
+            self._report_error(error, workflow_id=entry_workflow_id)
             self._set_state(RunnerState.FAILED, workflow_id=entry_workflow_id)
             raise
 
@@ -121,7 +122,8 @@ class Runner:
 
         try:
             traces = tuple(await group.run(children))
-        except Exception:
+        except Exception as error:
+            self._report_error(error)
             self._set_state(RunnerState.FAILED)
             raise
 
@@ -162,7 +164,8 @@ class Runner:
         self._observe_transition("step.started", workflow, step, None, None)
         try:
             result = await gated.execute(step)
-        except Exception:
+        except Exception as error:
+            self._report_error(error, workflow_id=workflow_id, step_id=step_id)
             self._set_state(RunnerState.FAILED, workflow_id=workflow_id)
             raise
         self._observe_transition("step.finished", workflow, step, result, None)
@@ -197,7 +200,8 @@ class Runner:
         await self.wait_until_active()
         try:
             result = await previewer(step)
-        except Exception:
+        except Exception as error:
+            self._report_error(error, workflow_id=workflow_id, step_id=step_id)
             self._set_state(RunnerState.FAILED, workflow_id=workflow_id)
             raise
         capture_encoder = getattr(delegate, "diagnostic_capture_base64", None)
@@ -310,6 +314,31 @@ class Runner:
             )
         )
 
+    def _report_error(
+        self,
+        error: Exception,
+        *,
+        workflow_id: UUID | None = None,
+        step_id: UUID | None = None,
+    ) -> None:
+        if self.task_id is None:
+            return
+        self.event_sink.emit(
+            RuntimeEvent(
+                task_id=self.task_id,
+                kind="runner.error",
+                state=self.state,
+                monotonic_timestamp=monotonic(),
+                workflow_id=workflow_id,
+                step_id=step_id,
+                error_id=uuid4(),
+                details={
+                    "type": type(error).__name__,
+                    "message": str(error),
+                },
+            )
+        )
+
     async def wait_until_active(self) -> None:
         self.cancellation.raise_if_cancelled()
         if self._pause_gate.is_set():
@@ -373,6 +402,11 @@ class Runner:
                 outcome=result.outcome if result is not None else None,
                 frame_id=_condition_frame_id(
                     result.condition_result if result is not None else None
+                ),
+                error_id=(
+                    uuid4()
+                    if result is not None and result.outcome is StepOutcome.FAILURE
+                    else None
                 ),
                 details=details,
             )
