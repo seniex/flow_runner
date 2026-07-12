@@ -4,6 +4,7 @@ from flow_runner.domain.results import StepResult
 from flow_runner.engine.runner import Runner
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
+from flow_runner.ui.view_models.project_view_model import ProjectViewModel
 
 
 def sample_project():
@@ -80,3 +81,32 @@ def test_runtime_start_without_selection_reports_a_status_message(qtbot):
     window.start_action.trigger()
 
     assert "选择" in window.statusBar().currentMessage()
+
+
+def test_project_view_model_edits_steps_with_undo_boundary(qtbot):
+    project = sample_project()
+    workflow = project.groups[0].workflows[0]
+    model = ProjectViewModel(project)
+    added = AutomationStep(name="新增")
+
+    model.add_step(workflow.id, added)
+    model.update_step(workflow.id, added.model_copy(update={"name": "已修改"}))
+    model.remove_step(workflow.id, added.id)
+
+    assert model.dirty
+    assert len(model.project.groups[0].workflows[0].steps) == 2
+    model.undo()
+    assert model.project.groups[0].workflows[0].steps[-1].name == "已修改"
+
+
+def test_project_view_model_renames_groups_and_workflows(qtbot):
+    project = sample_project()
+    group = project.groups[0]
+    workflow = group.workflows[0]
+    model = ProjectViewModel(project)
+
+    model.rename_group(group.id, "新组")
+    model.rename_workflow(workflow.id, "新流程")
+
+    assert model.project.groups[0].name == "新组"
+    assert model.project.groups[0].workflows[0].name == "新流程"
