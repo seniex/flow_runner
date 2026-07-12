@@ -159,3 +159,21 @@ def test_project_reports_malformed_count_predicate_uuid():
     assert any(
         "invalid step_count UUID 'not-a-uuid'" in error for error in project.validate_references()
     )
+
+
+def test_count_route_predicates_require_numeric_comparisons():
+    with pytest.raises(ValidationError, match="numeric comparison"):
+        RoutePredicate.workflow_count(
+            uuid4(),
+            ComparisonOperator.CONTAINS,
+            1,
+        )
+    with pytest.raises(ValidationError, match="integer expected value"):
+        RoutePredicate.model_validate(
+            {
+                "source": "step_count",
+                "key": str(uuid4()),
+                "operator": "eq",
+                "expected": "3",
+            }
+        )

@@ -374,6 +374,23 @@ def test_route_editor_selects_count_predicate_reference(qtbot):
     )
 
 
+def test_route_editor_limits_count_predicates_to_numeric_operators(qtbot):
+    editor = RouteEditor()
+    qtbot.addWidget(editor)
+    editor.predicate_source_combo.setCurrentIndex(
+        editor.predicate_source_combo.findData("workflow_count")
+    )
+
+    operators = {
+        editor.predicate_operator_combo.itemData(index)
+        for index in range(editor.predicate_operator_combo.count())
+    }
+
+    assert ComparisonOperator.CONTAINS not in operators
+    assert ComparisonOperator.MATCHES not in operators
+    assert ComparisonOperator.GE in operators
+
+
 def test_route_editor_adds_variable_predicate(qtbot):
     editor = RouteEditor()
     qtbot.addWidget(editor)

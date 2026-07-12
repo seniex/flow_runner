@@ -41,6 +41,16 @@ class RoutePredicate(BaseModel):
     operator: ComparisonOperator
     expected: Any
 
+    @model_validator(mode="after")
+    def validate_count_comparison(self) -> RoutePredicate:
+        if self.source not in {"workflow_count", "step_count"}:
+            return self
+        if self.operator in {ComparisonOperator.CONTAINS, ComparisonOperator.MATCHES}:
+            raise ValueError("count predicates require a numeric comparison operator")
+        if isinstance(self.expected, bool) or not isinstance(self.expected, int):
+            raise ValueError("count predicates require an integer expected value")
+        return self
+
     @classmethod
     def workflow_count(
         cls,

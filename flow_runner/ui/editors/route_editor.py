@@ -224,9 +224,32 @@ class RouteEditor(QWidget):
         )
         self.step_combo.setVisible(target is RouteTargetKind.NEXT_STEP)
         source = self.predicate_source_combo.currentData()
+        self._populate_predicate_operators(source)
         self.predicate_key_edit.setVisible(source in {"task_variable", "workflow_variable"})
         self.predicate_workflow_combo.setVisible(source == "workflow_count")
         self.predicate_step_combo.setVisible(source == "step_count")
+
+    def _populate_predicate_operators(self, source: object) -> None:
+        current = self.predicate_operator_combo.currentData()
+        operators = list(ComparisonOperator)
+        if source in {"workflow_count", "step_count"}:
+            operators = [
+                operator
+                for operator in operators
+                if operator not in {ComparisonOperator.CONTAINS, ComparisonOperator.MATCHES}
+            ]
+        if self.predicate_operator_combo.count() == len(operators) and all(
+            self.predicate_operator_combo.itemData(index) == operator
+            for index, operator in enumerate(operators)
+        ):
+            return
+        self.predicate_operator_combo.clear()
+        for operator in operators:
+            self.predicate_operator_combo.addItem(operator.value, operator)
+        selected = self.predicate_operator_combo.findData(current)
+        if selected < 0:
+            selected = self.predicate_operator_combo.findData(ComparisonOperator.EQ)
+        self.predicate_operator_combo.setCurrentIndex(selected)
 
     def _remove_current(self) -> None:
         row = self.route_list.currentRow()
