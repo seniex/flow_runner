@@ -54,6 +54,16 @@ class CapabilityRegistry:
             for name, capability in sorted(self._actions.items())
         )
 
+    def validated_action_config(self, name: str, config: dict[str, Any]) -> dict[str, Any]:
+        model_type = self.action(name).config_model
+        if not _contains_binding(config):
+            return cast(
+                dict[str, Any],
+                model_type.model_validate(config).model_dump(mode="python"),
+            )
+        _validate_action_config(model_type, config)
+        return dict(config)
+
     def validate_project(self, project: Project) -> list[str]:
         errors: list[str] = []
         for group_index, group in enumerate(project.groups):
@@ -114,8 +124,7 @@ class CapabilityRegistry:
     ) -> None:
         for index, action in enumerate(actions):
             try:
-                provider = self.action(action.capability)
-                _validate_action_config(provider.config_model, action.config)
+                self.validated_action_config(action.capability, action.config)
             except (ConfigurationError, ValueError) as error:
                 errors.append(f"{path}[{index}]({action.capability}): {error}")
 

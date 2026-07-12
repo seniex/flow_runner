@@ -78,10 +78,9 @@ class ActionEditor(QWidget):
         if not isinstance(capability, str) or self.config_form is None:
             return
         try:
-            config = (
-                self.registry.action(capability)
-                .config_model.model_validate(self.config_form.values())
-                .model_dump(mode="python")
+            config = self.registry.validated_action_config(
+                capability,
+                self.config_form.values(),
             )
         except ValueError as error:
             self.error_label.setText(str(error))

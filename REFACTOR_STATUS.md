@@ -23,6 +23,7 @@
 - 显式并行块，共享任务变量和资源，隔离流程变量和调用栈。
 - 资源竞争的开始、完成和取消诊断；取消多资源等待不会泄漏锁。
 - 三栏编辑器、检测/执行/控制添加入口、条件树/动作/策略/路由引导编辑。
+- 区域、坐标和文件路径使用专用表单控件；动作坐标可直接保存 `$result...` 运行时绑定。
 - 保存、备份、撤销、脏关闭确认、项目设置、F6–F9 热键和输入录制。
 - 启动/暂停/继续/停止、单步运行、条件预览和结构化诊断截图通道。
 - PaddleOCR-json v1.4.x 进程生命周期和 stdin/stdout JSON 协议。
@@ -35,7 +36,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 174 passed
+# 177 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -52,7 +53,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `6DA1A1DA1C1730F47E29B71164981C0D397E2542E581813108A6EB8DE81AB6FA`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `9E943016C58E1F1CB43672057EBAF62E53BF2D66A25A3E7C235BD0E7E8F2FB1D`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。

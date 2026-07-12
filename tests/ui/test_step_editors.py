@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from flow_runner.capabilities.actions.mouse import MouseActionConfig
 from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
@@ -20,7 +21,7 @@ from flow_runner.domain.routing import (
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor, switch_condition_capability
-from flow_runner.ui.editors.model_form import ModelForm
+from flow_runner.ui.editors.model_form import ModelForm, PathFieldEditor, TupleFieldEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 from flow_runner.ui.panels.property_panel import PropertyPanel
@@ -239,6 +240,30 @@ def test_model_form_builds_editors_from_pydantic_fields(qtbot):
     assert values["region"] is None
 
 
+def test_model_form_uses_focused_region_coordinate_and_path_editors(qtbot):
+    ocr_form = ModelForm(OcrConditionConfig)
+    image_form = ModelForm(ImageConditionConfig)
+    mouse_form = ModelForm(MouseActionConfig)
+    qtbot.addWidget(ocr_form)
+    qtbot.addWidget(image_form)
+    qtbot.addWidget(mouse_form)
+
+    region = ocr_form.editor("region")
+    template_path = image_form.editor("template_path")
+    position = mouse_form.editor("position")
+
+    assert isinstance(region, TupleFieldEditor)
+    assert isinstance(template_path, PathFieldEditor)
+    assert isinstance(position, TupleFieldEditor)
+    region.setValue((1, 2, 30, 40))
+    template_path.setText("button.png")
+    position.setBinding("$result.primary.position")
+
+    assert ocr_form.values()["region"] == (1, 2, 30, 40)
+    assert image_form.values()["template_path"] == "button.png"
+    assert mouse_form.values()["position"] == "$result.primary.position"
+
+
 def test_guided_dialog_builds_step_from_generated_form(qtbot):
     dialog = GuidedAddDialog(registry())
     qtbot.addWidget(dialog)
@@ -308,6 +333,22 @@ def test_action_editor_adds_action_from_generated_config_form(qtbot):
 
     assert editor.action_specs()[0].capability == "system.wait"
     assert editor.action_specs()[0].config["keywords"] == "等待"
+
+
+def test_action_editor_preserves_runtime_coordinate_binding(qtbot):
+    capabilities = registry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    editor = ActionEditor(capabilities)
+    qtbot.addWidget(editor)
+    editor.capability_combo.setCurrentIndex(editor.capability_combo.findData("input.mouse"))
+    position = editor.config_form.editor("position")
+    assert isinstance(position, TupleFieldEditor)
+    position.setBinding("$result.primary.position")
+
+    editor.add_button.click()
+
+    assert editor.error_label.text() == ""
+    assert editor.action_specs()[0].config["position"] == "$result.primary.position"
 
 
 def test_route_editor_selects_cross_group_workflow_target(qtbot):
