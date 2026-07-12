@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         self.create_parallel_block = create_parallel_block or self._prompt_parallel_block
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
-        self.property_panel = PropertyPanel()
+        self.property_panel = PropertyPanel(registry, project)
         self.diagnostics_dialog = DiagnosticsDialog(self)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self.flow_tree)
@@ -219,6 +219,7 @@ class MainWindow(QMainWindow):
 
     def _project_changed(self, project: Project) -> None:
         self.save_action.setEnabled(self.view_model.dirty)
+        self.property_panel.set_project(project)
         self.flow_tree.set_project(project)
         if self._parallel_block_id is not None:
             try:

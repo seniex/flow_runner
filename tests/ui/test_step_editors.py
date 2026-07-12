@@ -5,14 +5,15 @@ from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.enums import ConditionMode, StepOutcome
-from flow_runner.domain.project import AutomationStep
-from flow_runner.domain.routing import RouteRule, RouteTarget
+from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.domain.routing import RouteRule, RouteTarget, RouteTargetKind
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import switch_condition_capability
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
+from flow_runner.ui.panels.property_panel import PropertyPanel
 
 
 class Capability:
@@ -186,3 +187,48 @@ def test_action_and_route_editors_round_trip_models(qtbot):
     assert actions.action_specs() == [action]
     assert actions.capability_combo.itemData(0) == "system.wait"
     assert routes.routes() == [route]
+
+
+def test_action_editor_adds_action_from_generated_config_form(qtbot):
+    editor = ActionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.config_form.editor("keywords").setText("等待")
+
+    editor.add_button.click()
+
+    assert editor.action_specs()[0].capability == "system.wait"
+    assert editor.action_specs()[0].config["keywords"] == "等待"
+
+
+def test_route_editor_selects_cross_group_workflow_target(qtbot):
+    first = Workflow(name="A1")
+    second = Workflow(name="B1")
+    project = Project(
+        name="p",
+        groups=[
+            FlowGroup(name="A", workflows=[first]),
+            FlowGroup(name="B", workflows=[second]),
+        ],
+    )
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.JUMP_WORKFLOW))
+    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(second.id))
+
+    editor.add_button.click()
+
+    assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
+
+
+def test_property_panel_applies_guided_action_editor_changes(qtbot):
+    panel = PropertyPanel(registry(), Project(name="p"))
+    qtbot.addWidget(panel)
+    panel.set_step(AutomationStep(name="step"))
+    panel.action_editor.config_form.editor("keywords").setText("等待")
+    panel.action_editor.add_button.click()
+
+    with qtbot.waitSignal(panel.stepChanged) as blocker:
+        panel.apply_button.click()
+
+    assert blocker.args[0].actions[0].capability == "system.wait"
+    assert blocker.args[0].actions[0].config["keywords"] == "等待"

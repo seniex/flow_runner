@@ -14,18 +14,27 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from flow_runner.domain.project import AutomationStep
+from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.project import AutomationStep, Project
+from flow_runner.ui.editors.action_editor import ActionEditor
+from flow_runner.ui.editors.route_editor import RouteEditor
 
 
 class PropertyPanel(QWidget):
     stepChanged = Signal(object)
     validationFailed = Signal(str)
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        registry: CapabilityRegistry | None = None,
+        project: Project | None = None,
+    ) -> None:
         super().__init__()
         self.setObjectName("propertyPanel")
         self.step_id: UUID | None = None
         self._step: AutomationStep | None = None
+        self._actions_json_baseline = ""
+        self._routes_json_baseline = ""
         self.title = QLabel("")
         self.name_edit = QLineEdit()
         self.name_edit.setObjectName("stepNameEditor")
@@ -41,6 +50,8 @@ class PropertyPanel(QWidget):
         self.action_policy_edit.setObjectName("actionPolicyModelEditor")
         self.routes_edit = QPlainTextEdit()
         self.routes_edit.setObjectName("routesModelEditor")
+        self.action_editor = ActionEditor(registry) if registry is not None else None
+        self.route_editor = RouteEditor(project) if registry is not None else None
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
         layout = QVBoxLayout(self)
@@ -49,9 +60,13 @@ class PropertyPanel(QWidget):
         form.addRow("名称", self.name_edit)
         form.addRow("状态", self.enabled_check)
         form.addRow("条件", self.condition_edit)
+        if self.action_editor is not None:
+            form.addRow("动作引导", self.action_editor)
         form.addRow("动作", self.actions_edit)
         form.addRow("检测策略", self.condition_policy_edit)
         form.addRow("动作策略", self.action_policy_edit)
+        if self.route_editor is not None:
+            form.addRow("路由引导", self.route_editor)
         form.addRow("路由", self.routes_edit)
         layout.addLayout(form)
         layout.addWidget(self.apply_button)
@@ -65,10 +80,16 @@ class PropertyPanel(QWidget):
         self.name_edit.setText(step.name)
         self.enabled_check.setChecked(step.enabled)
         self.condition_edit.setPlainText(_json(step.condition))
-        self.actions_edit.setPlainText(_json(step.actions))
+        self._actions_json_baseline = _json(step.actions)
+        self.actions_edit.setPlainText(self._actions_json_baseline)
+        if self.action_editor is not None:
+            self.action_editor.set_actions(step.actions)
         self.condition_policy_edit.setPlainText(_json(step.condition_policy))
         self.action_policy_edit.setPlainText(_json(step.action_policy))
-        self.routes_edit.setPlainText(_json(step.routes))
+        self._routes_json_baseline = _json(step.routes)
+        self.routes_edit.setPlainText(self._routes_json_baseline)
+        if self.route_editor is not None:
+            self.route_editor.set_routes(step.routes)
 
     def clear_step(self) -> None:
         self.step_id = None
@@ -85,6 +106,10 @@ class PropertyPanel(QWidget):
         ):
             editor.clear()
 
+    def set_project(self, project: Project) -> None:
+        if self.route_editor is not None:
+            self.route_editor.set_project(project)
+
     def _apply(self) -> None:
         if self._step is None:
             return
@@ -95,10 +120,20 @@ class PropertyPanel(QWidget):
                     "name": self.name_edit.text(),
                     "enabled": self.enabled_check.isChecked(),
                     "condition": json.loads(self.condition_edit.toPlainText()),
-                    "actions": json.loads(self.actions_edit.toPlainText()),
+                    "actions": (
+                        self.action_editor.action_specs()
+                        if self.action_editor is not None
+                        and self.actions_edit.toPlainText() == self._actions_json_baseline
+                        else json.loads(self.actions_edit.toPlainText())
+                    ),
                     "condition_policy": json.loads(self.condition_policy_edit.toPlainText()),
                     "action_policy": json.loads(self.action_policy_edit.toPlainText()),
-                    "routes": json.loads(self.routes_edit.toPlainText()),
+                    "routes": (
+                        self.route_editor.routes()
+                        if self.route_editor is not None
+                        and self.routes_edit.toPlainText() == self._routes_json_baseline
+                        else json.loads(self.routes_edit.toPlainText())
+                    ),
                 }
             )
         except ValueError as error:
