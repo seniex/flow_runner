@@ -110,6 +110,7 @@ class ActionResult(BaseModel):
     value: Any = None
     provider_data: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+    attempts: int = Field(default=1, ge=1)
 
 
 class StepResult(BaseModel):
@@ -119,3 +120,4 @@ class StepResult(BaseModel):
     condition_result: ConditionResult | None = None
     action_results: tuple[ActionResult, ...] = ()
     error: str | None = None
+    condition_attempts: int = Field(default=0, ge=0)

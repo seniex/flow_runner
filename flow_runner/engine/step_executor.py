@@ -132,6 +132,7 @@ class StepExecutor:
                     outcome=StepOutcome.FAILURE,
                     action_results=hook_results,
                     error="before-attempt action failed",
+                    condition_attempts=attempt,
                 )
 
             attempt += 1
@@ -150,6 +151,7 @@ class StepExecutor:
                     outcome=StepOutcome.SUCCESS if succeeded else StepOutcome.FAILURE,
                     condition_result=self.runtime.context.result or last_result,
                     action_results=action_results,
+                    condition_attempts=attempt,
                 )
 
             if last_result.outcome is ConditionOutcome.NO_MATCH:
@@ -164,12 +166,14 @@ class StepExecutor:
                         condition_result=last_result,
                         action_results=hook_results,
                         error="after-no-match action failed",
+                        condition_attempts=attempt,
                     )
                 if policy.mode is ConditionMode.ONCE:
                     return StepResult(
                         outcome=StepOutcome.NOT_MATCHED,
                         condition_result=last_result,
                         action_results=hook_results,
+                        condition_attempts=attempt,
                     )
                 terminal_outcome = StepOutcome.TIMEOUT
             else:
@@ -179,6 +183,7 @@ class StepExecutor:
                 return StepResult(
                     outcome=terminal_outcome,
                     condition_result=last_result,
+                    condition_attempts=attempt,
                 )
 
             await self.runtime.wait(policy.interval_seconds)
@@ -283,10 +288,11 @@ class StepExecutor:
             final_result: ActionResult | None = None
             for attempt in range(1, max_attempts + 1):
                 await self.runtime.wait_until_active()
-                final_result = await self._execute_action(
+                attempt_result = await self._execute_action(
                     action,
                     revalidate_condition=revalidate_condition,
                 )
+                final_result = attempt_result.model_copy(update={"attempts": attempt})
                 if final_result.outcome is StepOutcome.SUCCESS:
                     break
                 if attempt < max_attempts:

@@ -535,6 +535,7 @@ async def test_until_runs_after_no_match_hook_and_times_out():
     result = await StepExecutor(runtime).execute(step)
 
     assert result.outcome is StepOutcome.TIMEOUT
+    assert result.condition_attempts == 3
     assert condition.call_count == 3
     assert recover.call_count == 3
     assert delays == [0.25, 0.25]
@@ -579,6 +580,7 @@ async def test_action_binding_error_uses_retry_policy_and_returns_failure():
 
     assert result.outcome is StepOutcome.FAILURE
     assert len(result.action_results) == 1
+    assert result.action_results[0].attempts == 2
     assert "condition result" in (result.action_results[0].error or "")
     assert action.call_count == 0
     assert delays == [0.1]
