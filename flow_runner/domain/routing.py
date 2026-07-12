@@ -24,6 +24,8 @@ class ComparisonOperator(StrEnum):
     LE = "le"
     GT = "gt"
     GE = "ge"
+    CONTAINS = "contains"
+    MATCHES = "matches"
 
 
 class RoutePredicate(BaseModel):

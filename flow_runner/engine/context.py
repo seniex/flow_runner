@@ -34,6 +34,8 @@ class StepContext:
     task_variables: dict[str, Any] = field(default_factory=dict)
     workflow_variables: dict[str, Any] = field(default_factory=dict)
     persistent_variables: dict[str, Any] = field(default_factory=dict)
+    workflow_counts: dict[UUID, int] = field(default_factory=dict)
+    step_counts: dict[UUID, int] = field(default_factory=dict)
 
     @classmethod
     def from_workflow(cls, workflow: WorkflowContext) -> StepContext:
@@ -41,6 +43,8 @@ class StepContext:
             task_variables=workflow.task.task_variables,
             workflow_variables=workflow.workflow_variables,
             persistent_variables=workflow.task.persistent_variables,
+            workflow_counts=workflow.workflow_counts,
+            step_counts=workflow.step_counts,
         )
 
     def clear_result(self) -> None:
