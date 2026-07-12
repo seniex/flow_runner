@@ -3,6 +3,7 @@ import importlib
 from collections.abc import Callable
 from typing import Protocol
 
+from PIL import Image as PillowImage
 from PIL import ImageGrab
 from PIL.Image import Image
 
@@ -42,7 +43,10 @@ class WindowCapture:
 
     @staticmethod
     def _grab_bounds(bounds: tuple[int, int, int, int]) -> Image:
-        return ImageGrab.grab(bbox=bounds, all_screens=True)
+        try:
+            return _bitblt_bounds(bounds)
+        except Exception:
+            return ImageGrab.grab(bbox=bounds, all_screens=True)
 
 
 class TargetCapture:
@@ -76,3 +80,43 @@ class _PyWin32WindowBounds:
         if not matches:
             raise LookupError(f"window not found: {title}")
         return tuple(self.win32gui.GetWindowRect(matches[0]))
+
+
+def _bitblt_bounds(bounds: tuple[int, int, int, int]) -> Image:
+    win32con = importlib.import_module("win32con")
+    win32gui = importlib.import_module("win32gui")
+    win32ui = importlib.import_module("win32ui")
+    left, top, right, bottom = bounds
+    width = right - left
+    height = bottom - top
+    desktop = win32gui.GetDesktopWindow()
+    desktop_dc = win32gui.GetWindowDC(desktop)
+    source_dc = win32ui.CreateDCFromHandle(desktop_dc)
+    memory_dc = source_dc.CreateCompatibleDC()
+    bitmap = win32ui.CreateBitmap()
+    try:
+        bitmap.CreateCompatibleBitmap(source_dc, width, height)
+        memory_dc.SelectObject(bitmap)
+        memory_dc.BitBlt(
+            (0, 0),
+            (width, height),
+            source_dc,
+            (left, top),
+            win32con.SRCCOPY,
+        )
+        info = bitmap.GetInfo()
+        raw = bitmap.GetBitmapBits(True)
+        return PillowImage.frombuffer(
+            "RGB",
+            (int(info["bmWidth"]), int(info["bmHeight"])),
+            raw,
+            "raw",
+            "BGRX",
+            0,
+            1,
+        )
+    finally:
+        memory_dc.DeleteDC()
+        source_dc.DeleteDC()
+        win32gui.ReleaseDC(desktop, desktop_dc)
+        win32gui.DeleteObject(bitmap.GetHandle())
