@@ -13,7 +13,7 @@ dependencies = [
   "pydantic>=2.10,<3",
   "Pillow>=11,<13",
   "opencv-python>=4.10,<5",
-  "numpy>=2,<3",
+  "numpy>=2,<2.5",
   "pyautogui>=0.9.54,<1",
   "pynput>=1.7.7,<2",
   "pywin32>=308; platform_system == 'Windows'",
