@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import QMainWindow, QSplitter, QToolBar
 
@@ -15,6 +15,10 @@ from flow_runner.ui.view_models.run_view_model import RunViewModel
 
 
 class MainWindow(QMainWindow):
+    startRequested = Signal()
+    pauseRequested = Signal()
+    stopRequested = Signal()
+
     def __init__(self, project: Project, *, runner_bridge: RunnerBridge | None = None) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -45,6 +49,9 @@ class MainWindow(QMainWindow):
         self.start_action.triggered.connect(self._start_selected_workflow)
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
+        self.startRequested.connect(self._start_selected_workflow)
+        self.pauseRequested.connect(self._toggle_pause)
+        self.stopRequested.connect(self._stop_runtime)
         self.run_view_model.stateChanged.connect(self._update_runtime_actions)
         if self.runner_bridge is not None:
             self.runner_bridge.eventReceived.connect(self.run_view_model.consume)

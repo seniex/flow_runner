@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from flow_runner.app import create_application
-from flow_runner.domain.project import Project
+from flow_runner.domain.project import FlowGroup, Project, Workflow
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
 
@@ -76,4 +76,45 @@ def test_hotkey_service_dispatches_and_stops_injected_listener():
     service.stop()
 
     assert calls == ["start"]
+    assert created[0].started and created[0].stopped
+
+
+def test_application_hotkeys_start_selected_workflow_and_stop_on_shutdown(qtbot, tmp_path):
+    workflow = Workflow(name="main")
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(project)
+    created = []
+
+    class Listener:
+        def __init__(self, on_press):
+            self.on_press = on_press
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def stop(self):
+            self.stopped = True
+
+    def factory(on_press):
+        listener = Listener(on_press)
+        created.append(listener)
+        return listener
+
+    composition = create_application(
+        [],
+        project_path=path,
+        hotkey_config=HotkeyConfig(start="F6", stop="", pause="", record=""),
+        hotkey_listener_factory=factory,
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.flow_tree.select_workflow(workflow.id)
+    composition.start_services()
+
+    with qtbot.waitSignal(composition.runner_bridge.finished, timeout=3000):
+        created[0].on_press("f6")
+    composition.shutdown()
+
     assert created[0].started and created[0].stopped

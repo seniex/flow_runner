@@ -36,6 +36,7 @@ from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController
+from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.theme_manager import ThemeManager
@@ -49,12 +50,22 @@ class ApplicationComposition:
     registry: CapabilityRegistry
     runner: Runner
     runner_bridge: RunnerBridge
+    hotkey_service: HotkeyService
+
+    def start_services(self) -> None:
+        self.hotkey_service.start()
+
+    def shutdown(self) -> None:
+        self.hotkey_service.stop()
+        self.runner_bridge.shutdown()
 
 
 def create_application(
     argv: Sequence[str] | None = None,
     *,
     project_path: Path | None = None,
+    hotkey_config: HotkeyConfig | None = None,
+    hotkey_listener_factory: ListenerFactory | None = None,
 ) -> ApplicationComposition:
     existing = QApplication.instance()
     app = existing if isinstance(existing, QApplication) else QApplication(list(argv or []))
@@ -81,16 +92,28 @@ def create_application(
     runner = Runner(step_executor_factory=step_executor_factory)
     runner_bridge = RunnerBridge(runner)
     window = MainWindow(project, runner_bridge=runner_bridge)
+    hotkey_service = HotkeyService(
+        hotkey_config or HotkeyConfig(),
+        actions={
+            "start": window.startRequested.emit,
+            "pause": window.pauseRequested.emit,
+            "stop": window.stopRequested.emit,
+        },
+        listener_factory=hotkey_listener_factory,
+    )
     qss_path = Path(__file__).parent / "resources" / "styles" / "base.qss"
     ThemeManager().apply(app, qss_path)
-    return ApplicationComposition(
+    composition = ApplicationComposition(
         app=app,
         window=window,
         store=store,
         registry=registry,
         runner=runner,
         runner_bridge=runner_bridge,
+        hotkey_service=hotkey_service,
     )
+    app.aboutToQuit.connect(lambda: composition.shutdown())
+    return composition
 
 
 def _build_registry(
@@ -121,7 +144,11 @@ def _build_registry(
 def main() -> int:
     composition = create_application(sys.argv)
     composition.window.show()
-    return composition.app.exec()
+    composition.start_services()
+    try:
+        return composition.app.exec()
+    finally:
+        composition.shutdown()
 
 
 if __name__ == "__main__":
