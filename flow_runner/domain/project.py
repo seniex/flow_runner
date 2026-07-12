@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.conditions import ConditionNode
@@ -22,6 +22,11 @@ class AutomationStep(BaseModel):
     condition_policy: ConditionPolicy = Field(default_factory=ConditionPolicy)
     action_policy: ActionPolicy = Field(default_factory=ActionPolicy)
     routes: list[RouteRule] = Field(default_factory=list)
+
+    @field_validator("condition", mode="before")
+    @classmethod
+    def infer_condition_kinds(cls, value: Any) -> Any:
+        return _infer_condition_kind(value)
 
 
 class Workflow(BaseModel):
@@ -93,3 +98,14 @@ class Project(BaseModel):
         for value in values:
             counts[value] = counts.get(value, 0) + 1
         return counts
+
+
+def _infer_condition_kind(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+    normalized = dict(value)
+    if "kind" not in normalized:
+        normalized["kind"] = "group" if "operator" in normalized else "leaf"
+    if normalized["kind"] == "group" and "children" in normalized:
+        normalized["children"] = [_infer_condition_kind(child) for child in normalized["children"]]
+    return normalized
