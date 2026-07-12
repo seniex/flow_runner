@@ -8,6 +8,8 @@ from flow_runner.capabilities.actions.variables import SetVariableAction, SetVar
 from flow_runner.capabilities.actions.wait import WaitAction, WaitActionConfig
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.engine.context import StepContext
+from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
+from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
 from flow_runner.infrastructure.input.recording import RecordedEvent, RecordingStore
 
 
@@ -135,3 +137,43 @@ def test_recording_store_round_trips_typed_events(tmp_path):
     RecordingStore.save(path, events)
 
     assert RecordingStore.load(path) == events
+
+
+@pytest.mark.asyncio
+async def test_pyautogui_devices_translate_actions_to_backend_calls():
+    class Backend:
+        def __init__(self):
+            self.calls = []
+
+        def click(self, **kwargs):
+            self.calls.append(("click", kwargs))
+
+        def moveTo(self, *args, **kwargs):
+            self.calls.append(("moveTo", args, kwargs))
+
+        def scroll(self, units):
+            self.calls.append(("scroll", units))
+
+        def press(self, key, presses, interval):
+            self.calls.append(("press", key, presses, interval))
+
+        def hotkey(self, *keys):
+            self.calls.append(("hotkey", keys))
+
+        def write(self, text, interval):
+            self.calls.append(("write", text, interval))
+
+    backend = Backend()
+    mouse = PyAutoGuiMouseDevice(backend)
+    keyboard = PyAutoGuiKeyboardDevice(backend)
+
+    await mouse.click(position=(1, 2), button="left", clicks=2, interval=0.1)
+    await mouse.scroll(position=(3, 4), units=-5)
+    await keyboard.hotkey(("ctrl", "s"))
+
+    assert backend.calls == [
+        ("click", {"x": 1, "y": 2, "button": "left", "clicks": 2, "interval": 0.1}),
+        ("moveTo", (3, 4), {}),
+        ("scroll", -5),
+        ("hotkey", ("ctrl", "s")),
+    ]
