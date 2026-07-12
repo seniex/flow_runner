@@ -199,9 +199,9 @@ class StepExecutor:
     ) -> ConditionResult:
         await self.runtime.wait_until_active()
         if isinstance(condition, LeafCondition):
-            provider = self.runtime.registry.condition(condition.capability)
-            config = provider.config_model.model_validate(condition.config)
             try:
+                provider = self.runtime.registry.condition(condition.capability)
+                config = provider.config_model.model_validate(condition.config)
                 async with AsyncExitStack() as stack:
                     if acquire_resources and self.runtime.resources is not None:
                         required = provider.required_resources(config)
@@ -285,10 +285,10 @@ class StepExecutor:
         *,
         revalidate_condition: ConditionNode | None = None,
     ) -> ActionResult:
-        provider = self.runtime.registry.action(action.capability)
-        resolved_config = _resolve_config(action.config, self.runtime.context)
-        config = provider.config_model.model_validate(resolved_config)
         try:
+            provider = self.runtime.registry.action(action.capability)
+            resolved_config = _resolve_config(action.config, self.runtime.context)
+            config = provider.config_model.model_validate(resolved_config)
             required = provider.required_resources(config)
             if self.runtime.resources is None or not required:
                 return cast(

@@ -405,6 +405,79 @@ async def test_until_runs_after_no_match_hook_and_times_out():
 
 
 @pytest.mark.asyncio
+async def test_action_binding_error_uses_retry_policy_and_returns_failure():
+    class PositionConfig(BaseModel):
+        position: tuple[int, int]
+
+    class BoundAction(CountingAction):
+        config_model = PositionConfig
+
+    action = BoundAction("bound")
+    registry = CapabilityRegistry()
+    registry.register_action(action)
+    delays = []
+
+    async def sleep(seconds):
+        delays.append(seconds)
+
+    runtime = StepRuntime(
+        registry=registry,
+        context=StepContext(),
+        cancellation=CancellationToken(),
+        sleep=sleep,
+    )
+    step = AutomationStep.model_validate(
+        {
+            "name": "bad binding",
+            "actions": [
+                {
+                    "capability": "bound",
+                    "config": {"position": "$result.primary.position"},
+                }
+            ],
+            "action_policy": {"max_attempts": 2, "retry_interval_seconds": 0.1},
+        }
+    )
+
+    result = await StepExecutor(runtime).execute(step)
+
+    assert result.outcome is StepOutcome.FAILURE
+    assert len(result.action_results) == 1
+    assert "condition result" in (result.action_results[0].error or "")
+    assert action.call_count == 0
+    assert delays == [0.1]
+
+
+@pytest.mark.asyncio
+async def test_invalid_condition_config_becomes_structured_failure():
+    class RequiredConfig(BaseModel):
+        value: int
+
+    class RequiredCondition(QueuedCondition):
+        config_model = RequiredConfig
+
+    condition = RequiredCondition([])
+    registry = CapabilityRegistry()
+    registry.register_condition(condition)
+    runtime = StepRuntime(
+        registry=registry,
+        context=StepContext(),
+        cancellation=CancellationToken(),
+    )
+    step = AutomationStep(
+        name="invalid condition",
+        condition={"id": "required", "capability": condition.name, "config": {}},
+    )
+
+    result = await StepExecutor(runtime).execute(step)
+
+    assert result.outcome is StepOutcome.FAILURE
+    assert result.condition_result is not None
+    assert "value" in str(result.condition_result.provider_data["error"])
+    assert condition.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_match_runs_main_actions_only_after_condition():
     condition = QueuedCondition(
         [ConditionResult(node_id="provider", outcome=ConditionOutcome.MATCH)]
