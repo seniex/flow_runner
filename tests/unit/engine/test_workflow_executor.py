@@ -2,10 +2,10 @@ from uuid import UUID
 
 import pytest
 
-from flow_runner.domain.enums import StepOutcome
-from flow_runner.domain.errors import RoutingError
+from flow_runner.domain.enums import ConditionOutcome, StepOutcome
+from flow_runner.domain.errors import BindingError, RoutingError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
-from flow_runner.domain.results import StepResult
+from flow_runner.domain.results import ConditionResult, StepResult
 from flow_runner.domain.routing import (
     ComparisonOperator,
     RoutePredicate,
@@ -33,6 +33,18 @@ class OutcomeStepExecutor:
     async def execute(self, step):
         self.step_names.append(step.name)
         return StepResult(outcome=next(self.outcomes))
+
+
+class ResultStepExecutor:
+    def __init__(self, condition_result):
+        self.condition_result = condition_result
+
+    async def execute(self, step):
+        del step
+        return StepResult(
+            outcome=StepOutcome.SUCCESS,
+            condition_result=self.condition_result,
+        )
 
 
 def workflow(name, target=None, routes=None):
@@ -173,6 +185,100 @@ async def test_text_route_predicates_select_matching_branch(operator, expected):
     ).run(entry.id)
 
     assert trace.workflow_names == ("entry", "matched")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("condition_result", "expression"),
+    [
+        (
+            ConditionResult(
+                node_id="ocr",
+                outcome=ConditionOutcome.MATCH,
+                text="ready",
+            ),
+            "$result.primary.text",
+        ),
+        (
+            ConditionResult.and_group(
+                "all",
+                [
+                    ConditionResult(
+                        node_id="ocr_a",
+                        outcome=ConditionOutcome.MATCH,
+                        text="ready",
+                    ),
+                    ConditionResult(
+                        node_id="image_b",
+                        outcome=ConditionOutcome.MATCH,
+                    ),
+                ],
+            ),
+            '$result.children["ocr_a"].text',
+        ),
+    ],
+)
+async def test_result_binding_route_predicates_select_matching_branch(
+    condition_result,
+    expression,
+):
+    matched = workflow("matched", RouteTarget.end())
+    fallback = workflow("fallback", RouteTarget.end())
+    entry = workflow(
+        "entry",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                predicate=RoutePredicate.binding(
+                    expression,
+                    ComparisonOperator.EQ,
+                    "ready",
+                ),
+                target=RouteTarget.jump_workflow(matched.id),
+            ),
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                target=RouteTarget.jump_workflow(fallback.id),
+            ),
+        ],
+    )
+    project = Project(
+        name="result route",
+        groups=[FlowGroup(name="g", workflows=[entry, matched, fallback])],
+    )
+
+    trace = await WorkflowExecutor(project, ResultStepExecutor(condition_result)).run(entry.id)
+
+    assert trace.workflow_names == ("entry", "matched")
+
+
+@pytest.mark.asyncio
+async def test_result_binding_route_rejects_ambiguous_primary():
+    result = ConditionResult.and_group(
+        "all",
+        [
+            ConditionResult(node_id="ocr", outcome=ConditionOutcome.MATCH, text="ready"),
+            ConditionResult(node_id="image", outcome=ConditionOutcome.MATCH),
+        ],
+    )
+    entry = workflow(
+        "entry",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                predicate=RoutePredicate.binding(
+                    "$result.primary.text",
+                    ComparisonOperator.EQ,
+                    "ready",
+                ),
+                target=RouteTarget.end(),
+            )
+        ],
+    )
+    project = Project(name="ambiguous", groups=[FlowGroup(name="g", workflows=[entry])])
+
+    with pytest.raises(BindingError, match="primary"):
+        await WorkflowExecutor(project, ResultStepExecutor(result)).run(entry.id)
 
 
 @pytest.mark.asyncio

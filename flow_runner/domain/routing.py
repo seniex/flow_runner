@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from flow_runner.domain.binding_expressions import is_binding_expression
 from flow_runner.domain.enums import StepOutcome
 
 
@@ -36,6 +37,7 @@ class RoutePredicate(BaseModel):
         "workflow_variable",
         "workflow_count",
         "step_count",
+        "binding",
     ]
     key: str
     operator: ComparisonOperator
@@ -43,6 +45,8 @@ class RoutePredicate(BaseModel):
 
     @model_validator(mode="after")
     def validate_count_comparison(self) -> RoutePredicate:
+        if self.source == "binding" and not is_binding_expression(self.key):
+            raise ValueError(f"unsupported binding expression: {self.key}")
         if self.source not in {"workflow_count", "step_count"}:
             return self
         if self.operator in {ComparisonOperator.CONTAINS, ComparisonOperator.MATCHES}:
@@ -89,6 +93,20 @@ class RoutePredicate(BaseModel):
         return cls(
             source="task_variable",
             key=name,
+            operator=operator,
+            expected=expected,
+        )
+
+    @classmethod
+    def binding(
+        cls,
+        expression: str,
+        operator: ComparisonOperator,
+        expected: Any,
+    ) -> RoutePredicate:
+        return cls(
+            source="binding",
+            key=expression,
             operator=operator,
             expected=expected,
         )

@@ -539,6 +539,23 @@ def test_route_editor_adds_variable_predicate(qtbot):
     )
 
 
+def test_route_editor_adds_result_binding_predicate(qtbot):
+    editor = RouteEditor()
+    qtbot.addWidget(editor)
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.END))
+    editor.predicate_source_combo.setCurrentIndex(editor.predicate_source_combo.findData("binding"))
+    editor.predicate_key_edit.setText('$result.children["ocr_a"].text')
+    editor.predicate_expected_edit.setText('"ready"')
+
+    editor.add_button.click()
+
+    assert editor.routes()[0].predicate == RoutePredicate.binding(
+        '$result.children["ocr_a"].text',
+        ComparisonOperator.EQ,
+        "ready",
+    )
+
+
 def test_property_panel_applies_guided_action_editor_changes(qtbot):
     panel = PropertyPanel(registry(), Project(name="p"))
     qtbot.addWidget(panel)

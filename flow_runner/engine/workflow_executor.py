@@ -16,7 +16,8 @@ from flow_runner.domain.routing import (
     RouteRule,
     RouteTargetKind,
 )
-from flow_runner.engine.context import CallFrame, TaskContext, WorkflowContext
+from flow_runner.engine.bindings import resolve_binding
+from flow_runner.engine.context import CallFrame, StepContext, TaskContext, WorkflowContext
 
 
 class StepExecutorLike(Protocol):
@@ -162,7 +163,11 @@ class WorkflowExecutor:
         for route in step.routes:
             if route.outcome is not result.outcome:
                 continue
-            if route.predicate is None or self._predicate_matches(route.predicate, workflow):
+            if route.predicate is None or self._predicate_matches(
+                route.predicate,
+                workflow,
+                result,
+            ):
                 return route
         return None
 
@@ -170,6 +175,7 @@ class WorkflowExecutor:
         self,
         predicate: RoutePredicate,
         workflow: Workflow,
+        result: StepResult,
     ) -> bool:
         if predicate.source == "task_variable":
             values: dict[str, Any] = self.task_context.task_variables
@@ -185,8 +191,20 @@ class WorkflowExecutor:
             actual = values[predicate.key]
         elif predicate.source == "workflow_count":
             actual = self._workflow_counts.get(UUID(predicate.key), 0)
-        else:
+        elif predicate.source == "step_count":
             actual = self._step_counts.get(UUID(predicate.key), 0)
+        else:
+            actual = resolve_binding(
+                predicate.key,
+                StepContext(
+                    result=result.condition_result,
+                    task_variables=self.task_context.task_variables,
+                    workflow_variables=self._workflow_variables[workflow.id],
+                    persistent_variables=self.task_context.persistent_variables,
+                    workflow_counts=self._workflow_counts,
+                    step_counts=self._step_counts,
+                ),
+            )
         try:
             return compare_values(actual, predicate.operator, predicate.expected)
         except (TypeError, ValueError, re.error) as error:

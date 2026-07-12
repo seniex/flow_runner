@@ -17,6 +17,7 @@
 - OCR、图片、像素、区域变化、时间、计数、变量、窗口和进程条件。
 - 鼠标、键盘、等待、变量、程序启动、录制回放和窗口动作。
 - 跨组 UUID 路由、调用/返回、变量与流程/步骤计数条件路由。
+- 路由谓词可直接比较 `$result.primary.*` 或 `$result.children["别名"].*`，并保持复合条件的歧义保护。
 - A1→A2→A3 循环后转 B1，B3 再转 C1 的自动化覆盖。
 - 全局感知快照/检测缓存、场景代次、独占动作和陈旧坐标锁内重检。
 - Per-Monitor V2 DPI 感知、完整虚拟桌面/Win32 窗口捕获和负坐标原点换算。
@@ -38,7 +39,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 181 passed
+# 185 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -55,7 +56,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `B7E8A09217D3A319B9B7312A9E7A91F0F8658E0ACF42AFB69A1ADCA3EC60493B`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `3F9E7AE401631448DD30BEC731CFB7AD26574F0B5EA762AE82CACF307EEAB3F4`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。

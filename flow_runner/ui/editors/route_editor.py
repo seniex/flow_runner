@@ -45,6 +45,7 @@ class RouteEditor(QWidget):
             "workflow_variable",
             "workflow_count",
             "step_count",
+            "binding",
         ):
             self.predicate_source_combo.addItem(source, source)
         self.predicate_key_edit = QLineEdit()
@@ -259,6 +260,10 @@ class RouteEditor(QWidget):
             if not isinstance(key_value, UUID):
                 raise ValueError("请选择计数步骤")
             key = str(key_value)
+        elif source == "binding":
+            key = self.predicate_key_edit.text().strip()
+            if not key:
+                raise ValueError("绑定表达式不能为空")
         else:
             key = self.predicate_key_edit.text().strip()
             if not key:
@@ -285,7 +290,12 @@ class RouteEditor(QWidget):
         self.step_combo.setVisible(target is RouteTargetKind.NEXT_STEP)
         source = self.predicate_source_combo.currentData()
         self._populate_predicate_operators(source)
-        self.predicate_key_edit.setVisible(source in {"task_variable", "workflow_variable"})
+        self.predicate_key_edit.setVisible(
+            source in {"task_variable", "workflow_variable", "binding"}
+        )
+        self.predicate_key_edit.setPlaceholderText(
+            "$result.primary.text" if source == "binding" else ""
+        )
         self.predicate_workflow_combo.setVisible(source == "workflow_count")
         self.predicate_step_combo.setVisible(source == "step_count")
 
