@@ -20,9 +20,7 @@ class ParallelMonitorGroup:
         return WorkflowContext(task=child_task)
 
     async def run(self, children: Sequence[ChildCallable]) -> list[Any]:
-        tasks: list[asyncio.Task[Any]] = [
-            asyncio.create_task(child()) for child in children
-        ]
+        tasks: list[asyncio.Task[Any]] = [asyncio.create_task(child()) for child in children]
         try:
             return list(await asyncio.gather(*tasks))
         except BaseException:

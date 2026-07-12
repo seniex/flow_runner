@@ -3,12 +3,15 @@ from pathlib import Path
 from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.enums import ConditionMode, StepOutcome
 from flow_runner.domain.project import AutomationStep
 from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
+from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import switch_condition_capability
 from flow_runner.ui.editors.policy_editor import PolicyEditor
+from flow_runner.ui.editors.route_editor import RouteEditor
 
 
 class Capability:
@@ -22,11 +25,15 @@ class Capability:
     def required_resources(self, config):
         return frozenset()
 
+    async def execute(self, config, context):
+        raise NotImplementedError
+
 
 def registry():
     result = CapabilityRegistry()
     result.register_condition(Capability("vision.ocr", OcrConditionConfig))
     result.register_condition(Capability("vision.image", ImageConditionConfig))
+    result.register_action(Capability("system.wait", OcrConditionConfig))
     return result
 
 
@@ -85,3 +92,19 @@ def test_policy_editor_exposes_once_and_until(qtbot):
 
     assert editor.mode() is ConditionMode.UNTIL
     assert editor.mode_combo.count() == 2
+
+
+def test_action_and_route_editors_round_trip_models(qtbot):
+    actions = ActionEditor(registry())
+    routes = RouteEditor()
+    qtbot.addWidget(actions)
+    qtbot.addWidget(routes)
+    action = ActionSpec(capability="system.wait", config={"keywords": "x"})
+    route = RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end())
+
+    actions.set_actions([action])
+    routes.set_routes([route])
+
+    assert actions.action_specs() == [action]
+    assert actions.capability_combo.itemData(0) == "system.wait"
+    assert routes.routes() == [route]

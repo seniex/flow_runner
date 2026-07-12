@@ -10,6 +10,7 @@ from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.logging.events import RuntimeEvent
 from flow_runner.ui.dialogs.diagnostics_dialog import DiagnosticsDialog
 from flow_runner.ui.runner_bridge import RunnerBridge
+from flow_runner.ui.view_models.run_view_model import RunViewModel
 
 
 class ImmediateExecutor:
@@ -70,3 +71,16 @@ def test_diagnostics_dialog_displays_structured_event(qtbot):
     assert dialog.state_value.text() == "running"
     assert dialog.frame_value.text() == "frame-1"
     assert "retry" in dialog.details_value.toPlainText()
+
+
+def test_run_view_model_tracks_latest_runtime_event(qtbot):
+    model = RunViewModel()
+    event = RuntimeEvent(
+        task_id=uuid4(),
+        kind="runner.state",
+        state=RunnerState.PAUSED,
+        monotonic_timestamp=monotonic(),
+    )
+    with qtbot.waitSignal(model.stateChanged):
+        model.consume(event)
+    assert model.state is RunnerState.PAUSED
