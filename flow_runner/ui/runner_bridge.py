@@ -52,6 +52,28 @@ class RunnerBridge(QObject):
         if loop is not None:
             loop.call_soon_threadsafe(self.runner.stop)
 
+    def pause(self) -> None:
+        loop = self._loop
+        if loop is not None:
+            loop.call_soon_threadsafe(self.runner.pause)
+
+    def resume(self) -> None:
+        loop = self._loop
+        if loop is not None:
+            loop.call_soon_threadsafe(self.runner.resume)
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    def shutdown(self, *, timeout_seconds: float = 5.0) -> None:
+        self.stop()
+        thread = self._thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout_seconds)
+        if thread is not None and thread.is_alive():
+            self.failed.emit("runner did not stop before shutdown timeout")
+
     def _run(self, project: Project, entry_workflow_id: UUID) -> None:
         loop = asyncio.new_event_loop()
         self._loop = loop
@@ -67,4 +89,5 @@ class RunnerBridge(QObject):
         finally:
             self._running = False
             self._loop = None
+            self._thread = None
             loop.close()

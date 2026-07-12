@@ -80,7 +80,7 @@ def create_application(
 
     runner = Runner(step_executor_factory=step_executor_factory)
     runner_bridge = RunnerBridge(runner)
-    window = MainWindow(project)
+    window = MainWindow(project, runner_bridge=runner_bridge)
     qss_path = Path(__file__).parent / "resources" / "styles" / "base.qss"
     ThemeManager().apply(app, qss_path)
     return ApplicationComposition(
