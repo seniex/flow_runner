@@ -8,7 +8,13 @@ from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import ConditionMode, StepOutcome
 from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
-from flow_runner.domain.routing import RouteRule, RouteTarget, RouteTargetKind
+from flow_runner.domain.routing import (
+    ComparisonOperator,
+    RoutePredicate,
+    RouteRule,
+    RouteTarget,
+    RouteTargetKind,
+)
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor, switch_condition_capability
@@ -241,6 +247,26 @@ def test_route_editor_selects_cross_group_workflow_target(qtbot):
     editor.add_button.click()
 
     assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
+
+
+def test_route_editor_adds_variable_predicate(qtbot):
+    editor = RouteEditor()
+    qtbot.addWidget(editor)
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.END))
+    editor.predicate_source_combo.setCurrentIndex(
+        editor.predicate_source_combo.findData("task_variable")
+    )
+    editor.predicate_key_edit.setText("battle_ready")
+    editor.predicate_operator_combo.setCurrentIndex(
+        editor.predicate_operator_combo.findData(ComparisonOperator.EQ)
+    )
+    editor.predicate_expected_edit.setText("true")
+
+    editor.add_button.click()
+
+    assert editor.routes()[0].predicate == RoutePredicate.task_variable(
+        "battle_ready", ComparisonOperator.EQ, True
+    )
 
 
 def test_property_panel_applies_guided_action_editor_changes(qtbot):
