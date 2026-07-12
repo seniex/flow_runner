@@ -21,15 +21,20 @@ class ProjectStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(self.path.suffix + ".tmp")
         data = project.model_dump_json(indent=2)
-        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        self._load_path(temporary)
-        if self.path.exists():
-            backup = self.path.with_name(f"{self.path.stem}.{time.time_ns()}.bak{self.path.suffix}")
-            shutil.copy2(self.path, backup)
-        os.replace(temporary, self.path)
+        try:
+            with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            self._load_path(temporary)
+            if self.path.exists():
+                backup = self.path.with_name(
+                    f"{self.path.stem}.{time.time_ns()}.bak{self.path.suffix}"
+                )
+                shutil.copy2(self.path, backup)
+            os.replace(temporary, self.path)
+        finally:
+            temporary.unlink(missing_ok=True)
         self._trim_backups()
 
     def _load_path(self, path: Path) -> Project:

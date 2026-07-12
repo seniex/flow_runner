@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from flow_runner.domain.errors import ConfigurationError
@@ -19,3 +21,20 @@ def test_project_store_rejects_invalid_json(tmp_path):
     path.write_text("{bad", encoding="utf-8")
     with pytest.raises(ConfigurationError, match="invalid project JSON"):
         ProjectStore(path).load()
+
+
+def test_project_store_cleans_temporary_file_when_atomic_replace_fails(tmp_path):
+    path = tmp_path / "project.json"
+    store = ProjectStore(path)
+    store.save(Project(name="original"))
+    original = path.read_bytes()
+
+    with patch(
+        "flow_runner.infrastructure.persistence.project_store.os.replace",
+        side_effect=OSError("replace failed"),
+    ):
+        with pytest.raises(OSError, match="replace failed"):
+            store.save(Project(name="replacement"))
+
+    assert path.read_bytes() == original
+    assert not path.with_suffix(".json.tmp").exists()
