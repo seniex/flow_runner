@@ -34,7 +34,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 143 passed
+# 147 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed

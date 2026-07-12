@@ -1,7 +1,10 @@
 import asyncio
+import base64
 from collections import deque
+from io import BytesIO
 
 import pytest
+from PIL import Image
 from pydantic import BaseModel
 
 from flow_runner.capabilities.registry import CapabilityRegistry
@@ -236,6 +239,35 @@ async def test_condition_preview_does_not_execute_main_actions():
     assert result.outcome is ConditionOutcome.MATCH
     assert result.text == "ready"
     assert action.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_visual_preview_can_encode_its_perception_frame_without_disk_io():
+    class Capture:
+        async def capture(self, target):
+            return Image.new("RGB", (5, 4), "white")
+
+    perception = PerceptionService(Capture())
+    snapshot = await perception.snapshot("desktop")
+    runtime = StepRuntime(
+        registry=CapabilityRegistry(),
+        context=StepContext(),
+        cancellation=CancellationToken(),
+        resources=ResourceCoordinator(perception),
+    )
+    result = ConditionResult(
+        node_id="visual",
+        outcome=ConditionOutcome.MATCH,
+        target="desktop",
+        frame_id=snapshot.frame_id,
+        scene_generation=snapshot.scene_generation,
+    )
+
+    encoded = StepExecutor(runtime).diagnostic_capture_base64(result)
+
+    assert encoded is not None
+    image = Image.open(BytesIO(base64.b64decode(encoded)))
+    assert image.size == (5, 4)
 
 
 @pytest.mark.asyncio

@@ -94,8 +94,9 @@ and select the workflows that should monitor concurrently. Children share task v
 resources while retaining separate workflow-local variables and call stacks.
 
 The runtime toolbar provides start, pause/resume, stop, input recording, selected-step execution,
-condition preview, and structured diagnostics. Diagnostics include step results, selected routes,
-frame/scene identifiers, retry data, errors, and resource wait events. Default global hotkeys are
+condition preview, and structured diagnostics. Visual condition previews attach the recent frame as
+an in-memory PNG without creating temporary screenshot files. Diagnostics include step results,
+selected routes, frame/scene identifiers, retry data, errors, and resource wait events. Default global hotkeys are
 F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings can change or disable them.
 
 Recordings are stored by default at `recordings/latest.json` beside the project. The playback action

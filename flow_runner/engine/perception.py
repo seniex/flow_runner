@@ -46,17 +46,22 @@ class PerceptionService:
         *,
         coalesce_window_ms: int = 0,
         cache_limit: int = 128,
+        frame_cache_limit: int = 4,
     ) -> None:
         if coalesce_window_ms < 0:
             raise ValueError("coalesce_window_ms cannot be negative")
         if cache_limit <= 0:
             raise ValueError("cache_limit must be positive")
+        if frame_cache_limit <= 0:
+            raise ValueError("frame_cache_limit must be positive")
         self.capture = capture
         self.coalesce_window_seconds = coalesce_window_ms / 1000
         self.cache_limit = cache_limit
+        self.frame_cache_limit = frame_cache_limit
         self._generations: dict[str, int] = {}
         self._latest: dict[str, PerceptionSnapshot] = {}
         self._inflight: dict[str, asyncio.Task[PerceptionSnapshot]] = {}
+        self._frame_cache: OrderedDict[str, PerceptionSnapshot] = OrderedDict()
         self._ocr_cache: OrderedDict[tuple[Any, ...], Any] = OrderedDict()
 
     async def snapshot(self, target: str) -> PerceptionSnapshot:
@@ -91,6 +96,9 @@ class PerceptionService:
         )
         if self.current_generation(target) == generation:
             self._latest[target] = snapshot
+        self._frame_cache[snapshot.frame_id] = snapshot
+        while len(self._frame_cache) > self.frame_cache_limit:
+            self._frame_cache.popitem(last=False)
         return snapshot
 
     async def ocr(
@@ -127,6 +135,9 @@ class PerceptionService:
 
     def current_generation(self, target: str) -> int:
         return self._generations.get(target, 0)
+
+    def snapshot_by_frame(self, frame_id: str) -> PerceptionSnapshot | None:
+        return self._frame_cache.get(frame_id)
 
     def mark_scene_changed(self, target: str) -> int:
         generation = self.current_generation(target) + 1

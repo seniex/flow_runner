@@ -1,12 +1,13 @@
 import asyncio
+import base64
 import json
 
 import pytest
 
-from flow_runner.domain.enums import RunnerState, StepOutcome
+from flow_runner.domain.enums import ConditionOutcome, RunnerState, StepOutcome
 from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
-from flow_runner.domain.results import StepResult
+from flow_runner.domain.results import ConditionResult, StepResult
 from flow_runner.engine.resources import ResourceEvent
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.logging.sinks import JsonLinesEventSink, MemoryEventSink
@@ -175,6 +176,46 @@ async def test_runner_can_execute_one_selected_step_without_following_sequence()
 
     assert result.outcome is StepOutcome.SUCCESS
     assert calls == [workflow.steps[1].id]
+
+
+@pytest.mark.asyncio
+async def test_condition_preview_event_includes_delegate_diagnostic_capture():
+    project, workflow = project_with_steps()
+    step = workflow.steps[0].model_copy(
+        update={
+            "condition": {
+                "id": "visual",
+                "capability": "fake",
+                "config": {},
+            }
+        }
+    )
+    workflow = workflow.model_copy(update={"steps": [step]})
+    project = project.model_copy(
+        update={"groups": [project.groups[0].model_copy(update={"workflows": [workflow]})]}
+    )
+
+    class PreviewExecutor:
+        async def execute(self, step):
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+        async def preview_condition(self, step):
+            return ConditionResult(
+                node_id="visual",
+                outcome=ConditionOutcome.MATCH,
+                frame_id="frame-1",
+            )
+
+        def diagnostic_capture_base64(self, result):
+            return base64.b64encode(b"png-data").decode("ascii")
+
+    sink = MemoryEventSink()
+    runner = Runner(PreviewExecutor(), event_sink=sink)
+
+    await runner.preview_condition(project, workflow.id, step.id)
+
+    preview_event = next(event for event in sink.events if event.kind == "condition.preview")
+    assert preview_event.diagnostic_capture_base64 == base64.b64encode(b"png-data").decode("ascii")
 
 
 def test_runner_translates_resource_events_to_runtime_diagnostics():

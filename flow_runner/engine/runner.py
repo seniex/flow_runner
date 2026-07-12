@@ -200,6 +200,8 @@ class Runner:
         except Exception:
             self._set_state(RunnerState.FAILED, workflow_id=workflow_id)
             raise
+        capture_encoder = getattr(delegate, "diagnostic_capture_base64", None)
+        diagnostic_capture = capture_encoder(result) if callable(capture_encoder) else None
         if self.task_id is not None:
             self.event_sink.emit(
                 RuntimeEvent(
@@ -210,6 +212,7 @@ class Runner:
                     workflow_id=workflow.id,
                     step_id=step.id,
                     frame_id=_condition_frame_id(result),
+                    diagnostic_capture_base64=diagnostic_capture,
                     details={"condition_result": result.model_dump(mode="json")},
                 )
             )

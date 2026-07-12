@@ -1,3 +1,5 @@
+import base64
+import binascii
 import json
 
 from PySide6.QtGui import QPixmap
@@ -41,18 +43,29 @@ class DiagnosticsDialog(QDialog):
         self.step_value.setText(str(event.step_id or ""))
         self.outcome_value.setText(event.outcome.value if event.outcome is not None else "")
         self.frame_value.setText(event.frame_id or "")
-        self._update_capture(event.diagnostic_capture_path)
+        self._update_capture(
+            event.diagnostic_capture_path,
+            event.diagnostic_capture_base64,
+        )
         self.error_value.setText(str(event.error_id or ""))
         self.details_value.setPlainText(json.dumps(event.details, ensure_ascii=False, indent=2))
 
-    def _update_capture(self, path: str | None) -> None:
+    def _update_capture(self, path: str | None, encoded: str | None) -> None:
         self.capture_value.clear()
-        if path is None:
+        if path is None and encoded is None:
             self.capture_value.setVisible(False)
             return
-        pixmap = QPixmap(path)
+        pixmap = QPixmap()
+        if encoded is not None:
+            try:
+                pixmap.loadFromData(base64.b64decode(encoded, validate=True))
+            except (ValueError, binascii.Error):
+                pass
+        elif path is not None:
+            pixmap.load(path)
         if pixmap.isNull():
-            self.capture_value.setText(f"无法加载截图：{path}")
+            source = path if path is not None else "内存截图"
+            self.capture_value.setText(f"无法加载截图：{source}")
         else:
             self.capture_value.setPixmap(pixmap)
         self.capture_value.setVisible(True)

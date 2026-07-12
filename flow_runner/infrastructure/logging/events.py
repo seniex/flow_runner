@@ -19,5 +19,6 @@ class RuntimeEvent(BaseModel):
     outcome: StepOutcome | None = None
     frame_id: str | None = None
     diagnostic_capture_path: str | None = None
+    diagnostic_capture_base64: str | None = None
     error_id: UUID | None = None
     details: dict[str, Any] = Field(default_factory=dict)

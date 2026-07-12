@@ -1,3 +1,4 @@
+import base64
 from time import monotonic
 from uuid import uuid4
 
@@ -129,6 +130,28 @@ def test_diagnostics_dialog_previews_optional_capture(qtbot, tmp_path):
     assert not preview.isNull()
     assert preview.size().width() == 4
     assert preview.size().height() == 3
+
+
+def test_diagnostics_dialog_previews_in_memory_capture(qtbot, tmp_path):
+    capture_path = tmp_path / "capture.png"
+    source = QPixmap(6, 2)
+    assert source.save(str(capture_path))
+    dialog = DiagnosticsDialog()
+    qtbot.addWidget(dialog)
+    event = RuntimeEvent(
+        task_id=uuid4(),
+        kind="condition.preview",
+        state=RunnerState.RUNNING,
+        monotonic_timestamp=monotonic(),
+        diagnostic_capture_base64=base64.b64encode(capture_path.read_bytes()).decode("ascii"),
+    )
+
+    dialog.update_event(event)
+
+    preview = dialog.capture_value.pixmap()
+    assert preview is not None
+    assert preview.size().width() == 6
+    assert preview.size().height() == 2
 
 
 def test_run_view_model_tracks_latest_runtime_event(qtbot):

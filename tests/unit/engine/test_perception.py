@@ -99,6 +99,18 @@ async def test_scene_change_invalidates_frame_and_ocr_cache():
     assert ocr.calls == 2
 
 
+@pytest.mark.asyncio
+async def test_recent_frames_remain_available_for_diagnostics_with_bounded_cache():
+    service = PerceptionService(FakeCapture(), frame_cache_limit=2)
+    first = await service.snapshot("desktop")
+    second = await service.snapshot("desktop")
+    third = await service.snapshot("desktop")
+
+    assert service.snapshot_by_frame(first.frame_id) is None
+    assert service.snapshot_by_frame(second.frame_id) is second
+    assert service.snapshot_by_frame(third.frame_id) is third
+
+
 def test_crop_rejects_out_of_bounds_regions():
     capture = FakeCapture()
     service = PerceptionService(capture)

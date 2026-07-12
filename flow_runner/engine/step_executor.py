@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import base64
 from collections.abc import Awaitable, Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from io import BytesIO
 from time import monotonic
 from typing import Any, cast
 
@@ -58,6 +60,20 @@ class StepExecutor:
             return result
         finally:
             self.runtime.context.clear_result()
+
+    def diagnostic_capture_base64(self, result: ConditionResult) -> str | None:
+        coordinator = self.runtime.resources
+        if coordinator is None or coordinator.perception is None:
+            return None
+        frame_id = _first_frame_id(result)
+        if frame_id is None:
+            return None
+        snapshot = coordinator.perception.snapshot_by_frame(frame_id)
+        if snapshot is None:
+            return None
+        output = BytesIO()
+        snapshot.image.save(output, format="PNG")
+        return base64.b64encode(output.getvalue()).decode("ascii")
 
     async def execute(self, step: AutomationStep) -> StepResult:
         try:
@@ -336,6 +352,18 @@ def _scene_targets(result: ConditionResult | None) -> set[str]:
     for child in result.children.values():
         targets.update(_scene_targets(child))
     return targets
+
+
+def _first_frame_id(result: ConditionResult | None) -> str | None:
+    if result is None:
+        return None
+    if result.frame_id is not None:
+        return result.frame_id
+    for child in result.children.values():
+        frame_id = _first_frame_id(child)
+        if frame_id is not None:
+            return frame_id
+    return None
 
 
 def _scene_generations(result: ConditionResult | None, target: str) -> set[int]:
