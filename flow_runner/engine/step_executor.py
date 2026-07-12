@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import base64
-from collections.abc import Awaitable, Callable
-from contextlib import AsyncExitStack
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from io import BytesIO
 from time import monotonic
@@ -197,7 +198,13 @@ class StepExecutor:
                             if resource.startswith("observe:")
                         ]
                         for target in sorted(targets):
-                            await stack.enter_async_context(self.runtime.resources.observe(target))
+                            await stack.enter_async_context(
+                                _cancellable_context(
+                                    self.runtime.resources.observe(target),
+                                    self.runtime.cancellation,
+                                )
+                            )
+                    self.runtime.cancellation.raise_if_cancelled()
                     result = cast(
                         ConditionResult,
                         await provider.evaluate(config, self.runtime.context),
@@ -281,10 +288,14 @@ class StepExecutor:
             scene_target = _single_scene_target(self.runtime.context.result)
             target = window_targets[0] if window_targets else scene_target or "desktop"
             named_resources = required.difference(window_targets)
-            async with self.runtime.resources.interact(
-                target,
-                resources=named_resources,
+            async with _cancellable_context(
+                self.runtime.resources.interact(
+                    target,
+                    resources=named_resources,
+                ),
+                self.runtime.cancellation,
             ):
+                self.runtime.cancellation.raise_if_cancelled()
                 if not await self._refresh_stale_condition(
                     revalidate_condition,
                     target,
@@ -377,3 +388,30 @@ def _scene_generations(result: ConditionResult | None, target: str) -> set[int]:
     for child in result.children.values():
         generations.update(_scene_generations(child, target))
     return generations
+
+
+@asynccontextmanager
+async def _cancellable_context(
+    manager: AbstractAsyncContextManager[Any],
+    cancellation: CancellationToken,
+) -> AsyncIterator[Any]:
+    stack = AsyncExitStack()
+    enter_task = asyncio.create_task(stack.enter_async_context(manager))
+    cancel_task = asyncio.create_task(cancellation.wait_cancelled())
+    done, pending = await asyncio.wait(
+        {enter_task, cancel_task},
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    if cancel_task in done:
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        await stack.aclose()
+        cancellation.raise_if_cancelled()
+    cancel_task.cancel()
+    await asyncio.gather(cancel_task, return_exceptions=True)
+    value = enter_task.result()
+    try:
+        yield value
+    finally:
+        await stack.aclose()

@@ -136,6 +136,108 @@ async def test_shared_resource_coordinator_serializes_exclusive_actions():
 
 
 @pytest.mark.asyncio
+async def test_cancellation_interrupts_waiting_for_exclusive_resource():
+    events = []
+    coordinator = ResourceCoordinator(event_sink=events.append)
+    holder_entered = asyncio.Event()
+    release_holder = asyncio.Event()
+
+    async def holder():
+        async with coordinator.interact("desktop", resources={"mouse"}):
+            holder_entered.set()
+            await release_holder.wait()
+
+    class ExclusiveAction(CountingAction):
+        def required_resources(self, config):
+            return frozenset({"mouse"})
+
+    action = ExclusiveAction("exclusive")
+    registry = CapabilityRegistry()
+    registry.register_action(action)
+    token = CancellationToken()
+    executor = StepExecutor(
+        StepRuntime(
+            registry=registry,
+            context=StepContext(),
+            cancellation=token,
+            resources=coordinator,
+        )
+    )
+    step = AutomationStep(
+        name="waiting",
+        actions=[{"capability": "exclusive", "config": {}}],
+    )
+    holder_task = asyncio.create_task(holder())
+    await holder_entered.wait()
+    step_task = asyncio.create_task(executor.execute(step))
+    await asyncio.wait_for(
+        _wait_until(lambda: any(event.kind == "resource.wait.started" for event in events)),
+        timeout=1,
+    )
+
+    token.cancel()
+    try:
+        result = await asyncio.wait_for(step_task, timeout=0.2)
+    finally:
+        release_holder.set()
+        await holder_task
+
+    assert result.outcome is StepOutcome.CANCELLED
+
+
+@pytest.mark.asyncio
+async def test_cancellation_interrupts_waiting_for_observation_resource():
+    events = []
+    coordinator = ResourceCoordinator(event_sink=events.append)
+    holder_entered = asyncio.Event()
+    release_holder = asyncio.Event()
+
+    async def holder():
+        async with coordinator.interact("desktop"):
+            holder_entered.set()
+            await release_holder.wait()
+
+    class ObservedCondition(QueuedCondition):
+        def required_resources(self, config):
+            return frozenset({"observe:desktop"})
+
+    condition = ObservedCondition(
+        [ConditionResult(node_id="observed", outcome=ConditionOutcome.MATCH)]
+    )
+    registry = CapabilityRegistry()
+    registry.register_condition(condition)
+    token = CancellationToken()
+    executor = StepExecutor(
+        StepRuntime(
+            registry=registry,
+            context=StepContext(),
+            cancellation=token,
+            resources=coordinator,
+        )
+    )
+    step = AutomationStep(
+        name="observing",
+        condition={"id": "observed", "capability": condition.name, "config": {}},
+    )
+    holder_task = asyncio.create_task(holder())
+    await holder_entered.wait()
+    step_task = asyncio.create_task(executor.execute(step))
+    await asyncio.wait_for(
+        _wait_until(lambda: any(event.kind == "resource.wait.started" for event in events)),
+        timeout=1,
+    )
+
+    token.cancel()
+    try:
+        result = await asyncio.wait_for(step_task, timeout=0.2)
+    finally:
+        release_holder.set()
+        await holder_task
+
+    assert result.outcome is StepOutcome.CANCELLED
+
+
+@pytest.mark.asyncio
 async def test_stale_visual_result_is_revalidated_before_bound_mouse_action():
     class Capture:
         async def capture(self, target):
@@ -377,3 +479,8 @@ async def test_cancelled_step_returns_cancelled_without_another_attempt():
 
     assert result.outcome is StepOutcome.CANCELLED
     assert condition.call_count == 1
+
+
+async def _wait_until(predicate):
+    while not predicate():
+        await asyncio.sleep(0)
