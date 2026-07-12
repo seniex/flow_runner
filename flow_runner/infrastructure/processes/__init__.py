@@ -1,0 +1,1 @@
+"""Process query adapters."""

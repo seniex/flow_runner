@@ -64,6 +64,7 @@ class PerceptionService:
         latest = self._latest.get(target)
         if (
             latest is not None
+            and self.coalesce_window_seconds > 0
             and latest.scene_generation == generation
             and monotonic() - latest.captured_at <= self.coalesce_window_seconds
         ):
