@@ -84,6 +84,7 @@ class Project(BaseModel):
                 errors.append(f"duplicate step id {step_id}")
 
         workflow_ids = set(workflow_counts)
+        step_ids = set(step_counts)
         block_counts = self._counts(block.id for block in self.parallel_blocks)
         for block_id, count in block_counts.items():
             if count > 1:
@@ -116,6 +117,28 @@ class Project(BaseModel):
                             f"workflow '{workflow.name}' step '{step.name}' references missing "
                             f"step {target.step_id}"
                         )
+                    predicate = route.predicate
+                    if predicate is not None and predicate.source in {
+                        "workflow_count",
+                        "step_count",
+                    }:
+                        try:
+                            predicate_id = UUID(predicate.key)
+                        except ValueError:
+                            errors.append(
+                                f"workflow '{workflow.name}' step '{step.name}' has invalid "
+                                f"{predicate.source} UUID '{predicate.key}'"
+                            )
+                            continue
+                        valid_ids = (
+                            workflow_ids if predicate.source == "workflow_count" else step_ids
+                        )
+                        if predicate_id not in valid_ids:
+                            label = "workflow" if predicate.source == "workflow_count" else "step"
+                            errors.append(
+                                f"workflow '{workflow.name}' step '{step.name}' references missing "
+                                f"{label} count reference {predicate_id}"
+                            )
         return errors
 
     @staticmethod
