@@ -1,0 +1,4666 @@
+{
+  "paddle_exe_path": "D:\\Program Files\\PaddleOCR-json_v1.4.1\\PaddleOCR-json.exe",
+  "tesseract_path": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+  "ocr_engine": "paddle",
+  "scripts_dir": "D:\\3eyes\\Python\\scripts",
+  "flow_groups": [
+    {
+      "name": "不思议挂机",
+      "flows": [
+        {
+          "name": "开始游戏",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "开始游戏",
+              "region": [
+                1487,
+                848,
+                1573,
+                875
+              ],
+              "keywords": "开始游戏",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 9999,
+              "jitter": true
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min_lanren.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 1
+        },
+        {
+          "name": "等待游戏加载",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 20.0
+            }
+          ],
+          "next_flow": 2
+        },
+        {
+          "name": "游戏加载完毕",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_loop",
+              "name": "游戏加载完毕",
+              "region": [
+                1166,
+                258,
+                1319,
+                313
+              ],
+              "keywords": "请选择难度",
+              "click_on_match": false,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "double"
+                }
+              ],
+              "check_interval": 1.0,
+              "max_retries": 9999,
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "pre_action": null
+            }
+          ],
+          "next_flow": 3
+        },
+        {
+          "name": "鼠标移动",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "mouse_move",
+              "name": "鼠标移动",
+              "x": 1023,
+              "y": 833,
+              "duration": 0.01
+            }
+          ],
+          "next_flow": 4
+        },
+        {
+          "name": "到顶部",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "scroll",
+              "name": "到顶部",
+              "x": 1023,
+              "y": 833,
+              "direction": "up",
+              "clicks": 1,
+              "interval": 0.1,
+              "delta_mul": 31.0
+            }
+          ],
+          "next_flow": 5
+        },
+        {
+          "name": "预设初始位置",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "scroll",
+              "name": "预设初始位置",
+              "x": 1023,
+              "y": 833,
+              "direction": "down",
+              "clicks": 1,
+              "interval": 0.1,
+              "delta_mul": 1.4
+            }
+          ],
+          "next_flow": 6
+        },
+        {
+          "name": "选择难度",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_loop",
+              "name": "选择难度",
+              "region": [
+                1128,
+                588,
+                1441,
+                1086
+              ],
+              "keywords": "难度25",
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "offset",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 1.0,
+              "max_retries": 20,
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "pre_action": {
+                "type": "scroll",
+                "name": "滚轮",
+                "x": 1023,
+                "y": 833,
+                "direction": "down",
+                "clicks": 1,
+                "interval": 0.1,
+                "delta_mul": "0.4"
+              }
+            }
+          ],
+          "next_flow": 7
+        },
+        {
+          "name": "固定等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 3.0
+            }
+          ],
+          "next_flow": 8
+        },
+        {
+          "name": "基本卡片",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/基本卡片.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 0.1
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "f4",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 9
+        },
+        {
+          "name": "还原lanren",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 1.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE_lanren.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 10
+        },
+        {
+          "name": "最小化war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "最小化war3",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 11
+        },
+        {
+          "name": "点击屏幕1",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 2.0
+            }
+          ],
+          "next_flow": 12
+        },
+        {
+          "name": "转职1前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 60.0
+            }
+          ],
+          "next_flow": 13
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 14
+        },
+        {
+          "name": "转职1",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "img_loop",
+              "name": "截图循环检测",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1999,
+                  "abs_y": 1207,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.2,
+              "max_retries": 999,
+              "pre_action": null
+            }
+          ],
+          "next_flow": 15
+        },
+        {
+          "name": "最小化",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "最小化",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 16
+        },
+        {
+          "name": "转职2前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 400.0
+            }
+          ],
+          "next_flow": 17
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 18
+        },
+        {
+          "name": "转职2",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "img_loop",
+              "name": "截图循环检测",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1083,
+                  "abs_y": 663,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1998,
+                  "abs_y": 1207,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.2,
+              "max_retries": 999,
+              "pre_action": null
+            }
+          ],
+          "next_flow": 19
+        },
+        {
+          "name": "最小化",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 20
+        },
+        {
+          "name": "难20速通",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 600.0
+            }
+          ],
+          "next_flow": 22,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "转职3全流程",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 600.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            },
+            {
+              "type": "img_loop",
+              "name": "转职3",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1083,
+                  "abs_y": 663,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2067,
+                  "abs_y": 1241,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1776,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2004,
+                  "abs_y": 1207,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.1,
+              "max_retries": 999,
+              "pre_action": null
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 22
+        },
+        {
+          "name": "结束前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 653.0
+            }
+          ],
+          "next_flow": 23
+        },
+        {
+          "name": "点击屏幕2",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 2.0
+            }
+          ],
+          "next_flow": 24
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min_lanren.py",
+              "run_as_admin": false,
+              "wait_seconds": 0.0
+            },
+            {
+              "type": "launch_app",
+              "name": "还原war3",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            }
+          ],
+          "next_flow": 25
+        },
+        {
+          "name": "游戏结束",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "游戏结束",
+              "region": [
+                1080,
+                378,
+                1460,
+                492
+              ],
+              "keywords": "挑战成功",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1280,
+                  "abs_y": 891,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1074,
+                  "abs_y": 665,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 319,
+                  "abs_y": 271,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 416,
+                  "abs_y": 268,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 979,
+                  "abs_y": 1145,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 963,
+                  "abs_y": 668,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 0.1,
+              "max_retries": 9999,
+              "jitter": false
+            }
+          ],
+          "next_flow": 26
+        },
+        {
+          "name": "A基本挑战2",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "q",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "d",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            },
+            {
+              "type": "img_click",
+              "name": "截图点击",
+              "region": [
+                656,
+                1180,
+                789,
+                1222
+              ],
+              "template_path": "D:/3eyes/Python/scripts/存档.png",
+              "threshold": 80,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 990,
+                  "abs_y": 535,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "retry_interval": 0.2,
+              "max_retries": 30,
+              "jitter": false
+            }
+          ],
+          "next_flow": 27,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "A基本挑战1",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "q",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "w",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "e",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "r",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "a",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "s",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "d",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "f",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "c",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "c",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "f2",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "d",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                }
+              ]
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 10.0
+            }
+          ],
+          "next_flow": 28,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "进出塔罗牌",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "keyboard",
+              "name": "进入塔罗牌",
+              "key_actions": [
+                {
+                  "key": "x",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "f1",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "s",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "s",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            },
+            {
+              "type": "ocr_click",
+              "name": "OCR点击",
+              "region": [
+                1851,
+                456,
+                2268,
+                858
+              ],
+              "keywords": "都不要",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "2",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": true
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "f2",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 29,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "进入实验室",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "进入实验室",
+              "region": [
+                663,
+                1170,
+                796,
+                1237
+              ],
+              "keywords": "存档",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1280,
+                  "abs_y": 891,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1074,
+                  "abs_y": 665,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 319,
+                  "abs_y": 271,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 416,
+                  "abs_y": 268,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 979,
+                  "abs_y": 1145,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 990,
+                  "abs_y": 535,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 0.1,
+              "max_retries": 9999,
+              "jitter": false
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "z",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "f1",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "s",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "s",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 30
+        },
+        {
+          "name": "A120秒自动退出",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 120.0
+            }
+          ],
+          "next_flow": 31
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "f10",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "e",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "x",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "x",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 0,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "100",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "OCR点击",
+              "region": [
+                1409,
+                805,
+                1608,
+                887
+              ],
+              "keywords": "开始游戏",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": true
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 32.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 3.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\restore_platform.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\pet_explore.pyw",
+              "run_as_admin": true,
+              "wait_seconds": 100.0
+            }
+          ]
+        },
+        {
+          "name": "101",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 1800.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 10.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/退出游戏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            }
+          ]
+        },
+        {
+          "name": "102",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 12600.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 15.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\auto_war3.py",
+              "run_as_admin": true,
+              "wait_seconds": 100.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "不思议挂机B",
+      "flows": [
+        {
+          "name": "开始游戏",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "开始游戏",
+              "region": [
+                1487,
+                848,
+                1573,
+                875
+              ],
+              "keywords": "开始游戏",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 99999,
+              "jitter": true
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min_lanren.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 1
+        },
+        {
+          "name": "等待游戏加载",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 20.0
+            }
+          ],
+          "next_flow": 2
+        },
+        {
+          "name": "游戏加载完毕",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_loop",
+              "name": "游戏加载完毕",
+              "region": [
+                1166,
+                258,
+                1319,
+                313
+              ],
+              "keywords": "请选择难度",
+              "click_on_match": false,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "double"
+                }
+              ],
+              "check_interval": 1.0,
+              "max_retries": 9999,
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "pre_action": null
+            }
+          ],
+          "next_flow": 3
+        },
+        {
+          "name": "鼠标移动",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "mouse_move",
+              "name": "鼠标移动",
+              "x": 1023,
+              "y": 833,
+              "duration": 0.01
+            }
+          ],
+          "next_flow": 4
+        },
+        {
+          "name": "到顶部",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "scroll",
+              "name": "到顶部",
+              "x": 1023,
+              "y": 833,
+              "direction": "up",
+              "clicks": 1,
+              "interval": 0.1,
+              "delta_mul": 31.0
+            }
+          ],
+          "next_flow": 5
+        },
+        {
+          "name": "预设初始位置",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "scroll",
+              "name": "预设初始位置",
+              "x": 1023,
+              "y": 833,
+              "direction": "down",
+              "clicks": 1,
+              "interval": 0.1,
+              "delta_mul": 1.4
+            }
+          ],
+          "next_flow": 6
+        },
+        {
+          "name": "选择难度",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_loop",
+              "name": "选择难度",
+              "region": [
+                1128,
+                588,
+                1441,
+                1086
+              ],
+              "keywords": "难度25",
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "offset",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 1.0,
+              "max_retries": 20,
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "pre_action": {
+                "type": "scroll",
+                "name": "滚轮",
+                "x": 1023,
+                "y": 833,
+                "direction": "down",
+                "clicks": 1,
+                "interval": 0.1,
+                "delta_mul": "0.4"
+              }
+            }
+          ],
+          "next_flow": 7
+        },
+        {
+          "name": "固定等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 3.0
+            }
+          ],
+          "next_flow": 8
+        },
+        {
+          "name": "基本卡片",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/基本卡片.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 0.1
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "f4",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            },
+            {
+              "type": "ocr_click",
+              "name": "OCR点击",
+              "region": [
+                608,
+                180,
+                658,
+                209
+              ],
+              "keywords": "菜单",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 414,
+                  "abs_y": 275,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1048,
+                  "abs_y": 619,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1769,
+                  "abs_y": 1065,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1775,
+                  "abs_y": 1156,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1777,
+                  "abs_y": 1244,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2065,
+                  "abs_y": 1247,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1783,
+                  "abs_y": 1065,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1771,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1777,
+                  "abs_y": 1249,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2066,
+                  "abs_y": 1240,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1774,
+                  "abs_y": 1062,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1778,
+                  "abs_y": 1149,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1780,
+                  "abs_y": 1235,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 882,
+                  "abs_y": 316,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": false
+            }
+          ],
+          "next_flow": 9
+        },
+        {
+          "name": "还原lanren",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 1.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE_lanren.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 10
+        },
+        {
+          "name": "最小化war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "最小化war3",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 11
+        },
+        {
+          "name": "点击屏幕1",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 2.0
+            }
+          ],
+          "next_flow": 12
+        },
+        {
+          "name": "转职1前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 60.0
+            }
+          ],
+          "next_flow": 13
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 14
+        },
+        {
+          "name": "转职1",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "img_loop",
+              "name": "截图循环检测",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1870,
+                  "abs_y": 1207,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.2,
+              "max_retries": 999,
+              "pre_action": null
+            }
+          ],
+          "next_flow": 15
+        },
+        {
+          "name": "最小化",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "最小化",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 16
+        },
+        {
+          "name": "转职2前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 400.0
+            }
+          ],
+          "next_flow": 17
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 18
+        },
+        {
+          "name": "转职2",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "img_loop",
+              "name": "截图循环检测",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1083,
+                  "abs_y": 663,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1998,
+                  "abs_y": 1207,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.2,
+              "max_retries": 999,
+              "pre_action": null
+            }
+          ],
+          "next_flow": 19
+        },
+        {
+          "name": "最小化",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 20
+        },
+        {
+          "name": "难20速通",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 600.0
+            }
+          ],
+          "next_flow": 22,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "转职3全流程",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 600.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            },
+            {
+              "type": "img_loop",
+              "name": "转职3",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1083,
+                  "abs_y": 663,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2067,
+                  "abs_y": 1241,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1784,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2004,
+                  "abs_y": 1207,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.1,
+              "max_retries": 999,
+              "pre_action": null
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 22
+        },
+        {
+          "name": "结束前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 653.0
+            }
+          ],
+          "next_flow": 23
+        },
+        {
+          "name": "点击屏幕2",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 2.0
+            }
+          ],
+          "next_flow": 24
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min_lanren.py",
+              "run_as_admin": false,
+              "wait_seconds": 0.0
+            },
+            {
+              "type": "launch_app",
+              "name": "还原war3",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            }
+          ],
+          "next_flow": 25
+        },
+        {
+          "name": "游戏结束",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "游戏结束",
+              "region": [
+                1080,
+                378,
+                1460,
+                492
+              ],
+              "keywords": "挑战成功",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1280,
+                  "abs_y": 891,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1074,
+                  "abs_y": 665,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 319,
+                  "abs_y": 271,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 416,
+                  "abs_y": 268,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 979,
+                  "abs_y": 1145,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 990,
+                  "abs_y": 535,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 0.1,
+              "max_retries": 9999,
+              "jitter": false
+            }
+          ],
+          "next_flow": 26
+        },
+        {
+          "name": "B基本挑战",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "c",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "f1",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "d",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 27,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "B自动退出",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "ocr_poll",
+              "name": "轮询OCR",
+              "region": [
+                715,
+                620,
+                1146,
+                952
+              ],
+              "keywords": "积分",
+              "interval": 0.2,
+              "max_count": 50,
+              "on_timeout": "continue",
+              "click_on_match": false,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "2",
+              "language": "chi_sim"
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "f10",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "e",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "x",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                },
+                {
+                  "key": "x",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 0,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "100",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "OCR点击",
+              "region": [
+                1409,
+                805,
+                1608,
+                887
+              ],
+              "keywords": "开始游戏",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": true
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 32.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 3.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\restore_platform.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\pet_explore.pyw",
+              "run_as_admin": true,
+              "wait_seconds": 100.0
+            }
+          ]
+        },
+        {
+          "name": "101",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 1800.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 10.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/退出游戏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            }
+          ]
+        },
+        {
+          "name": "102",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 12600.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 15.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\auto_war3.py",
+              "run_as_admin": true,
+              "wait_seconds": 100.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "不思议挂机C",
+      "flows": [
+        {
+          "name": "开始游戏",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "开始游戏",
+              "region": [
+                1487,
+                848,
+                1573,
+                875
+              ],
+              "keywords": "开始游戏",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 9999,
+              "jitter": true
+            }
+          ],
+          "next_flow": 1
+        },
+        {
+          "name": "等待游戏加载",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 20.0
+            }
+          ],
+          "next_flow": 2
+        },
+        {
+          "name": "游戏加载完毕",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_loop",
+              "name": "游戏加载完毕",
+              "region": [
+                1166,
+                258,
+                1319,
+                313
+              ],
+              "keywords": "请选择难度",
+              "click_on_match": false,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "double"
+                }
+              ],
+              "check_interval": 1.0,
+              "max_retries": 9999,
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "pre_action": null
+            }
+          ],
+          "next_flow": 3
+        },
+        {
+          "name": "鼠标移动",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "mouse_move",
+              "name": "鼠标移动",
+              "x": 1023,
+              "y": 833,
+              "duration": 0.01
+            }
+          ],
+          "next_flow": 4
+        },
+        {
+          "name": "到顶部",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "scroll",
+              "name": "到顶部",
+              "x": 1023,
+              "y": 833,
+              "direction": "up",
+              "clicks": 1,
+              "interval": 0.1,
+              "delta_mul": 31.0
+            }
+          ],
+          "next_flow": 5
+        },
+        {
+          "name": "预设初始位置",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "scroll",
+              "name": "预设初始位置",
+              "x": 1023,
+              "y": 833,
+              "direction": "down",
+              "clicks": 1,
+              "interval": 0.1,
+              "delta_mul": 1.9
+            }
+          ],
+          "next_flow": 6
+        },
+        {
+          "name": "选择难度",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_loop",
+              "name": "选择难度",
+              "region": [
+                1128,
+                588,
+                1441,
+                1086
+              ],
+              "keywords": "难度33",
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "offset",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 1.0,
+              "max_retries": 20,
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "pre_action": {
+                "type": "scroll",
+                "name": "滚轮",
+                "x": 1023,
+                "y": 833,
+                "direction": "down",
+                "clicks": 1,
+                "interval": 0.1,
+                "delta_mul": "0.4"
+              }
+            }
+          ],
+          "next_flow": 7
+        },
+        {
+          "name": "固定等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 3.0
+            }
+          ],
+          "next_flow": 8
+        },
+        {
+          "name": "基本卡片",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/基本卡片.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 0.1
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "f4",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.05
+                }
+              ]
+            }
+          ],
+          "next_flow": 9
+        },
+        {
+          "name": "固定等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 1.0
+            }
+          ],
+          "next_flow": 10
+        },
+        {
+          "name": "最小化war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "最小化war3",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            }
+          ],
+          "next_flow": 11
+        },
+        {
+          "name": "点击屏幕1",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 2.0
+            }
+          ],
+          "next_flow": 12
+        },
+        {
+          "name": "转职1前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 60.0
+            }
+          ],
+          "next_flow": 13
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 14
+        },
+        {
+          "name": "转职1",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "img_loop",
+              "name": "截图循环检测",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1999,
+                  "abs_y": 1361,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.2,
+              "max_retries": 999,
+              "pre_action": null
+            }
+          ],
+          "next_flow": 15
+        },
+        {
+          "name": "最小化",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "最小化",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 16
+        },
+        {
+          "name": "转职2前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 400.0
+            }
+          ],
+          "next_flow": 17
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 18
+        },
+        {
+          "name": "转职2",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "img_loop",
+              "name": "截图循环检测",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1083,
+                  "abs_y": 663,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1998,
+                  "abs_y": 1361,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.2,
+              "max_retries": 999,
+              "pre_action": null
+            }
+          ],
+          "next_flow": 19
+        },
+        {
+          "name": "最小化",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 20
+        },
+        {
+          "name": "转职3全流程",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 600.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            },
+            {
+              "type": "img_loop",
+              "name": "转职3",
+              "region": [
+                659,
+                872,
+                1149,
+                1053
+              ],
+              "template_path": "D:/3eyes/Python/scripts/转职挑战.png",
+              "threshold": 50,
+              "click_on_match": true,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.05,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1083,
+                  "abs_y": 663,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2067,
+                  "abs_y": 1241,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1772,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1967,
+                  "abs_y": 1057,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1968,
+                  "abs_y": 1154,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1776,
+                  "abs_y": 1246,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "right"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 2004,
+                  "abs_y": 1361,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "check_interval": 0.1,
+              "max_retries": 999,
+              "pre_action": null
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 21
+        },
+        {
+          "name": "结束前等待",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 653.0
+            }
+          ],
+          "next_flow": 22
+        },
+        {
+          "name": "点击屏幕2",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 2.0
+            }
+          ],
+          "next_flow": 23
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "还原war3",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            }
+          ],
+          "next_flow": 24
+        },
+        {
+          "name": "游戏结束",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "游戏结束",
+              "region": [
+                1080,
+                378,
+                1460,
+                492
+              ],
+              "keywords": "挑战成功",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1280,
+                  "abs_y": 891,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1074,
+                  "abs_y": 665,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 319,
+                  "abs_y": 271,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 416,
+                  "abs_y": 268,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 979,
+                  "abs_y": 1145,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 990,
+                  "abs_y": 535,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 0.1,
+              "max_retries": 9999,
+              "jitter": false
+            }
+          ],
+          "next_flow": 25
+        },
+        {
+          "name": "A基本挑战1",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "q",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "w",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "e",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "r",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "a",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "s",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "d",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "f",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                },
+                {
+                  "key": "c",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                }
+              ]
+            }
+          ],
+          "next_flow": 26,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "A基本挑战2",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "img_click",
+              "name": "截图点击",
+              "region": [
+                656,
+                1180,
+                789,
+                1222
+              ],
+              "template_path": "D:/3eyes/Python/scripts/存档.png",
+              "threshold": 80,
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 963,
+                  "abs_y": 668,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": false
+            },
+            {
+              "type": "keyboard",
+              "name": "键盘命令",
+              "key_actions": [
+                {
+                  "key": "q",
+                  "action": "press",
+                  "count": 1,
+                  "interval": 0.01
+                }
+              ]
+            }
+          ],
+          "next_flow": 27,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "A手动退出",
+          "loop_count": 1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 200.0
+            }
+          ],
+          "next_flow": 28
+        },
+        {
+          "name": "还原war3",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 0.0
+            }
+          ],
+          "next_flow": 0,
+          "pre_delay": 0.0
+        },
+        {
+          "name": "100",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "OCR点击",
+              "region": [
+                1409,
+                805,
+                1608,
+                887
+              ],
+              "keywords": "开始游戏",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "match_center",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 0,
+                  "abs_y": 0,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": true
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 32.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\min.py",
+              "run_as_admin": true,
+              "wait_seconds": 3.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\restore_platform.py",
+              "run_as_admin": true,
+              "wait_seconds": 1.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\pet_explore.pyw",
+              "run_as_admin": true,
+              "wait_seconds": 100.0
+            }
+          ]
+        },
+        {
+          "name": "101",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 1800.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\RESTORE.py",
+              "run_as_admin": true,
+              "wait_seconds": 10.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/退出游戏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            }
+          ]
+        },
+        {
+          "name": "102",
+          "loop_count": 1,
+          "next_flow": -1,
+          "pre_delay": 0.0,
+          "steps": [
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 12600.0
+            },
+            {
+              "type": "run_script",
+              "name": "执行录制脚本",
+              "script_path": "D:/3eyes/Python/scripts/亮屏.json",
+              "speed": 1.0,
+              "jitter_ms": 50,
+              "max_gap": 0.0
+            },
+            {
+              "type": "wait",
+              "name": "固定等待",
+              "seconds": 15.0
+            },
+            {
+              "type": "launch_app",
+              "name": "启动程序",
+              "app_path": "D:\\3eyes\\Python\\auto_war3.py",
+              "run_as_admin": true,
+              "wait_seconds": 100.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "装备背包",
+      "flows": [
+        {
+          "name": "流程1",
+          "loop_count": 1,
+          "steps": [
+            {
+              "type": "ocr_click",
+              "name": "OCR点击",
+              "region": [
+                1409,
+                384,
+                1564,
+                418
+              ],
+              "keywords": "装备背包",
+              "click_actions": [
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1293,
+                  "abs_y": 479,
+                  "count": 2,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.1,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1383,
+                  "abs_y": 479,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1473,
+                  "abs_y": 479,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1563,
+                  "abs_y": 479,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1653,
+                  "abs_y": 479,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1293,
+                  "abs_y": 569,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1383,
+                  "abs_y": 569,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1473,
+                  "abs_y": 569,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1563,
+                  "abs_y": 569,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1653,
+                  "abs_y": 569,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1293,
+                  "abs_y": 659,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1383,
+                  "abs_y": 659,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1473,
+                  "abs_y": 659,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1563,
+                  "abs_y": 659,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1653,
+                  "abs_y": 659,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1293,
+                  "abs_y": 749,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1383,
+                  "abs_y": 749,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1473,
+                  "abs_y": 749,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1563,
+                  "abs_y": 749,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1653,
+                  "abs_y": 749,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1293,
+                  "abs_y": 839,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1383,
+                  "abs_y": 839,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1473,
+                  "abs_y": 839,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1563,
+                  "abs_y": 839,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1653,
+                  "abs_y": 839,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1228,
+                  "abs_y": 464,
+                  "count": 0,
+                  "interval": 0.1,
+                  "click_type": "single"
+                },
+                {
+                  "pre_delay": 0.0,
+                  "pos_mode": "abs",
+                  "offset_x": 0,
+                  "offset_y": 0,
+                  "abs_x": 1477,
+                  "abs_y": 900,
+                  "count": 1,
+                  "interval": 0.1,
+                  "click_type": "single"
+                }
+              ],
+              "ocr_engine": "paddle",
+              "ocr_scale": "1",
+              "language": "chi_sim",
+              "retry_interval": 1.0,
+              "max_retries": 30,
+              "jitter": false
+            }
+          ],
+          "next_flow": -1,
+          "pre_delay": 0.0
+        }
+      ]
+    }
+  ],
+  "window_geometry": "1239x888+1180+160",
+  "hotkey_start": "F11",
+  "hotkey_stop": "F12",
+  "hotkey_pause": "",
+  "hotkey_rec_toggle": "F6"
+}
