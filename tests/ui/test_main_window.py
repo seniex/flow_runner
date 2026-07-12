@@ -184,3 +184,18 @@ def test_flow_tree_toolbar_adds_and_renames_groups_and_workflows(qtbot):
 
     assert window.view_model.project.groups[-1].name == "组B"
     assert window.view_model.project.groups[-1].workflows[0].name == "流程B1新"
+
+
+def test_settings_action_updates_project_settings_through_view_model(qtbot):
+    updated_settings = {
+        "ocr_engine": "paddle",
+        "paddle_exe_path": "PaddleOCR-json_v1.4.1/PaddleOCR-json.exe",
+        "hotkeys": {"start": "F10", "stop": "F11", "pause": "", "record": ""},
+    }
+    window = MainWindow(sample_project(), edit_settings=lambda current: updated_settings)
+    qtbot.addWidget(window)
+
+    window.settings_action.trigger()
+
+    assert window.view_model.project.settings == updated_settings
+    assert window.view_model.dirty

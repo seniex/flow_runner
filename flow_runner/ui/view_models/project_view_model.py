@@ -21,6 +21,9 @@ class ProjectViewModel(QObject):
         self._saved_project = self.project
         self.dirty = False
 
+    def update_settings(self, settings: dict[str, object]) -> None:
+        self._commit(self.project.model_copy(update={"settings": dict(settings)}))
+
     def add_group(self, group: FlowGroup) -> None:
         self._commit(self.project.model_copy(update={"groups": [*self.project.groups, group]}))
 

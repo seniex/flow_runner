@@ -132,8 +132,11 @@ def create_application(
         registry=registry,
     )
     recorder = RecordingRecorder(listener_factory=recording_listener_factory)
+    configured_hotkeys = hotkey_config or HotkeyConfig.model_validate(
+        project.settings.get("hotkeys", {})
+    )
     hotkey_service = HotkeyService(
-        hotkey_config or HotkeyConfig(),
+        configured_hotkeys,
         actions={
             "start": window.startRequested.emit,
             "pause": window.pauseRequested.emit,

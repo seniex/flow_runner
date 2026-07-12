@@ -10,6 +10,8 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import RunnerState
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
+from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
+from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.panels.step_list_panel import StepListPanel
@@ -35,6 +37,7 @@ class MainWindow(QMainWindow):
         create_step: Callable[[], AutomationStep | None] | None = None,
         request_name: Callable[[str, str], str | None] | None = None,
         confirm_delete: Callable[[str], bool] | None = None,
+        edit_settings: Callable[[dict[str, object]], dict[str, object] | None] | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -47,6 +50,7 @@ class MainWindow(QMainWindow):
         self.create_step = create_step or self._prompt_new_step
         self.request_name = request_name or self._request_name
         self.confirm_delete = confirm_delete or self._confirm_delete
+        self.edit_settings = edit_settings or self._prompt_settings
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
         self.property_panel = PropertyPanel()
@@ -89,6 +93,8 @@ class MainWindow(QMainWindow):
         self.rename_flow_action.setObjectName("renameFlowAction")
         self.delete_flow_action = QAction("删除组/流程", self)
         self.delete_flow_action.setObjectName("deleteFlowAction")
+        self.settings_action = QAction("设置", self)
+        self.settings_action.setObjectName("projectSettingsAction")
         self.project_toolbar.addActions(
             [
                 self.save_action,
@@ -97,6 +103,7 @@ class MainWindow(QMainWindow):
                 self.add_workflow_action,
                 self.rename_flow_action,
                 self.delete_flow_action,
+                self.settings_action,
                 self.add_step_action,
                 self.remove_step_action,
                 self.move_step_up_action,
@@ -129,6 +136,7 @@ class MainWindow(QMainWindow):
         self.add_workflow_action.triggered.connect(self._add_workflow)
         self.rename_flow_action.triggered.connect(self._rename_selected_flow)
         self.delete_flow_action.triggered.connect(self._delete_selected_flow)
+        self.settings_action.triggered.connect(self._edit_project_settings)
         self.startRequested.connect(self._start_selected_workflow)
         self.pauseRequested.connect(self._toggle_pause)
         self.stopRequested.connect(self._stop_runtime)
@@ -310,6 +318,20 @@ class MainWindow(QMainWindow):
             QMessageBox.question(self, "确认删除", f"确定删除{label}？")
             is QMessageBox.StandardButton.Yes
         )
+
+    def _edit_project_settings(self) -> None:
+        settings = self.edit_settings(dict(self.view_model.project.settings))
+        if settings is None:
+            return
+        self.view_model.update_settings(settings)
+        self.statusBar().showMessage("设置已更新；OCR 引擎和全局热键将在下次启动时生效")
+
+    def _prompt_settings(self, settings: dict[str, object]) -> dict[str, object] | None:
+        hotkeys = HotkeyConfig.model_validate(settings.get("hotkeys", {}))
+        dialog = SettingsDialog(hotkeys, settings)
+        if dialog.exec() != SettingsDialog.DialogCode.Accepted:
+            return None
+        return dialog.project_settings()
 
     def _start_selected_workflow(self) -> None:
         if self.runner_bridge is None:

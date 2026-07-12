@@ -211,3 +211,35 @@ def test_application_selects_paddle_ocr_from_project_settings(qtbot, tmp_path):
     assert composition.ocr_client is not None
     assert composition.ocr_client.executable == executable.resolve()
     assert isinstance(composition.registry.condition("vision.ocr").engine, PaddleJsonOcr)
+
+
+def test_application_loads_hotkeys_from_project_settings(qtbot, tmp_path):
+    created = []
+
+    class Listener:
+        def __init__(self, on_press):
+            self.on_press = on_press
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    def factory(on_press):
+        listener = Listener(on_press)
+        created.append(listener)
+        return listener
+
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(
+        Project(
+            name="p",
+            settings={"hotkeys": {"start": "F10", "stop": "", "pause": "", "record": ""}},
+        )
+    )
+    composition = create_application([], project_path=path, hotkey_listener_factory=factory)
+    qtbot.addWidget(composition.window)
+    composition.start_services()
+
+    assert composition.hotkey_service.bindings == {"F10": "start"}
