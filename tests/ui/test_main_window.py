@@ -167,3 +167,20 @@ def test_step_toolbar_adds_moves_removes_and_undoes_steps(qtbot):
 
     window.undo_action.trigger()
     assert window.view_model.project.groups[0].workflows[0].steps[1].id == added.id
+
+
+def test_flow_tree_toolbar_adds_and_renames_groups_and_workflows(qtbot):
+    names = iter(["组B", "流程B1", "流程B1新"])
+    window = MainWindow(sample_project(), request_name=lambda kind, current="": next(names))
+    qtbot.addWidget(window)
+
+    window.add_group_action.trigger()
+    new_group = window.view_model.project.groups[-1]
+    window.flow_tree.select_group(new_group.id)
+    window.add_workflow_action.trigger()
+    new_workflow = window.view_model.project.groups[-1].workflows[0]
+    window.flow_tree.select_workflow(new_workflow.id)
+    window.rename_flow_action.trigger()
+
+    assert window.view_model.project.groups[-1].name == "组B"
+    assert window.view_model.project.groups[-1].workflows[0].name == "流程B1新"

@@ -4,11 +4,11 @@ from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent
-from PySide6.QtWidgets import QMainWindow, QMessageBox, QSplitter, QToolBar
+from PySide6.QtWidgets import QInputDialog, QMainWindow, QMessageBox, QSplitter, QToolBar
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import RunnerState
-from flow_runner.domain.project import AutomationStep, Project, Workflow
+from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
@@ -33,6 +33,8 @@ class MainWindow(QMainWindow):
         confirm_close: Callable[[], Literal["save", "discard", "cancel"]] | None = None,
         registry: CapabilityRegistry | None = None,
         create_step: Callable[[], AutomationStep | None] | None = None,
+        request_name: Callable[[str, str], str | None] | None = None,
+        confirm_delete: Callable[[str], bool] | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -43,6 +45,8 @@ class MainWindow(QMainWindow):
         self.confirm_close = confirm_close or self._confirm_dirty_close
         self.registry = registry
         self.create_step = create_step or self._prompt_new_step
+        self.request_name = request_name or self._request_name
+        self.confirm_delete = confirm_delete or self._confirm_delete
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
         self.property_panel = PropertyPanel()
@@ -52,11 +56,13 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.property_panel)
         self.setCentralWidget(splitter)
         self.flow_tree.workflowSelected.connect(self._select_workflow)
+        self.flow_tree.groupSelected.connect(self._select_group)
         self.step_list.stepSelected.connect(self._select_step)
         self.view_model.projectChanged.connect(self._project_changed)
         self.property_panel.stepChanged.connect(self._apply_step_edit)
         self.property_panel.validationFailed.connect(self.statusBar().showMessage)
         self._workflow_id: UUID | None = None
+        self._group_id: UUID | None = None
         self.runtime_toolbar = QToolBar("运行", self)
         self.runtime_toolbar.setObjectName("runtimeToolbar")
         self.addToolBar(self.runtime_toolbar)
@@ -75,10 +81,22 @@ class MainWindow(QMainWindow):
         self.move_step_up_action.setObjectName("moveStepUpAction")
         self.move_step_down_action = QAction("下移步骤", self)
         self.move_step_down_action.setObjectName("moveStepDownAction")
+        self.add_group_action = QAction("新增组", self)
+        self.add_group_action.setObjectName("addGroupAction")
+        self.add_workflow_action = QAction("新增流程", self)
+        self.add_workflow_action.setObjectName("addWorkflowAction")
+        self.rename_flow_action = QAction("重命名", self)
+        self.rename_flow_action.setObjectName("renameFlowAction")
+        self.delete_flow_action = QAction("删除组/流程", self)
+        self.delete_flow_action.setObjectName("deleteFlowAction")
         self.project_toolbar.addActions(
             [
                 self.save_action,
                 self.undo_action,
+                self.add_group_action,
+                self.add_workflow_action,
+                self.rename_flow_action,
+                self.delete_flow_action,
                 self.add_step_action,
                 self.remove_step_action,
                 self.move_step_up_action,
@@ -107,6 +125,10 @@ class MainWindow(QMainWindow):
         self.remove_step_action.triggered.connect(self._remove_selected_step)
         self.move_step_up_action.triggered.connect(lambda: self._move_selected_step(-1))
         self.move_step_down_action.triggered.connect(lambda: self._move_selected_step(1))
+        self.add_group_action.triggered.connect(self._add_group)
+        self.add_workflow_action.triggered.connect(self._add_workflow)
+        self.rename_flow_action.triggered.connect(self._rename_selected_flow)
+        self.delete_flow_action.triggered.connect(self._delete_selected_flow)
         self.startRequested.connect(self._start_selected_workflow)
         self.pauseRequested.connect(self._toggle_pause)
         self.stopRequested.connect(self._stop_runtime)
@@ -118,8 +140,15 @@ class MainWindow(QMainWindow):
 
     def _select_workflow(self, workflow_id: UUID) -> None:
         workflow = self._workflow(workflow_id)
+        self._group_id = self._group_for_workflow(workflow_id).id
         self._workflow_id = workflow.id
         self.step_list.set_workflow(workflow)
+
+    def _select_group(self, group_id: UUID) -> None:
+        self._group_id = group_id
+        self._workflow_id = None
+        self.step_list.set_workflow(Workflow(name="空"))
+        self.property_panel.clear_step()
 
     def _select_step(self, step_id: UUID) -> None:
         if self._workflow_id is None:
@@ -135,6 +164,12 @@ class MainWindow(QMainWindow):
                     return workflow
         raise KeyError(workflow_id)
 
+    def _group_for_workflow(self, workflow_id: UUID) -> FlowGroup:
+        for group in self.view_model.project.groups:
+            if any(workflow.id == workflow_id for workflow in group.workflows):
+                return group
+        raise KeyError(workflow_id)
+
     def _apply_step_edit(self, step: object) -> None:
         if self._workflow_id is None or not isinstance(step, AutomationStep):
             return
@@ -144,6 +179,11 @@ class MainWindow(QMainWindow):
         self.save_action.setEnabled(self.view_model.dirty)
         self.flow_tree.set_project(project)
         if self._workflow_id is None:
+            if self._group_id is not None:
+                try:
+                    self.flow_tree.select_group(self._group_id)
+                except KeyError:
+                    self._group_id = None
             return
         try:
             workflow = self._workflow(self._workflow_id)
@@ -206,6 +246,70 @@ class MainWindow(QMainWindow):
         if dialog.exec() != GuidedAddDialog.DialogCode.Accepted:
             return None
         return dialog.step()
+
+    def _add_group(self) -> None:
+        name = self.request_name("group", "")
+        if not name:
+            return
+        group = FlowGroup(name=name)
+        self.view_model.add_group(group)
+        self.flow_tree.select_group(group.id)
+
+    def _add_workflow(self) -> None:
+        if self._group_id is None:
+            self.statusBar().showMessage("请先选择流程组")
+            return
+        name = self.request_name("workflow", "")
+        if not name:
+            return
+        workflow = Workflow(name=name)
+        self.view_model.add_workflow(self._group_id, workflow)
+        self.flow_tree.select_workflow(workflow.id)
+
+    def _rename_selected_flow(self) -> None:
+        if self._workflow_id is not None:
+            workflow = self._workflow(self._workflow_id)
+            name = self.request_name("workflow", workflow.name)
+            if name:
+                self.view_model.rename_workflow(workflow.id, name)
+            return
+        if self._group_id is not None:
+            group = next(
+                group for group in self.view_model.project.groups if group.id == self._group_id
+            )
+            name = self.request_name("group", group.name)
+            if name:
+                self.view_model.rename_group(group.id, name)
+            return
+        self.statusBar().showMessage("请先选择流程组或流程")
+
+    def _delete_selected_flow(self) -> None:
+        if self._workflow_id is not None:
+            workflow = self._workflow(self._workflow_id)
+            if self.confirm_delete(f"流程“{workflow.name}”"):
+                self.view_model.remove_workflow(workflow.id)
+                self._workflow_id = None
+            return
+        if self._group_id is not None:
+            group = next(
+                group for group in self.view_model.project.groups if group.id == self._group_id
+            )
+            if self.confirm_delete(f"流程组“{group.name}”"):
+                self.view_model.remove_group(group.id)
+                self._group_id = None
+            return
+        self.statusBar().showMessage("请先选择流程组或流程")
+
+    def _request_name(self, kind: str, current: str) -> str | None:
+        title = "流程组名称" if kind == "group" else "流程名称"
+        value, accepted = QInputDialog.getText(self, title, title, text=current)
+        return value.strip() if accepted and value.strip() else None
+
+    def _confirm_delete(self, label: str) -> bool:
+        return (
+            QMessageBox.question(self, "确认删除", f"确定删除{label}？")
+            is QMessageBox.StandardButton.Yes
+        )
 
     def _start_selected_workflow(self) -> None:
         if self.runner_bridge is None:
