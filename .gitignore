@@ -17,6 +17,7 @@ dist/
 # Runtime output
 log/
 *.log
+PaddleOCR-json_v*/
 
 # Local visual brainstorming artifacts
 .superpowers/

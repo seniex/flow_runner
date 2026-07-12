@@ -25,9 +25,10 @@ from flow_runner.capabilities.conditions.time import TimeCondition
 from flow_runner.capabilities.conditions.variables import VariableCondition
 from flow_runner.capabilities.conditions.window import WindowCondition
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import Project
 from flow_runner.engine.context import StepContext
-from flow_runner.engine.perception import PerceptionService
+from flow_runner.engine.perception import OcrProvider, PerceptionService
 from flow_runner.engine.resources import ResourceCoordinator
 from flow_runner.engine.runner import Runner
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
@@ -39,6 +40,7 @@ from flow_runner.infrastructure.input.recording import (
     RecordingPlayer,
     RecordingRecorder,
 )
+from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
@@ -62,6 +64,7 @@ class ApplicationComposition:
     recorder: RecordingRecorder
     recording_path: Path
     resource_coordinator: ResourceCoordinator
+    ocr_client: PaddleJsonProcessClient | None
 
     def start_services(self) -> None:
         self.hotkey_service.start()
@@ -72,6 +75,8 @@ class ApplicationComposition:
             self.window.set_recording_state(False)
         self.hotkey_service.stop()
         self.runner_bridge.shutdown()
+        if self.ocr_client is not None:
+            self.ocr_client.stop()
 
     def toggle_recording(self) -> None:
         if self.recorder.is_recording:
@@ -100,14 +105,15 @@ def create_application(
     project = store.load() if path.exists() else Project(name="新项目")
     perception = PerceptionService(DesktopCapture())
     resource_coordinator = ResourceCoordinator(perception)
-    registry = _build_registry(perception, asyncio.sleep)
+    ocr_provider, ocr_client = _build_ocr_provider(project, path.parent)
+    registry = _build_registry(perception, asyncio.sleep, ocr_provider)
 
     def step_executor_factory(token: object) -> StepExecutor:
         from flow_runner.engine.cancellation import CancellationToken
 
         if not isinstance(token, CancellationToken):
             raise TypeError("runner supplied an invalid cancellation token")
-        execution_registry = _build_registry(perception, token.sleep)
+        execution_registry = _build_registry(perception, token.sleep, ocr_provider)
         return StepExecutor(
             StepRuntime(
                 registry=execution_registry,
@@ -144,6 +150,7 @@ def create_application(
         recorder=recorder,
         recording_path=recording_path or path.parent / "recordings" / "latest.json",
         resource_coordinator=resource_coordinator,
+        ocr_client=ocr_client,
     )
     window.recordRequested.connect(lambda: composition.toggle_recording())
     app.aboutToQuit.connect(lambda: composition.shutdown())
@@ -153,10 +160,11 @@ def create_application(
 def _build_registry(
     perception: PerceptionService,
     sleep: Callable[[float], Awaitable[None]],
+    ocr_provider: OcrProvider,
 ) -> CapabilityRegistry:
     registry = CapabilityRegistry()
     for condition in (
-        OcrCondition(perception, TesseractOcr()),
+        OcrCondition(perception, ocr_provider),
         ImageCondition(perception),
         PixelCondition(perception),
         RegionChangeCondition(perception),
@@ -175,6 +183,25 @@ def _build_registry(
     registry.register_action(PlaybackScriptAction(RecordingPlayer(sleep=sleep)))
     registry.register_action(WindowAction(Win32WindowController()))
     return registry
+
+
+def _build_ocr_provider(
+    project: Project,
+    project_directory: Path,
+) -> tuple[OcrProvider, PaddleJsonProcessClient | None]:
+    engine = str(project.settings.get("ocr_engine", "tesseract")).strip().casefold()
+    if engine == "tesseract":
+        return TesseractOcr(), None
+    if engine != "paddle":
+        raise ConfigurationError(f"unsupported OCR engine: {engine}")
+    configured_path = str(project.settings.get("paddle_exe_path", "")).strip()
+    if not configured_path:
+        raise ConfigurationError("paddle_exe_path is required when ocr_engine is paddle")
+    executable = Path(configured_path)
+    if not executable.is_absolute():
+        executable = project_directory / executable
+    client = PaddleJsonProcessClient(executable)
+    return PaddleJsonOcr(client), client
 
 
 def main() -> int:

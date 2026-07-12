@@ -1,3 +1,6 @@
+import io
+import json
+
 import pytest
 from PIL import Image, ImageDraw
 
@@ -8,7 +11,7 @@ from flow_runner.domain.errors import ConditionError
 from flow_runner.engine.perception import PerceptionService
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
 from flow_runner.infrastructure.ocr.base import OcrItem, OcrObservation
-from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
+from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 
 
@@ -149,3 +152,59 @@ async def test_paddle_json_adapter_normalizes_client_response():
         text="战斗",
         items=[OcrItem(text="战斗", bounds=(5, 6, 25, 16), confidence=0.91)],
     )
+
+
+@pytest.mark.asyncio
+async def test_paddle_json_process_client_sends_image_request_and_stops(tmp_path):
+    created = []
+
+    class Process:
+        def __init__(self):
+            self.stdin = io.StringIO()
+            self.stdout = io.StringIO(
+                "PaddleOCR-json init\n"
+                + json.dumps(
+                    {
+                        "code": 100,
+                        "data": [
+                            {
+                                "text": "开始",
+                                "score": 0.9,
+                                "box": [[1, 2], [3, 2], [3, 4], [1, 4]],
+                            }
+                        ],
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+            self.terminated = False
+
+        def poll(self):
+            return 0 if self.terminated else None
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            self.terminated = True
+
+    def factory(*args, **kwargs):
+        process = Process()
+        created.append((args, kwargs, process))
+        return process
+
+    executable = tmp_path / "PaddleOCR-json.exe"
+    executable.write_bytes(b"")
+    client = PaddleJsonProcessClient(executable, process_factory=factory)
+
+    rows = await client.recognize(Image.new("RGB", (4, 4), "white"))
+    request = json.loads(created[0][2].stdin.getvalue())
+    client.stop()
+
+    assert rows[0]["text"] == "开始"
+    assert request["image_path"].endswith(".png")
+    assert created[0][2].terminated

@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from flow_runner.app import create_application
 from flow_runner.domain.project import FlowGroup, Project, Workflow
+from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
 
@@ -188,3 +189,25 @@ def test_application_save_action_persists_property_edits(qtbot, tmp_path):
 
     assert ProjectStore(path).load().groups[0].workflows[0].steps[0].name == "new"
     assert not composition.window.view_model.dirty
+
+
+def test_application_selects_paddle_ocr_from_project_settings(qtbot, tmp_path):
+    executable = tmp_path / "PaddleOCR-json.exe"
+    executable.write_bytes(b"")
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(
+        Project(
+            name="p",
+            settings={
+                "ocr_engine": "paddle",
+                "paddle_exe_path": str(executable),
+            },
+        )
+    )
+
+    composition = create_application([], project_path=path)
+    qtbot.addWidget(composition.window)
+
+    assert composition.ocr_client is not None
+    assert composition.ocr_client.executable == executable.resolve()
+    assert isinstance(composition.registry.condition("vision.ocr").engine, PaddleJsonOcr)
