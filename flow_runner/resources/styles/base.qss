@@ -1,0 +1,35 @@
+QWidget {
+    color: #202124;
+    background: #f5f6f8;
+    font-size: 13px;
+}
+
+QPushButton[role="primary"] {
+    color: #ffffff;
+    background: #356ae6;
+    border: 1px solid #2d5bc5;
+    padding: 6px 12px;
+}
+
+QWidget[status="running"] {
+    border: 1px solid #2e8b57;
+}
+
+#flowTreePanel,
+#stepListPanel,
+#propertyPanel {
+    background: #ffffff;
+    border: 1px solid #d9dde5;
+}
+
+QTreeWidget,
+QListWidget {
+    background: #ffffff;
+    border: none;
+}
+
+QTreeWidget::item:selected,
+QListWidget::item:selected {
+    color: #ffffff;
+    background: #356ae6;
+}
