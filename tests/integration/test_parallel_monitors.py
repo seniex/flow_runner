@@ -4,8 +4,17 @@ import pytest
 
 from flow_runner.capabilities.actions.window import WindowAction, WindowActionConfig
 from flow_runner.domain.enums import StepOutcome
+from flow_runner.domain.project import (
+    AutomationStep,
+    FlowGroup,
+    ParallelBlock,
+    Project,
+    Workflow,
+)
+from flow_runner.domain.results import StepResult
 from flow_runner.engine.context import TaskContext
 from flow_runner.engine.parallel import ParallelMonitorGroup
+from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController
 
 
@@ -94,3 +103,73 @@ async def test_parallel_group_runs_children_concurrently():
     results = await group.run([child, child])
 
     assert results == [2, 2]
+
+
+@pytest.mark.asyncio
+async def test_runner_executes_explicit_parallel_block_concurrently():
+    first = Workflow(name="A", steps=[AutomationStep(name="A1")])
+    second = Workflow(name="B", steps=[AutomationStep(name="B1")])
+    block = ParallelBlock(name="监控", workflow_ids=[first.id, second.id])
+    project = Project(
+        name="parallel",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+        parallel_blocks=[block],
+    )
+    entered = 0
+    both_entered = asyncio.Event()
+    release = asyncio.Event()
+
+    class Executor:
+        async def execute(self, step):
+            nonlocal entered
+            entered += 1
+            if entered == 2:
+                both_entered.set()
+            await release.wait()
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    runner = Runner(step_executor_factory=lambda token: Executor())
+    task = asyncio.create_task(runner.start_parallel(project, block.id))
+    await asyncio.wait_for(both_entered.wait(), timeout=1)
+    release.set()
+
+    trace = await task
+
+    assert [item.step_names for item in trace.workflow_traces] == [("A1",), ("B1",)]
+    assert trace.terminal_outcome is StepOutcome.SUCCESS
+
+
+@pytest.mark.asyncio
+async def test_stopping_parallel_block_cancels_all_child_workflows():
+    first = Workflow(name="A", steps=[AutomationStep(name="A1")])
+    second = Workflow(name="B", steps=[AutomationStep(name="B1")])
+    block = ParallelBlock(name="监控", workflow_ids=[first.id, second.id])
+    project = Project(
+        name="parallel",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+        parallel_blocks=[block],
+    )
+    entered = 0
+    both_entered = asyncio.Event()
+
+    class Executor:
+        def __init__(self, token):
+            self.token = token
+
+        async def execute(self, step):
+            nonlocal entered
+            entered += 1
+            if entered == 2:
+                both_entered.set()
+            await self.token.sleep(60)
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    runner = Runner(step_executor_factory=lambda token: Executor(token))
+    task = asyncio.create_task(runner.start_parallel(project, block.id))
+    await asyncio.wait_for(both_entered.wait(), timeout=1)
+
+    runner.stop()
+    trace = await task
+
+    assert trace.terminal_outcome is StepOutcome.CANCELLED
+    assert all(item.terminal_outcome is StepOutcome.CANCELLED for item in trace.workflow_traces)

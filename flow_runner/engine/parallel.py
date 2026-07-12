@@ -1,10 +1,21 @@
 import asyncio
 from collections.abc import Callable, Coroutine, Sequence
+from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
+from flow_runner.domain.enums import StepOutcome
 from flow_runner.engine.context import TaskContext, WorkflowContext
+from flow_runner.engine.workflow_executor import WorkflowTrace
 
 ChildCallable = Callable[[], Coroutine[Any, Any, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class ParallelWorkflowTrace:
+    block_id: UUID
+    workflow_traces: tuple[WorkflowTrace, ...]
+    terminal_outcome: StepOutcome
 
 
 class ParallelMonitorGroup:

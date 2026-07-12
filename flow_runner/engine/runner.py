@@ -11,7 +11,8 @@ from flow_runner.domain.project import AutomationStep, Project, Workflow
 from flow_runner.domain.results import ConditionResult, StepResult
 from flow_runner.domain.routing import RouteRule
 from flow_runner.engine.cancellation import CancellationToken
-from flow_runner.engine.context import WorkflowContext
+from flow_runner.engine.context import TaskContext, WorkflowContext
+from flow_runner.engine.parallel import ParallelMonitorGroup, ParallelWorkflowTrace
 from flow_runner.engine.workflow_executor import (
     StepExecutorLike,
     WorkflowExecutor,
@@ -49,11 +50,7 @@ class Runner:
         self._pause_gate = asyncio.Event()
         self._pause_gate.set()
         self._set_state(RunnerState.RUNNING, workflow_id=entry_workflow_id)
-        delegate = (
-            self.step_executor_factory(self.cancellation)
-            if self.step_executor_factory is not None
-            else self.step_executor
-        )
+        delegate = self._build_step_delegate()
         if delegate is None:
             raise RuntimeError("runner step executor was not configured")
         gated_executor = _GatedStepExecutor(self, delegate)
@@ -81,6 +78,83 @@ class Runner:
             outcome=trace.terminal_outcome,
         )
         return trace
+
+    async def start_parallel(
+        self,
+        project: Project,
+        block_id: UUID,
+    ) -> ParallelWorkflowTrace:
+        if self.state in {RunnerState.RUNNING, RunnerState.PAUSED}:
+            raise FlowRunnerError("runner is already running")
+        if self.step_executor_factory is None:
+            raise FlowRunnerError("parallel execution requires a step executor factory")
+        block = next((item for item in project.parallel_blocks if item.id == block_id), None)
+        if block is None:
+            raise FlowRunnerError(f"missing parallel block {block_id}")
+
+        self.task_id = uuid4()
+        self.cancellation = CancellationToken()
+        self._pause_gate = asyncio.Event()
+        self._pause_gate.set()
+        self._set_state(RunnerState.RUNNING)
+        group = ParallelMonitorGroup(TaskContext())
+        children = []
+        for workflow_id in block.workflow_ids:
+            child_context = group.child_context()
+
+            async def run_child(
+                entry_id: UUID = workflow_id,
+                task_context: TaskContext = child_context.task,
+            ) -> WorkflowTrace:
+                delegate = self._build_step_delegate()
+                executor = WorkflowExecutor(
+                    project,
+                    _GatedStepExecutor(self, delegate),
+                    task_context=task_context,
+                    observer=self._observe_transition,
+                )
+                return await executor.run(entry_id)
+
+            children.append(run_child)
+
+        try:
+            traces = tuple(await group.run(children))
+        except Exception:
+            self._set_state(RunnerState.FAILED)
+            raise
+
+        outcomes = {trace.terminal_outcome for trace in traces}
+        if StepOutcome.CANCELLED in outcomes:
+            terminal_outcome = StepOutcome.CANCELLED
+            final_state = RunnerState.CANCELLED
+        elif StepOutcome.FAILURE in outcomes:
+            terminal_outcome = StepOutcome.FAILURE
+            final_state = RunnerState.FAILED
+        elif StepOutcome.TIMEOUT in outcomes:
+            terminal_outcome = StepOutcome.TIMEOUT
+            final_state = RunnerState.COMPLETED
+        elif StepOutcome.NOT_MATCHED in outcomes:
+            terminal_outcome = StepOutcome.NOT_MATCHED
+            final_state = RunnerState.COMPLETED
+        else:
+            terminal_outcome = StepOutcome.SUCCESS
+            final_state = RunnerState.COMPLETED
+        self._set_state(final_state, outcome=terminal_outcome)
+        return ParallelWorkflowTrace(
+            block_id=block.id,
+            workflow_traces=traces,
+            terminal_outcome=terminal_outcome,
+        )
+
+    def _build_step_delegate(self) -> StepExecutorLike:
+        delegate = (
+            self.step_executor_factory(self.cancellation)
+            if self.step_executor_factory is not None
+            else self.step_executor
+        )
+        if delegate is None:
+            raise RuntimeError("runner step executor was not configured")
+        return delegate
 
     def pause(self) -> None:
         if self.state is not RunnerState.RUNNING:

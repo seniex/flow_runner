@@ -45,6 +45,21 @@ class FlowGroup(BaseModel):
     workflows: list[Workflow] = Field(default_factory=list)
 
 
+class ParallelBlock(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: UUID = Field(default_factory=uuid4)
+    name: str = Field(min_length=1)
+    workflow_ids: list[UUID] = Field(min_length=2)
+
+    @field_validator("workflow_ids")
+    @classmethod
+    def require_unique_workflows(cls, value: list[UUID]) -> list[UUID]:
+        if len(value) != len(set(value)):
+            raise ValueError("parallel workflow ids must be unique")
+        return value
+
+
 class Project(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -52,6 +67,7 @@ class Project(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     name: str = Field(min_length=1)
     groups: list[FlowGroup] = Field(default_factory=list)
+    parallel_blocks: list[ParallelBlock] = Field(default_factory=list)
     settings: dict[str, Any] = Field(default_factory=dict)
 
     def validate_references(self) -> list[str]:
@@ -68,6 +84,16 @@ class Project(BaseModel):
                 errors.append(f"duplicate step id {step_id}")
 
         workflow_ids = set(workflow_counts)
+        block_counts = self._counts(block.id for block in self.parallel_blocks)
+        for block_id, count in block_counts.items():
+            if count > 1:
+                errors.append(f"duplicate parallel block id {block_id}")
+        for block in self.parallel_blocks:
+            for workflow_id in block.workflow_ids:
+                if workflow_id not in workflow_ids:
+                    errors.append(
+                        f"parallel block '{block.name}' references missing workflow {workflow_id}"
+                    )
         for workflow in workflows:
             own_step_ids = {step.id for step in workflow.steps}
             for step in workflow.steps:

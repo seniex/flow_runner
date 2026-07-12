@@ -9,6 +9,7 @@ from flow_runner.domain.project import Project
 class FlowTreePanel(QWidget):
     groupSelected = Signal(object)
     workflowSelected = Signal(object)
+    parallelBlockSelected = Signal(object)
 
     def __init__(self, project: Project) -> None:
         super().__init__()
@@ -19,6 +20,7 @@ class FlowTreePanel(QWidget):
         layout.addWidget(self.tree)
         self._items: dict[UUID, QTreeWidgetItem] = {}
         self._group_items: dict[UUID, QTreeWidgetItem] = {}
+        self._parallel_items: dict[UUID, QTreeWidgetItem] = {}
         self.tree.currentItemChanged.connect(self._on_current_item)
         self.set_project(project)
 
@@ -26,6 +28,7 @@ class FlowTreePanel(QWidget):
         self.tree.clear()
         self._items.clear()
         self._group_items.clear()
+        self._parallel_items.clear()
         for group in project.groups:
             group_item = QTreeWidgetItem([group.name])
             group_item.setData(0, Qt.ItemDataRole.UserRole, group.id)
@@ -39,12 +42,25 @@ class FlowTreePanel(QWidget):
                 group_item.addChild(item)
                 self._items[workflow.id] = item
             group_item.setExpanded(True)
+        if project.parallel_blocks:
+            parallel_root = QTreeWidgetItem(["并行监控"])
+            self.tree.addTopLevelItem(parallel_root)
+            for block in project.parallel_blocks:
+                item = QTreeWidgetItem([block.name])
+                item.setData(0, Qt.ItemDataRole.UserRole, block.id)
+                item.setData(0, int(Qt.ItemDataRole.UserRole) + 1, "parallel")
+                parallel_root.addChild(item)
+                self._parallel_items[block.id] = item
+            parallel_root.setExpanded(True)
 
     def select_workflow(self, workflow_id: UUID) -> None:
         self.tree.setCurrentItem(self._items[workflow_id])
 
     def select_group(self, group_id: UUID) -> None:
         self.tree.setCurrentItem(self._group_items[group_id])
+
+    def select_parallel_block(self, block_id: UUID) -> None:
+        self.tree.setCurrentItem(self._parallel_items[block_id])
 
     def _on_current_item(self, current: QTreeWidgetItem | None) -> None:
         if current is None:
@@ -55,3 +71,5 @@ class FlowTreePanel(QWidget):
             self.workflowSelected.emit(workflow_id)
         elif kind == "group" and isinstance(workflow_id, UUID):
             self.groupSelected.emit(workflow_id)
+        elif kind == "parallel" and isinstance(workflow_id, UUID):
+            self.parallelBlockSelected.emit(workflow_id)

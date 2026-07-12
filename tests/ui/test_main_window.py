@@ -1,7 +1,13 @@
 from PySide6.QtGui import QCloseEvent
 
 from flow_runner.domain.enums import StepOutcome
-from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.domain.project import (
+    AutomationStep,
+    FlowGroup,
+    ParallelBlock,
+    Project,
+    Workflow,
+)
 from flow_runner.domain.results import StepResult
 from flow_runner.engine.runner import Runner
 from flow_runner.ui.main_window import MainWindow
@@ -199,3 +205,60 @@ def test_settings_action_updates_project_settings_through_view_model(qtbot):
 
     assert window.view_model.project.settings == updated_settings
     assert window.view_model.dirty
+
+
+def test_selecting_parallel_block_starts_all_configured_workflows(qtbot):
+    first = Workflow(name="A", steps=[AutomationStep(name="A1")])
+    second = Workflow(name="B", steps=[AutomationStep(name="B1")])
+    block = ParallelBlock(name="并行", workflow_ids=[first.id, second.id])
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+        parallel_blocks=[block],
+    )
+
+    class ImmediateExecutor:
+        async def execute(self, step):
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    bridge = RunnerBridge(Runner(step_executor_factory=lambda token: ImmediateExecutor()))
+    window = MainWindow(project, runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.flow_tree.select_parallel_block(block.id)
+
+    with qtbot.waitSignal(bridge.finished, timeout=3000) as blocker:
+        window.start_action.trigger()
+
+    assert blocker.args[0].block_id == block.id
+    assert len(blocker.args[0].workflow_traces) == 2
+
+
+def test_parallel_block_toolbar_adds_and_deletes_explicit_block(qtbot):
+    project = sample_project()
+    first = project.groups[0].workflows[0]
+    second = Workflow(name="第二流程")
+    project = project.model_copy(
+        update={
+            "groups": [
+                FlowGroup(
+                    id=project.groups[0].id,
+                    name=project.groups[0].name,
+                    workflows=[first, second],
+                )
+            ]
+        }
+    )
+    block = ParallelBlock(name="并行", workflow_ids=[first.id, second.id])
+    window = MainWindow(
+        project,
+        create_parallel_block=lambda: block,
+        confirm_delete=lambda label: True,
+    )
+    qtbot.addWidget(window)
+
+    window.add_parallel_action.trigger()
+    window.flow_tree.select_parallel_block(block.id)
+    assert window.view_model.project.parallel_blocks == [block]
+
+    window.delete_parallel_action.trigger()
+    assert window.view_model.project.parallel_blocks == []

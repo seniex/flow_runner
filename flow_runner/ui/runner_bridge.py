@@ -9,7 +9,6 @@ from PySide6.QtCore import QMetaObject, QObject, Qt, Signal, Slot
 
 from flow_runner.domain.project import Project
 from flow_runner.engine.runner import Runner
-from flow_runner.engine.workflow_executor import WorkflowTrace
 from flow_runner.infrastructure.logging.events import RuntimeEvent
 from flow_runner.infrastructure.logging.sinks import EventSink
 
@@ -37,13 +36,19 @@ class RunnerBridge(QObject):
         self._messages: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
 
     def start(self, project: Project, entry_workflow_id: UUID) -> None:
+        self._start_thread("workflow", project, entry_workflow_id)
+
+    def start_parallel(self, project: Project, block_id: UUID) -> None:
+        self._start_thread("parallel", project, block_id)
+
+    def _start_thread(self, mode: str, project: Project, entry_id: UUID) -> None:
         if self._running:
             self._post("failed", "runner is already running")
             return
         self._running = True
         self._thread = threading.Thread(
             target=self._run,
-            args=(project, entry_workflow_id),
+            args=(mode, project, entry_id),
             daemon=True,
             name="FlowRunnerRuntime",
         )
@@ -77,14 +82,17 @@ class RunnerBridge(QObject):
             self._post("failed", "runner did not stop before shutdown timeout")
         self._drain_messages()
 
-    def _run(self, project: Project, entry_workflow_id: UUID) -> None:
+    def _run(self, mode: str, project: Project, entry_id: UUID) -> None:
         loop = asyncio.new_event_loop()
         self._loop = loop
         asyncio.set_event_loop(loop)
         try:
-            trace: WorkflowTrace = loop.run_until_complete(
-                self.runner.start(project, entry_workflow_id)
+            operation = (
+                self.runner.start_parallel(project, entry_id)
+                if mode == "parallel"
+                else self.runner.start(project, entry_id)
             )
+            trace = loop.run_until_complete(operation)
         except Exception as error:
             self._post("failed", str(error))
         else:

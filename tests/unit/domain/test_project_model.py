@@ -5,7 +5,13 @@ from pydantic import ValidationError
 
 from flow_runner.domain.enums import ConditionMode, StepOutcome
 from flow_runner.domain.policies import ConditionPolicy
-from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.domain.project import (
+    AutomationStep,
+    FlowGroup,
+    ParallelBlock,
+    Project,
+    Workflow,
+)
 from flow_runner.domain.routing import RouteRule, RouteTarget
 
 
@@ -74,3 +80,19 @@ def test_project_rejects_duplicate_ids():
     )
 
     assert project.validate_references() == [f"duplicate workflow id {duplicate_id}"]
+
+
+def test_parallel_block_requires_explicit_unique_existing_workflows():
+    first = Workflow(name="监控A")
+    second = Workflow(name="监控B")
+    project = Project(
+        name="并行监控",
+        groups=[FlowGroup(name="监控", workflows=[first, second])],
+        parallel_blocks=[ParallelBlock(name="双监控", workflow_ids=[first.id, second.id])],
+    )
+
+    assert project.validate_references() == []
+    with pytest.raises(ValidationError, match="at least 2"):
+        ParallelBlock(name="无效", workflow_ids=[first.id])
+    with pytest.raises(ValidationError, match="unique"):
+        ParallelBlock(name="重复", workflow_ids=[first.id, first.id])

@@ -4,7 +4,13 @@ from uuid import UUID
 from PySide6.QtCore import QObject, Signal
 
 from flow_runner.domain.errors import ConfigurationError
-from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.domain.project import (
+    AutomationStep,
+    FlowGroup,
+    ParallelBlock,
+    Project,
+    Workflow,
+)
 
 
 class ProjectViewModel(QObject):
@@ -23,6 +29,19 @@ class ProjectViewModel(QObject):
 
     def update_settings(self, settings: dict[str, object]) -> None:
         self._commit(self.project.model_copy(update={"settings": dict(settings)}))
+
+    def add_parallel_block(self, block: ParallelBlock) -> None:
+        self._commit(
+            self.project.model_copy(
+                update={"parallel_blocks": [*self.project.parallel_blocks, block]}
+            )
+        )
+
+    def remove_parallel_block(self, block_id: UUID) -> None:
+        blocks = [block for block in self.project.parallel_blocks if block.id != block_id]
+        if len(blocks) == len(self.project.parallel_blocks):
+            raise KeyError(block_id)
+        self._commit(self.project.model_copy(update={"parallel_blocks": blocks}))
 
     def add_group(self, group: FlowGroup) -> None:
         self._commit(self.project.model_copy(update={"groups": [*self.project.groups, group]}))

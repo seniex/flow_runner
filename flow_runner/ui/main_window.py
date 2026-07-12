@@ -8,9 +8,10 @@ from PySide6.QtWidgets import QInputDialog, QMainWindow, QMessageBox, QSplitter,
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import RunnerState
-from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
+from flow_runner.domain.project import AutomationStep, FlowGroup, ParallelBlock, Project, Workflow
 from flow_runner.ui.dialogs.diagnostics_dialog import DiagnosticsDialog
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
+from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
@@ -39,6 +40,7 @@ class MainWindow(QMainWindow):
         request_name: Callable[[str, str], str | None] | None = None,
         confirm_delete: Callable[[str], bool] | None = None,
         edit_settings: Callable[[dict[str, object]], dict[str, object] | None] | None = None,
+        create_parallel_block: Callable[[], ParallelBlock | None] | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -52,6 +54,7 @@ class MainWindow(QMainWindow):
         self.request_name = request_name or self._request_name
         self.confirm_delete = confirm_delete or self._confirm_delete
         self.edit_settings = edit_settings or self._prompt_settings
+        self.create_parallel_block = create_parallel_block or self._prompt_parallel_block
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
         self.property_panel = PropertyPanel()
@@ -63,12 +66,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(splitter)
         self.flow_tree.workflowSelected.connect(self._select_workflow)
         self.flow_tree.groupSelected.connect(self._select_group)
+        self.flow_tree.parallelBlockSelected.connect(self._select_parallel_block)
         self.step_list.stepSelected.connect(self._select_step)
         self.view_model.projectChanged.connect(self._project_changed)
         self.property_panel.stepChanged.connect(self._apply_step_edit)
         self.property_panel.validationFailed.connect(self.statusBar().showMessage)
         self._workflow_id: UUID | None = None
         self._group_id: UUID | None = None
+        self._parallel_block_id: UUID | None = None
         self.runtime_toolbar = QToolBar("运行", self)
         self.runtime_toolbar.setObjectName("runtimeToolbar")
         self.addToolBar(self.runtime_toolbar)
@@ -97,6 +102,10 @@ class MainWindow(QMainWindow):
         self.delete_flow_action.setObjectName("deleteFlowAction")
         self.settings_action = QAction("设置", self)
         self.settings_action.setObjectName("projectSettingsAction")
+        self.add_parallel_action = QAction("新增并行块", self)
+        self.add_parallel_action.setObjectName("addParallelBlockAction")
+        self.delete_parallel_action = QAction("删除并行块", self)
+        self.delete_parallel_action.setObjectName("deleteParallelBlockAction")
         self.project_toolbar.addActions(
             [
                 self.save_action,
@@ -106,6 +115,8 @@ class MainWindow(QMainWindow):
                 self.rename_flow_action,
                 self.delete_flow_action,
                 self.settings_action,
+                self.add_parallel_action,
+                self.delete_parallel_action,
                 self.add_step_action,
                 self.remove_step_action,
                 self.move_step_up_action,
@@ -148,6 +159,8 @@ class MainWindow(QMainWindow):
         self.rename_flow_action.triggered.connect(self._rename_selected_flow)
         self.delete_flow_action.triggered.connect(self._delete_selected_flow)
         self.settings_action.triggered.connect(self._edit_project_settings)
+        self.add_parallel_action.triggered.connect(self._add_parallel_block)
+        self.delete_parallel_action.triggered.connect(self._delete_parallel_block)
         self.startRequested.connect(self._start_selected_workflow)
         self.pauseRequested.connect(self._toggle_pause)
         self.stopRequested.connect(self._stop_runtime)
@@ -162,10 +175,19 @@ class MainWindow(QMainWindow):
         workflow = self._workflow(workflow_id)
         self._group_id = self._group_for_workflow(workflow_id).id
         self._workflow_id = workflow.id
+        self._parallel_block_id = None
         self.step_list.set_workflow(workflow)
 
     def _select_group(self, group_id: UUID) -> None:
         self._group_id = group_id
+        self._workflow_id = None
+        self._parallel_block_id = None
+        self.step_list.set_workflow(Workflow(name="空"))
+        self.property_panel.clear_step()
+
+    def _select_parallel_block(self, block_id: UUID) -> None:
+        self._parallel_block_id = block_id
+        self._group_id = None
         self._workflow_id = None
         self.step_list.set_workflow(Workflow(name="空"))
         self.property_panel.clear_step()
@@ -198,6 +220,12 @@ class MainWindow(QMainWindow):
     def _project_changed(self, project: Project) -> None:
         self.save_action.setEnabled(self.view_model.dirty)
         self.flow_tree.set_project(project)
+        if self._parallel_block_id is not None:
+            try:
+                self.flow_tree.select_parallel_block(self._parallel_block_id)
+            except KeyError:
+                self._parallel_block_id = None
+            return
         if self._workflow_id is None:
             if self._group_id is not None:
                 try:
@@ -345,9 +373,41 @@ class MainWindow(QMainWindow):
             return None
         return dialog.project_settings()
 
+    def _add_parallel_block(self) -> None:
+        block = self.create_parallel_block()
+        if block is None:
+            return
+        self.view_model.add_parallel_block(block)
+        self.flow_tree.select_parallel_block(block.id)
+
+    def _delete_parallel_block(self) -> None:
+        if self._parallel_block_id is None:
+            self.statusBar().showMessage("请先选择并行监控块")
+            return
+        block = next(
+            block
+            for block in self.view_model.project.parallel_blocks
+            if block.id == self._parallel_block_id
+        )
+        if self.confirm_delete(f"并行监控块“{block.name}”"):
+            self.view_model.remove_parallel_block(block.id)
+            self._parallel_block_id = None
+
+    def _prompt_parallel_block(self) -> ParallelBlock | None:
+        dialog = ParallelBlockDialog(self.view_model.project)
+        if dialog.exec() != ParallelBlockDialog.DialogCode.Accepted:
+            return None
+        return dialog.block()
+
     def _start_selected_workflow(self) -> None:
         if self.runner_bridge is None:
             self.statusBar().showMessage("运行服务尚未配置")
+            return
+        if self._parallel_block_id is not None:
+            self.runner_bridge.start_parallel(
+                self.view_model.project,
+                self._parallel_block_id,
+            )
             return
         if self._workflow_id is None:
             self.statusBar().showMessage("请先选择要启动的流程")
