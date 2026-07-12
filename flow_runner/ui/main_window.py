@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
     startRequested = Signal()
     pauseRequested = Signal()
     stopRequested = Signal()
+    recordRequested = Signal()
 
     def __init__(self, project: Project, *, runner_bridge: RunnerBridge | None = None) -> None:
         super().__init__()
@@ -45,10 +46,15 @@ class MainWindow(QMainWindow):
         self.pause_action.setObjectName("pauseWorkflowAction")
         self.stop_action = QAction("停止", self)
         self.stop_action.setObjectName("stopWorkflowAction")
-        self.runtime_toolbar.addActions([self.start_action, self.pause_action, self.stop_action])
+        self.record_action = QAction("录制", self)
+        self.record_action.setObjectName("recordAction")
+        self.runtime_toolbar.addActions(
+            [self.start_action, self.pause_action, self.stop_action, self.record_action]
+        )
         self.start_action.triggered.connect(self._start_selected_workflow)
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
+        self.record_action.triggered.connect(self.recordRequested.emit)
         self.startRequested.connect(self._start_selected_workflow)
         self.pauseRequested.connect(self._toggle_pause)
         self.stopRequested.connect(self._stop_runtime)
@@ -109,3 +115,7 @@ class MainWindow(QMainWindow):
         if self.runner_bridge is not None:
             self.runner_bridge.shutdown()
         super().closeEvent(event)
+
+    def set_recording_state(self, recording: bool) -> None:
+        self.record_action.setText("停止录制" if recording else "录制")
+        self.record_action.setProperty("status", "recording" if recording else "idle")

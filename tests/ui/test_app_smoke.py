@@ -120,3 +120,51 @@ def test_application_hotkeys_start_selected_workflow_and_stop_on_shutdown(qtbot,
     composition.shutdown()
 
     assert created[0].started and created[0].stopped
+
+
+def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_path):
+    hotkey_listeners = []
+    recording_callbacks = {}
+
+    class Listener:
+        def __init__(self, on_press=None):
+            self.on_press = on_press
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def stop(self):
+            self.stopped = True
+
+    def hotkey_factory(on_press):
+        listener = Listener(on_press)
+        hotkey_listeners.append(listener)
+        return listener
+
+    recording_listener = Listener()
+
+    def recording_factory(**callbacks):
+        recording_callbacks.update(callbacks)
+        return recording_listener
+
+    path = tmp_path / "latest.json"
+    composition = create_application(
+        [],
+        project_path=tmp_path / "project.json",
+        hotkey_config=HotkeyConfig(start="", stop="", pause="", record="F9"),
+        hotkey_listener_factory=hotkey_factory,
+        recording_listener_factory=recording_factory,
+        recording_path=path,
+    )
+    qtbot.addWidget(composition.window)
+    composition.start_services()
+
+    hotkey_listeners[0].on_press("f9")
+    recording_callbacks["on_move"](8, 9)
+    hotkey_listeners[0].on_press("f9")
+    composition.shutdown()
+
+    assert recording_listener.started and recording_listener.stopped
+    assert path.exists()

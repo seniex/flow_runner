@@ -13,6 +13,7 @@ from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
 from flow_runner.infrastructure.input.recording import (
     RecordedEvent,
     RecordingPlayer,
+    RecordingRecorder,
     RecordingStore,
 )
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
@@ -195,6 +196,42 @@ async def test_recording_player_applies_speed_gap_and_dispatches(tmp_path):
         ("move", 4, 5),
         ("click", {"x": 4, "y": 5, "button": "left"}),
     ]
+
+
+def test_recording_recorder_captures_timed_events_and_saves(tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def __init__(self):
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def stop(self):
+            self.stopped = True
+
+    listener = Listener()
+
+    def factory(**provided):
+        callbacks.update(provided)
+        return listener
+
+    times = iter([10.0, 10.1, 10.2, 10.3, 10.4])
+    recorder = RecordingRecorder(listener_factory=factory, clock=lambda: next(times))
+    path = tmp_path / "recording.json"
+
+    recorder.start()
+    callbacks["on_move"](4, 5)
+    callbacks["on_click"](4, 5, "left", True)
+    callbacks["on_press"]("A")
+    events = recorder.stop(path)
+
+    assert listener.started and listener.stopped
+    assert [event.kind for event in events] == ["move", "click", "key_press"]
+    assert [event.timestamp for event in events] == pytest.approx([0.1, 0.2, 0.3])
+    assert RecordingStore.load(path) == events
 
 
 @pytest.mark.asyncio

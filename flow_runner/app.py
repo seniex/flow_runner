@@ -33,7 +33,11 @@ from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
 from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
-from flow_runner.infrastructure.input.recording import RecordingPlayer
+from flow_runner.infrastructure.input.recording import (
+    RecordingListenerFactory,
+    RecordingPlayer,
+    RecordingRecorder,
+)
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
@@ -54,13 +58,28 @@ class ApplicationComposition:
     runner: Runner
     runner_bridge: RunnerBridge
     hotkey_service: HotkeyService
+    recorder: RecordingRecorder
+    recording_path: Path
 
     def start_services(self) -> None:
         self.hotkey_service.start()
 
     def shutdown(self) -> None:
+        if self.recorder.is_recording:
+            self.recorder.stop(self.recording_path)
+            self.window.set_recording_state(False)
         self.hotkey_service.stop()
         self.runner_bridge.shutdown()
+
+    def toggle_recording(self) -> None:
+        if self.recorder.is_recording:
+            events = self.recorder.stop(self.recording_path)
+            self.window.set_recording_state(False)
+            self.window.statusBar().showMessage(f"录制已保存：{len(events)} 个事件")
+        else:
+            self.recorder.start()
+            self.window.set_recording_state(True)
+            self.window.statusBar().showMessage("正在录制输入")
 
 
 def create_application(
@@ -69,6 +88,8 @@ def create_application(
     project_path: Path | None = None,
     hotkey_config: HotkeyConfig | None = None,
     hotkey_listener_factory: ListenerFactory | None = None,
+    recording_listener_factory: RecordingListenerFactory | None = None,
+    recording_path: Path | None = None,
 ) -> ApplicationComposition:
     existing = QApplication.instance()
     app = existing if isinstance(existing, QApplication) else QApplication(list(argv or []))
@@ -95,12 +116,14 @@ def create_application(
     runner = Runner(step_executor_factory=step_executor_factory)
     runner_bridge = RunnerBridge(runner)
     window = MainWindow(project, runner_bridge=runner_bridge)
+    recorder = RecordingRecorder(listener_factory=recording_listener_factory)
     hotkey_service = HotkeyService(
         hotkey_config or HotkeyConfig(),
         actions={
             "start": window.startRequested.emit,
             "pause": window.pauseRequested.emit,
             "stop": window.stopRequested.emit,
+            "record": window.recordRequested.emit,
         },
         listener_factory=hotkey_listener_factory,
     )
@@ -114,7 +137,10 @@ def create_application(
         runner=runner,
         runner_bridge=runner_bridge,
         hotkey_service=hotkey_service,
+        recorder=recorder,
+        recording_path=recording_path or path.parent / "recordings" / "latest.json",
     )
+    window.recordRequested.connect(lambda: composition.toggle_recording())
     app.aboutToQuit.connect(lambda: composition.shutdown())
     return composition
 
