@@ -131,3 +131,18 @@ async def test_json_lines_sink_writes_valid_event_objects(tmp_path):
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     assert [row["state"] for row in rows] == ["running", "completed"]
     assert all(row["task_id"] == str(runner.task_id) for row in rows)
+
+
+@pytest.mark.asyncio
+async def test_runner_factory_receives_each_tasks_current_cancellation_token():
+    project, workflow = project_with_steps()
+    tokens = []
+
+    def factory(token):
+        tokens.append(token)
+        return ImmediateExecutor()
+
+    runner = Runner(step_executor_factory=factory)
+    await runner.start(project, workflow.id)
+
+    assert tokens == [runner.cancellation]

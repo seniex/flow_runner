@@ -17,6 +17,12 @@ def test_application_starts_offscreen_with_injected_project_path(qtbot, tmp_path
     assert composition.window.view_model.project.name == "测试项目"
     assert composition.window.styleSheet() == ""
     assert composition.app.styleSheet()
+    assert {item.name for item in composition.registry.condition_metadata()} >= {
+        "vision.ocr",
+        "vision.image",
+        "vision.pixel",
+    }
+    assert composition.runner_bridge.runner is composition.runner
 
 
 def test_duplicate_hotkeys_are_rejected():

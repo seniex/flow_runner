@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from time import monotonic
 from uuid import UUID, uuid4
 
@@ -21,11 +22,15 @@ from flow_runner.infrastructure.logging.sinks import EventSink, NullEventSink
 class Runner:
     def __init__(
         self,
-        step_executor: StepExecutorLike,
+        step_executor: StepExecutorLike | None = None,
         *,
+        step_executor_factory: Callable[[CancellationToken], StepExecutorLike] | None = None,
         event_sink: EventSink | None = None,
     ) -> None:
+        if step_executor is None and step_executor_factory is None:
+            raise ValueError("runner requires a step executor or factory")
         self.step_executor = step_executor
+        self.step_executor_factory = step_executor_factory
         self.event_sink = event_sink or NullEventSink()
         self.state = RunnerState.IDLE
         self.task_id: UUID | None = None
@@ -42,7 +47,14 @@ class Runner:
         self._pause_gate = asyncio.Event()
         self._pause_gate.set()
         self._set_state(RunnerState.RUNNING, workflow_id=entry_workflow_id)
-        gated_executor = _GatedStepExecutor(self, self.step_executor)
+        delegate = (
+            self.step_executor_factory(self.cancellation)
+            if self.step_executor_factory is not None
+            else self.step_executor
+        )
+        if delegate is None:
+            raise RuntimeError("runner step executor was not configured")
+        gated_executor = _GatedStepExecutor(self, delegate)
         workflow_executor = WorkflowExecutor(project, gated_executor)
 
         try:

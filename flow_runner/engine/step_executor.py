@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from time import monotonic
-from typing import Any
+from typing import Any, cast
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
@@ -149,7 +149,10 @@ class StepExecutor:
             provider = self.runtime.registry.condition(condition.capability)
             config = provider.config_model.model_validate(condition.config)
             try:
-                result = await provider.evaluate(config, self.runtime.context)
+                result = cast(
+                    ConditionResult,
+                    await provider.evaluate(config, self.runtime.context),
+                )
             except Cancelled:
                 raise
             except Exception as error:
@@ -204,7 +207,10 @@ class StepExecutor:
         resolved_config = _resolve_config(action.config, self.runtime.context)
         config = provider.config_model.model_validate(resolved_config)
         try:
-            return await provider.execute(config, self.runtime.context)
+            return cast(
+                ActionResult,
+                await provider.execute(config, self.runtime.context),
+            )
         except Cancelled:
             raise
         except Exception as error:
