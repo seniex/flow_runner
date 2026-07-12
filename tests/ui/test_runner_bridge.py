@@ -2,6 +2,7 @@ from time import monotonic
 from uuid import uuid4
 
 from PySide6.QtCore import QThread
+from PySide6.QtGui import QPixmap
 
 from flow_runner.domain.enums import RunnerState, StepOutcome
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
@@ -105,6 +106,29 @@ def test_diagnostics_dialog_displays_structured_event(qtbot):
     assert dialog.outcome_value.text() == "success"
     assert dialog.frame_value.text() == "frame-1"
     assert "retry" in dialog.details_value.toPlainText()
+
+
+def test_diagnostics_dialog_previews_optional_capture(qtbot, tmp_path):
+    capture_path = tmp_path / "capture.png"
+    pixmap = QPixmap(4, 3)
+    assert pixmap.save(str(capture_path))
+    dialog = DiagnosticsDialog()
+    qtbot.addWidget(dialog)
+    event = RuntimeEvent(
+        task_id=uuid4(),
+        kind="condition.preview",
+        state=RunnerState.RUNNING,
+        monotonic_timestamp=monotonic(),
+        diagnostic_capture_path=str(capture_path),
+    )
+
+    dialog.update_event(event)
+
+    preview = dialog.capture_value.pixmap()
+    assert preview is not None
+    assert not preview.isNull()
+    assert preview.size().width() == 4
+    assert preview.size().height() == 3
 
 
 def test_run_view_model_tracks_latest_runtime_event(qtbot):
