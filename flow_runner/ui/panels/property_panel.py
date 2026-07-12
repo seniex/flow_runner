@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -22,7 +23,7 @@ from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 
 
-class PropertyPanel(QWidget):
+class PropertyPanel(QScrollArea):
     stepChanged = Signal(object)
     validationFailed = Signal(str)
 
@@ -61,7 +62,11 @@ class PropertyPanel(QWidget):
         self.policy_editor = PolicyEditor(registry)
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
-        layout = QVBoxLayout(self)
+        self.setWidgetResizable(True)
+        self.content = QWidget()
+        self.content.setObjectName("propertyPanelContent")
+        self.setWidget(self.content)
+        layout = QVBoxLayout(self.content)
         layout.addWidget(self.title)
         form = QFormLayout()
         form.addRow("名称", self.name_edit)

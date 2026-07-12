@@ -316,9 +316,9 @@ class StepExecutor:
             config = provider.config_model.model_validate(resolved_config)
             required = provider.required_resources(config)
             if self.runtime.resources is None or not required:
-                return cast(
-                    ActionResult,
-                    await provider.execute(config, self.runtime.context),
+                return await self._execute_provider_action(
+                    provider,
+                    config,
                 )
             window_targets = sorted(
                 resource for resource in required if resource.startswith("window:")
@@ -349,9 +349,9 @@ class StepExecutor:
                 resolved_config = _resolve_config(action.config, self.runtime.context)
                 config = provider.config_model.model_validate(resolved_config)
                 try:
-                    return cast(
-                        ActionResult,
-                        await provider.execute(config, self.runtime.context),
+                    return await self._execute_provider_action(
+                        provider,
+                        config,
                     )
                 finally:
                     perception = self.runtime.resources.perception
@@ -361,6 +361,23 @@ class StepExecutor:
             raise
         except Exception as error:
             return ActionResult(outcome=StepOutcome.FAILURE, error=str(error))
+
+    async def _execute_provider_action(self, provider: Any, config: Any) -> ActionResult:
+        action_task = asyncio.create_task(provider.execute(config, self.runtime.context))
+        cancel_task = asyncio.create_task(self.runtime.cancellation.wait_cancelled())
+        try:
+            done, _ = await asyncio.wait(
+                {action_task, cancel_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if cancel_task in done:
+                self.runtime.cancellation.raise_if_cancelled()
+            return cast(ActionResult, action_task.result())
+        finally:
+            for task in (action_task, cancel_task):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(action_task, cancel_task, return_exceptions=True)
 
     async def _refresh_stale_condition(
         self,

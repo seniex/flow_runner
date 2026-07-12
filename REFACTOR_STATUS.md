@@ -7,7 +7,7 @@
 
 计划内的领域模型、运行时、桌面能力适配、三栏 PySide6 编辑器、QSS 契约、并行监控、诊断、配置持久化和打包结构已经实现，并通过确定性自动化验证。
 
-项目尚不能宣告最终验收完成：真实 Windows 验收已覆盖双模式窗口捕获、视觉检测、窗口动作、录制回放和核心调度，但首次窗口尺寸、输入取消、输入法文本写入和程序工作目录暴露出需要修复的问题；全局热键、管理员启动、DPI、多显示器和 Tesseract 仍受实机条件或用户确认限制。
+项目尚不能宣告最终验收完成：真实 Windows 验收已覆盖双模式窗口捕获、视觉检测、窗口动作、三种文本输入、可取消输入、录制回放、普通程序启动和核心调度。全局热键、管理员启动、DPI、多显示器和 Tesseract 仍受实机条件或用户确认限制。
 
 ## 已实现范围
 
@@ -16,6 +16,9 @@
 - 命名 AND/OR/NOT 条件树；仅叶子和唯一命中 OR 暴露 `$result.primary`。
 - OCR、图片、像素、区域变化、时间、计数、变量、窗口和进程条件。
 - 鼠标、键盘、等待、变量、程序启动、录制回放和窗口动作。
+- `keys`、`unicode`、`clipboard` 三种文本模式；剪贴板模式结束后恢复原格式。
+- 长移动、拖拽、重复按键和间隔文本分段执行，Runner 停止会取消正在运行的动作。
+- 程序启动支持可选工作目录，普通与管理员路径使用同一配置。
 - 鼠标坐标偏移、按下/释放/拖拽与键盘按下/释放；运行终止和回放取消时兜底释放已保持输入。
 - 跨组 UUID 路由、调用/返回、变量与流程/步骤计数条件路由。
 - 路由谓词可直接比较 `$result.primary.*` 或 `$result.children["别名"].*`，并保持复合条件的歧义保护。
@@ -43,16 +46,16 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 205 passed
+# 213 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
 
 .\.venv\Scripts\python.exe -m ruff format --check flow_runner tests
-# 115 files already formatted
+# 117 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
-# Success: no issues found in 93 source files
+# Success: no issues found in 95 source files
 
 .\.venv\Scripts\python.exe -m pip check
 # No broken requirements found
@@ -60,7 +63,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，100 个条目，包含 `base.qss`、`capture_targets.py` 和 `windows_graphics.py`；SHA-256 为 `831281CD056BC2D0C3D492A33CFE6FB9AADAD8BAA3254278D3096469BC935D22`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，100 个条目，包含 `base.qss`、输入适配器和滚动属性面板；SHA-256 为 `FCB98880B6C2BB947DF4EAA21FC86C369D2E2093E964AE2359909A96C451DE36`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
@@ -73,17 +76,14 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 - 100%/125%/150% DPI 与多显示器坐标；
 - Tesseract 及语言包；
-- 首次主窗口高度超过桌面，属性面板需要可滚动布局；
-- 长鼠标/键盘动作取消后底层 `pyautogui` 仍会继续执行；
-- 中文输入法激活时文本写入结果不稳定，需要明确按键输入与文本注入模式；
-- 程序启动需要补充可配置工作目录；管理员启动仍需单独确认 UAC；
+- 管理员程序启动仍需单独确认 UAC；
 - 全局热键需要在旧 BgOcrClick 程序退出或确认隔离后实测；
 
 已读取的目标机环境：Windows 10 `10.0.19045`、单显示器 `2560×1440`，虚拟桌面原点 `(0, 0)`；新进程 DPI 初始化返回 `per_monitor_v2`。多显示器与三档 DPI 实测因当前硬件/设置不可用而记录为 `BLOCKED`。Tesseract 与 `pytesseract` 未安装，相关验收同样为 `BLOCKED`。
 
 只读真实游戏环境检查已通过：前台 `懒人修仙传2` 窗口截图非空且原点/尺寸正确；真实桌面模板匹配、像素容差内外判断、游戏窗口连续帧区域变化，以及真实窗口/进程条件均产生预期结果。
 
-真实桌面动作检查已完成一轮：临时窗口激活/最小化/恢复/移动缩放通过；鼠标各操作和键盘按下/释放会产生真实事件，录制回放及取消时释放 Ctrl 通过。实测也证明当前取消长鼠标移动只取消 asyncio 任务，底层线程仍继续移动；中文输入法下 `write` 无法保证目标文本。专项调度测试 61 项通过，覆盖跨组循环、调用返回、并行共享、资源冲突、陈旧坐标重检、暂停恢复和停止退出。
+真实桌面动作检查已完成：临时窗口激活/最小化/恢复/移动缩放通过；鼠标各操作和键盘按下/释放会产生真实事件，录制回放及取消时释放 Ctrl 通过。修复后停止长鼠标移动会同时取消运行状态与底层分段输入；Unicode 中文和剪贴板粘贴/恢复均实机通过。专项调度测试 61 项通过，覆盖跨组循环、调用返回、并行共享、资源冲突、陈旧坐标重检、暂停恢复和停止退出。
 
 后台 Windows Graphics Capture 已在同一游戏窗口实测：Chrome 完全遮挡游戏时，后台帧与遮挡前游戏帧平均像素差为 `0.037`，与屏幕可见遮挡内容的平均像素差为 `40.87`；测试结束后游戏窗口恢复前台。
 

@@ -4,7 +4,14 @@ from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent
-from PySide6.QtWidgets import QInputDialog, QMainWindow, QMessageBox, QSplitter, QToolBar
+from PySide6.QtWidgets import (
+    QApplication,
+    QInputDialog,
+    QMainWindow,
+    QMessageBox,
+    QSplitter,
+    QToolBar,
+)
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import RunnerState
@@ -192,6 +199,18 @@ class MainWindow(QMainWindow):
             self.runner_bridge.eventReceived.connect(self.diagnostics_dialog.update_event)
             self.runner_bridge.failed.connect(self.statusBar().showMessage)
         self._update_runtime_actions(self.run_view_model.state)
+        self._apply_initial_window_geometry()
+
+    def _apply_initial_window_geometry(self) -> None:
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.resize(1200, 800)
+            return
+        available = screen.availableGeometry()
+        width = min(available.width(), max(900, int(available.width() * 0.85)))
+        height = min(available.height(), max(650, int(available.height() * 0.8)))
+        self.resize(width, height)
+        self.move(available.center() - self.rect().center())
 
     def _select_workflow(self, workflow_id: UUID) -> None:
         workflow = self._workflow(workflow_id)

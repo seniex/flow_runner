@@ -120,9 +120,17 @@ can reuse a recording with configurable speed and maximum gap.
 
 Mouse actions support fixed or result-bound coordinates, an additional coordinate offset, click,
 move, scroll, button-down, button-up, and drag operations. Keyboard actions support press, hotkey,
-text entry, key-down, and key-up. Ordered step actions form input sequences without a separate
-sequence step type. Tracked held inputs are released whenever a run terminates or the application
-shuts down; recording playback also releases held keys on cancellation.
+text entry, key-down, and key-up. Text entry has three per-action modes: `keys` sends physical key
+events and remains the default for game compatibility, `unicode` sends Windows Unicode input for
+layout-independent Chinese or other text, and `clipboard` pastes text before restoring the previous
+clipboard formats. Ordered step actions form input sequences without a separate sequence step type.
+Long moves, drags, repeated keys, and interval text are divided into cancellable segments. Tracked
+held inputs are released whenever a run terminates or the application shuts down; recording
+playback also releases held keys on cancellation.
+
+Program launch actions accept an optional `working_directory`. Normal launches pass it to the child
+process and administrator launches pass it to `ShellExecuteW`; if omitted, normal launches inherit
+the current directory and administrator launches use the executable directory.
 
 ## Persistence and safety
 

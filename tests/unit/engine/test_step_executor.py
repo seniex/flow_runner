@@ -255,6 +255,45 @@ async def test_cancellation_interrupts_waiting_for_exclusive_resource():
 
 
 @pytest.mark.asyncio
+async def test_cancellation_interrupts_an_action_that_is_already_running():
+    entered = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    class BlockingAction(CountingAction):
+        async def execute(self, config, context):
+            del config, context
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+    action = BlockingAction("blocking")
+    registry = CapabilityRegistry()
+    registry.register_action(action)
+    token = CancellationToken()
+    executor = StepExecutor(
+        StepRuntime(
+            registry=registry,
+            context=StepContext(),
+            cancellation=token,
+        )
+    )
+    step = AutomationStep(
+        name="blocking",
+        actions=[{"capability": action.name, "config": {}}],
+    )
+    task = asyncio.create_task(executor.execute(step))
+    await entered.wait()
+
+    token.cancel()
+    result = await asyncio.wait_for(task, timeout=0.2)
+
+    assert result.outcome is StepOutcome.CANCELLED
+    assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
 async def test_cancellation_interrupts_waiting_for_observation_resource():
     events = []
     coordinator = ResourceCoordinator(event_sink=events.append)

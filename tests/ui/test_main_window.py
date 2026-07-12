@@ -1,4 +1,5 @@
 from PySide6.QtGui import QCloseEvent
+from PySide6.QtWidgets import QApplication, QScrollArea
 
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.project import (
@@ -45,6 +46,18 @@ def test_panels_expose_semantic_object_names(qtbot):
     assert window.flow_tree.objectName() == "flowTreePanel"
     assert window.step_list.objectName() == "stepListPanel"
     assert window.property_panel.objectName() == "propertyPanel"
+
+
+def test_property_panel_scrolls_and_initial_window_fits_available_desktop(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+
+    available = QApplication.primaryScreen().availableGeometry()
+
+    assert isinstance(window.property_panel, QScrollArea)
+    assert window.property_panel.widgetResizable()
+    assert window.width() <= available.width()
+    assert window.height() <= available.height()
 
 
 def test_reordering_workflows_does_not_change_route_ids(qtbot):

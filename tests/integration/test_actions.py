@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from flow_runner.capabilities.actions.keyboard import KeyboardAction, KeyboardActionConfig
@@ -88,8 +90,8 @@ class FakeKeyboard:
     async def hotkey(self, keys):
         self.calls.append(("hotkey", keys))
 
-    async def write(self, text, interval):
-        self.calls.append(("write", text, interval))
+    async def write(self, text, interval, mode="keys"):
+        self.calls.append(("write", text, interval, mode))
 
     async def key_down(self, key):
         self.calls.append(("key_down", key))
@@ -187,14 +189,19 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
     app.write_bytes(b"")
     script.write_text("[]", encoding="utf-8")
 
-    async def launch(path, arguments, run_as_admin):
-        launches.append((path, arguments, run_as_admin))
+    async def launch(path, arguments, run_as_admin, working_directory):
+        launches.append((path, arguments, run_as_admin, working_directory))
 
     async def playback(path, speed, max_gap):
         playbacks.append((path, speed, max_gap))
 
     process_result = await LaunchProcessAction(launch).execute(
-        LaunchProcessConfig(path=app, arguments=["--safe"], run_as_admin=True),
+        LaunchProcessConfig(
+            path=app,
+            arguments=["--safe"],
+            run_as_admin=True,
+            working_directory=tmp_path,
+        ),
         StepContext(),
     )
     script_result = await PlaybackScriptAction(playback).execute(
@@ -203,7 +210,7 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
 
     assert process_result.outcome is StepOutcome.SUCCESS
     assert script_result.outcome is StepOutcome.SUCCESS
-    assert launches == [(app.resolve(), ("--safe",), True)]
+    assert launches == [(app.resolve(), ("--safe",), True, tmp_path.resolve())]
     assert playbacks == [(script.resolve(), 2.0, 1.5)]
 
 
@@ -211,20 +218,39 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
 async def test_windows_process_launcher_selects_normal_or_admin_backend(tmp_path):
     calls = []
 
-    def popen(command):
-        calls.append(("popen", command))
+    def popen(command, *, cwd):
+        calls.append(("popen", command, cwd))
 
-    def shell_execute(path, arguments):
-        calls.append(("admin", path, arguments))
+    def shell_execute(path, arguments, working_directory):
+        calls.append(("admin", path, arguments, working_directory))
 
     launcher = WindowsProcessLauncher(popen=popen, shell_execute=shell_execute)
     path = (tmp_path / "game.exe").resolve()
-    await launcher(path, ("--safe",), False)
-    await launcher(path, ("--admin",), True)
+    working_directory = tmp_path.resolve()
+    await launcher(path, ("--safe",), False, working_directory)
+    await launcher(path, ("--admin",), True, working_directory)
 
     assert calls == [
-        ("popen", [str(path), "--safe"]),
-        ("admin", path, "--admin"),
+        ("popen", [str(path), "--safe"], working_directory),
+        ("admin", path, "--admin", working_directory),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_keyboard_action_exposes_keys_unicode_and_clipboard_text_modes():
+    keyboard = FakeKeyboard()
+    action = KeyboardAction(keyboard)
+
+    for mode in ("keys", "unicode", "clipboard"):
+        await action.execute(
+            KeyboardActionConfig(operation="write", text="测试", text_mode=mode),
+            StepContext(),
+        )
+
+    assert keyboard.calls == [
+        ("write", "测试", 0.0, "keys"),
+        ("write", "测试", 0.0, "unicode"),
+        ("write", "测试", 0.0, "clipboard"),
     ]
 
 
@@ -354,6 +380,9 @@ async def test_pyautogui_devices_translate_actions_to_backend_calls():
         def moveTo(self, *args, **kwargs):
             self.calls.append(("moveTo", args, kwargs))
 
+        def position(self):
+            return (0, 0)
+
         def scroll(self, units):
             self.calls.append(("scroll", units))
 
@@ -362,9 +391,6 @@ async def test_pyautogui_devices_translate_actions_to_backend_calls():
 
         def mouseUp(self, **kwargs):
             self.calls.append(("mouseUp", kwargs))
-
-        def dragTo(self, *args, **kwargs):
-            self.calls.append(("dragTo", args, kwargs))
 
         def press(self, key, presses, interval):
             self.calls.append(("press", key, presses, interval))
@@ -389,22 +415,194 @@ async def test_pyautogui_devices_translate_actions_to_backend_calls():
     await mouse.scroll(position=(3, 4), units=-5)
     await mouse.button_down(position=(5, 6), button="right")
     await mouse.button_up(position=(5, 6), button="right")
-    await mouse.drag(position=(7, 8), button="left", duration=0.25)
+    await mouse.drag(position=(7, 8), button="left", duration=0.0)
     await keyboard.hotkey(("ctrl", "s"))
     await keyboard.key_down("shift")
     await keyboard.key_up("shift")
 
     assert backend.calls == [
-        ("click", {"x": 1, "y": 2, "button": "left", "clicks": 2, "interval": 0.1}),
+        ("click", {"x": 1, "y": 2, "button": "left", "clicks": 1, "interval": 0.0}),
+        ("click", {"x": 1, "y": 2, "button": "left", "clicks": 1, "interval": 0.0}),
         ("moveTo", (3, 4), {}),
         ("scroll", -5),
         ("mouseDown", {"x": 5, "y": 6, "button": "right"}),
         ("mouseUp", {"x": 5, "y": 6, "button": "right"}),
-        ("dragTo", (7, 8), {"duration": 0.25, "button": "left"}),
+        ("mouseDown", {"button": "left"}),
+        ("moveTo", (7, 8), {}),
+        ("mouseUp", {"button": "left"}),
         ("hotkey", ("ctrl", "s")),
         ("keyDown", "shift"),
         ("keyUp", "shift"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_keyboard_device_routes_text_modes_to_their_backends():
+    calls = []
+
+    class Backend:
+        def write(self, text, interval):
+            calls.append(("keys", text, interval))
+
+    keyboard = PyAutoGuiKeyboardDevice(
+        Backend(),
+        unicode_writer=lambda text: calls.append(("unicode", text)),
+        clipboard_paster=lambda text: calls.append(("clipboard", text)),
+    )
+
+    await keyboard.write("ab", 0.0, "keys")
+    await keyboard.write("中文", 0.0, "unicode")
+    await keyboard.write("paste", 0.0, "clipboard")
+
+    assert calls == [
+        ("keys", "a", 0.0),
+        ("keys", "b", 0.0),
+        ("unicode", "中"),
+        ("unicode", "文"),
+        ("clipboard", "paste"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_segmented_mouse_move_stops_after_task_cancellation():
+    first_move = asyncio.Event()
+
+    class Backend:
+        def __init__(self):
+            self.calls = []
+
+        def position(self):
+            return (0, 0)
+
+        def moveTo(self, x, y):
+            self.calls.append((x, y))
+            first_move.set()
+
+    backend = Backend()
+    mouse = PyAutoGuiMouseDevice(backend)
+    task = asyncio.create_task(mouse.move(position=(600, 300), duration=5.0))
+    await first_move.wait()
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    calls_after_cancel = len(backend.calls)
+    await asyncio.sleep(0.05)
+
+    assert len(backend.calls) == calls_after_cancel
+    assert backend.calls[-1] != (600, 300)
+
+
+@pytest.mark.asyncio
+async def test_segmented_drag_releases_button_after_cancellation():
+    first_move = asyncio.Event()
+
+    class Backend:
+        def __init__(self):
+            self.calls = []
+
+        def position(self):
+            return (0, 0)
+
+        def mouseDown(self, **kwargs):
+            self.calls.append(("down", kwargs))
+
+        def mouseUp(self, **kwargs):
+            self.calls.append(("up", kwargs))
+
+        def moveTo(self, x, y):
+            self.calls.append(("move", x, y))
+            first_move.set()
+
+    backend = Backend()
+    mouse = PyAutoGuiMouseDevice(backend)
+    task = asyncio.create_task(mouse.drag(position=(600, 300), button="left", duration=5.0))
+    await first_move.wait()
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert backend.calls[0] == ("down", {"button": "left"})
+    assert backend.calls[-1] == ("up", {"button": "left"})
+
+
+@pytest.mark.asyncio
+async def test_segmented_key_writes_stop_after_task_cancellation():
+    first_character = asyncio.Event()
+
+    class Backend:
+        def __init__(self):
+            self.calls = []
+
+        def write(self, text, interval):
+            self.calls.append((text, interval))
+            first_character.set()
+
+    backend = Backend()
+    keyboard = PyAutoGuiKeyboardDevice(backend)
+    task = asyncio.create_task(keyboard.write("abcdef", 5.0, "keys"))
+    await first_character.wait()
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    calls_after_cancel = len(backend.calls)
+    await asyncio.sleep(0.05)
+
+    assert backend.calls == [("a", 0.0)]
+    assert len(backend.calls) == calls_after_cancel
+
+
+@pytest.mark.asyncio
+async def test_clipboard_text_mode_restores_previous_formats(monkeypatch):
+    class Clipboard:
+        CF_UNICODETEXT = 13
+
+        def __init__(self):
+            self.data = {13: "before", 8: b"dib"}
+
+        def OpenClipboard(self):
+            pass
+
+        def CloseClipboard(self):
+            pass
+
+        def EmptyClipboard(self):
+            self.data.clear()
+
+        def SetClipboardData(self, format_id, data):
+            self.data[format_id] = data
+
+        def GetClipboardData(self, format_id):
+            return self.data[format_id]
+
+        def EnumClipboardFormats(self, previous):
+            formats = sorted(self.data)
+            if previous == 0:
+                return formats[0] if formats else 0
+            remaining = [format_id for format_id in formats if format_id > previous]
+            return remaining[0] if remaining else 0
+
+    clipboard = Clipboard()
+
+    class Backend:
+        def hotkey(self, *keys):
+            assert keys == ("ctrl", "v")
+            assert clipboard.data == {13: "during"}
+
+    from flow_runner.infrastructure.input import keyboard as keyboard_module
+
+    original_import = keyboard_module.importlib.import_module
+    monkeypatch.setattr(
+        keyboard_module.importlib,
+        "import_module",
+        lambda name: clipboard if name == "win32clipboard" else original_import(name),
+    )
+
+    await PyAutoGuiKeyboardDevice(Backend()).write("during", 0.0, "clipboard")
+
+    assert clipboard.data == {13: "before", 8: b"dib"}
 
 
 @pytest.mark.asyncio
