@@ -5,7 +5,7 @@ from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import QMainWindow, QSplitter, QToolBar
 
 from flow_runner.domain.enums import RunnerState
-from flow_runner.domain.project import Project, Workflow
+from flow_runner.domain.project import AutomationStep, Project, Workflow
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.panels.step_list_panel import StepListPanel
@@ -35,7 +35,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(splitter)
         self.flow_tree.workflowSelected.connect(self._select_workflow)
         self.step_list.stepSelected.connect(self._select_step)
-        self.view_model.projectChanged.connect(self.flow_tree.set_project)
+        self.view_model.projectChanged.connect(self._project_changed)
+        self.property_panel.stepChanged.connect(self._apply_step_edit)
+        self.property_panel.validationFailed.connect(self.statusBar().showMessage)
         self._workflow_id: UUID | None = None
         self.runtime_toolbar = QToolBar("运行", self)
         self.runtime_toolbar.setObjectName("runtimeToolbar")
@@ -82,6 +84,28 @@ class MainWindow(QMainWindow):
                 if workflow.id == workflow_id:
                     return workflow
         raise KeyError(workflow_id)
+
+    def _apply_step_edit(self, step: object) -> None:
+        if self._workflow_id is None or not isinstance(step, AutomationStep):
+            return
+        self.view_model.update_step(self._workflow_id, step)
+
+    def _project_changed(self, project: Project) -> None:
+        self.flow_tree.set_project(project)
+        if self._workflow_id is None:
+            return
+        try:
+            workflow = self._workflow(self._workflow_id)
+        except KeyError:
+            self._workflow_id = None
+            self.step_list.set_workflow(Workflow(name="空"))
+            return
+        self.flow_tree.select_workflow(workflow.id)
+        if self.property_panel.step_id is not None:
+            try:
+                self.step_list.select_step(self.property_panel.step_id)
+            except KeyError:
+                pass
 
     def _start_selected_workflow(self) -> None:
         if self.runner_bridge is None:

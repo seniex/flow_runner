@@ -110,3 +110,22 @@ def test_project_view_model_renames_groups_and_workflows(qtbot):
 
     assert model.project.groups[0].name == "新组"
     assert model.project.groups[0].workflows[0].name == "新流程"
+
+
+def test_property_panel_applies_validated_step_edits_to_project(qtbot):
+    project = sample_project()
+    workflow = project.groups[0].workflows[0]
+    step = workflow.steps[0]
+    window = MainWindow(project)
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+
+    window.property_panel.name_edit.setText("新检测")
+    window.property_panel.enabled_check.setChecked(False)
+    window.property_panel.apply_button.click()
+
+    updated = window.view_model.project.groups[0].workflows[0].steps[0]
+    assert updated.name == "新检测"
+    assert not updated.enabled
+    assert window.step_list.list.item(0).text() == "新检测"
