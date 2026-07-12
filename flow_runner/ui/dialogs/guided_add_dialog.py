@@ -1,7 +1,15 @@
+import json
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtWidgets import QComboBox, QDialog, QFormLayout
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QLabel,
+    QPlainTextEdit,
+)
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
@@ -23,14 +31,50 @@ class GuidedAddDialog(QDialog):
     def __init__(self, registry: CapabilityRegistry) -> None:
         super().__init__()
         self.registry = registry
+        self._step: AutomationStep | None = None
         self.category_combo = QComboBox()
         self.category_combo.addItems(["检测", "执行", "控制"])
         self.capability_combo = QComboBox()
         self.category_combo.currentTextChanged.connect(self._populate_capabilities)
         self._populate_capabilities(self.category_combo.currentText())
+        self.config_edit = QPlainTextEdit("{}")
+        self.config_edit.setObjectName("guidedStepConfigEditor")
+        self.error_label = QLabel("")
+        self.error_label.setObjectName("guidedStepError")
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
         layout = QFormLayout(self)
         layout.addRow("类别", self.category_combo)
         layout.addRow("能力", self.capability_combo)
+        layout.addRow("最小配置", self.config_edit)
+        layout.addRow("", self.error_label)
+        layout.addRow(self.buttons)
+
+    def accept(self) -> None:
+        try:
+            config = json.loads(self.config_edit.toPlainText())
+            if not isinstance(config, dict):
+                raise ValueError("配置必须是 JSON 对象")
+            capability = self.capability_combo.currentData()
+            if not isinstance(capability, str):
+                raise ValueError("请选择能力")
+            self._step = self.build_step(
+                category=self.category_combo.currentText(),
+                capability=capability,
+                config=config,
+            )
+        except (ValueError, KeyError) as error:
+            self.error_label.setText(str(error))
+            return
+        super().accept()
+
+    def step(self) -> AutomationStep:
+        if self._step is None:
+            raise RuntimeError("guided step dialog has not been accepted")
+        return self._step
 
     def build_step(
         self,

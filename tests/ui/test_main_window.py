@@ -144,3 +144,26 @@ def test_dirty_window_can_cancel_close_through_injected_confirmation(qtbot):
     window.closeEvent(event)
 
     assert not event.isAccepted()
+
+
+def test_step_toolbar_adds_moves_removes_and_undoes_steps(qtbot):
+    project = sample_project()
+    workflow = project.groups[0].workflows[0]
+    added = AutomationStep(name="新增")
+    window = MainWindow(project, create_step=lambda: added)
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+
+    window.add_step_action.trigger()
+    window.step_list.select_step(added.id)
+    window.move_step_up_action.trigger()
+
+    assert window.view_model.project.groups[0].workflows[0].steps[1].id == added.id
+
+    window.remove_step_action.trigger()
+    assert all(
+        step.id != added.id for step in window.view_model.project.groups[0].workflows[0].steps
+    )
+
+    window.undo_action.trigger()
+    assert window.view_model.project.groups[0].workflows[0].steps[1].id == added.id

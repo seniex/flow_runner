@@ -123,6 +123,19 @@ def test_guided_dialog_category_switches_available_capabilities(qtbot):
     assert dialog.capability_combo.itemData(0) == "system.wait"
 
 
+def test_guided_dialog_accepts_json_config_and_returns_step(qtbot):
+    dialog = GuidedAddDialog(registry())
+    qtbot.addWidget(dialog)
+    index = dialog.capability_combo.findData("vision.ocr")
+    dialog.capability_combo.setCurrentIndex(index)
+    dialog.config_edit.setPlainText('{"keywords": "开始"}')
+
+    dialog.accept()
+
+    assert dialog.result() == GuidedAddDialog.DialogCode.Accepted
+    assert dialog.step().condition.capability == "vision.ocr"
+
+
 def test_policy_editor_exposes_once_and_until(qtbot):
     editor = PolicyEditor()
     qtbot.addWidget(editor)

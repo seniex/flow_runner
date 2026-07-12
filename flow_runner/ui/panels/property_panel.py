@@ -70,6 +70,21 @@ class PropertyPanel(QWidget):
         self.action_policy_edit.setPlainText(_json(step.action_policy))
         self.routes_edit.setPlainText(_json(step.routes))
 
+    def clear_step(self) -> None:
+        self.step_id = None
+        self._step = None
+        self.title.clear()
+        self.name_edit.clear()
+        self.enabled_check.setChecked(False)
+        for editor in (
+            self.condition_edit,
+            self.actions_edit,
+            self.condition_policy_edit,
+            self.action_policy_edit,
+            self.routes_edit,
+        ):
+            editor.clear()
+
     def _apply(self) -> None:
         if self._step is None:
             return
