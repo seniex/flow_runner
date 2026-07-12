@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import UUID
 
+from flow_runner.domain.comparisons import compare_values
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.errors import RoutingError
 from flow_runner.domain.project import AutomationStep, Project, Workflow
 from flow_runner.domain.results import StepResult
 from flow_runner.domain.routing import (
-    ComparisonOperator,
     RoutePredicate,
     RouteRule,
     RouteTargetKind,
@@ -182,7 +183,13 @@ class WorkflowExecutor:
             actual = self._workflow_counts.get(UUID(predicate.key), 0)
         else:
             actual = self._step_counts.get(UUID(predicate.key), 0)
-        return _compare(actual, predicate.operator, predicate.expected)
+        try:
+            return compare_values(actual, predicate.operator, predicate.expected)
+        except (TypeError, ValueError, re.error) as error:
+            raise RoutingError(
+                f"cannot compare route predicate '{predicate.source}.{predicate.key}' "
+                f"with operator '{predicate.operator.value}': {error}"
+            ) from error
 
     def _workflow_by_id(self, workflow_id: UUID) -> Workflow:
         try:
@@ -222,17 +229,3 @@ class WorkflowExecutor:
                 next_index = index + 1
                 return workflow.steps[next_index].id if next_index < len(workflow.steps) else None
         raise RoutingError(f"workflow '{workflow.name}' does not contain step {current.id}")
-
-
-def _compare(actual: Any, operator: ComparisonOperator, expected: Any) -> bool:
-    if operator is ComparisonOperator.EQ:
-        return bool(actual == expected)
-    if operator is ComparisonOperator.NE:
-        return bool(actual != expected)
-    if operator is ComparisonOperator.LT:
-        return bool(actual < expected)
-    if operator is ComparisonOperator.LE:
-        return bool(actual <= expected)
-    if operator is ComparisonOperator.GT:
-        return bool(actual > expected)
-    return bool(actual >= expected)

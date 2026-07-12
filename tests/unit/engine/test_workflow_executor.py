@@ -12,7 +12,7 @@ from flow_runner.domain.routing import (
     RouteRule,
     RouteTarget,
 )
-from flow_runner.engine.context import StepContext, WorkflowContext
+from flow_runner.engine.context import StepContext, TaskContext, WorkflowContext
 from flow_runner.engine.workflow_executor import WorkflowExecutor
 
 
@@ -88,6 +88,71 @@ async def test_dynamic_cross_group_route_reaches_c1():
         "C1",
     )
     assert steps.step_names == list(trace.workflow_names)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operator", "expected"),
+    [
+        (ComparisonOperator.CONTAINS, "ready"),
+        (ComparisonOperator.MATCHES, r"^battle_.*_ready$"),
+    ],
+)
+async def test_text_route_predicates_select_matching_branch(operator, expected):
+    matched = workflow("matched", RouteTarget.end())
+    fallback = workflow("fallback", RouteTarget.end())
+    entry = workflow(
+        "entry",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                predicate=RoutePredicate.task_variable("state", operator, expected),
+                target=RouteTarget.jump_workflow(matched.id),
+            ),
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                target=RouteTarget.jump_workflow(fallback.id),
+            ),
+        ],
+    )
+    project = Project(
+        name="text route",
+        groups=[FlowGroup(name="g", workflows=[entry, matched, fallback])],
+    )
+
+    trace = await WorkflowExecutor(
+        project,
+        SuccessfulStepExecutor(),
+        task_context=TaskContext(task_variables={"state": "battle_team_ready"}),
+    ).run(entry.id)
+
+    assert trace.workflow_names == ("entry", "matched")
+
+
+@pytest.mark.asyncio
+async def test_invalid_route_regex_is_reported_as_routing_error():
+    entry = workflow(
+        "entry",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                predicate=RoutePredicate.task_variable(
+                    "state",
+                    ComparisonOperator.MATCHES,
+                    "[",
+                ),
+                target=RouteTarget.end(),
+            )
+        ],
+    )
+    project = Project(name="invalid regex", groups=[FlowGroup(name="g", workflows=[entry])])
+
+    with pytest.raises(RoutingError, match="matches"):
+        await WorkflowExecutor(
+            project,
+            SuccessfulStepExecutor(),
+            task_context=TaskContext(task_variables={"state": "ready"}),
+        ).run(entry.id)
 
 
 @pytest.mark.asyncio
