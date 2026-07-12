@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
         confirm_delete: Callable[[str], bool] | None = None,
         edit_settings: Callable[[dict[str, object]], dict[str, object] | None] | None = None,
         create_parallel_block: Callable[[], ParallelBlock | None] | None = None,
+        select_group_target: Callable[[Project, UUID], UUID | None] | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
         self.confirm_delete = confirm_delete or self._confirm_delete
         self.edit_settings = edit_settings or self._prompt_settings
         self.create_parallel_block = create_parallel_block or self._prompt_parallel_block
+        self.select_group_target = select_group_target or self._prompt_workflow_group
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
         self.property_panel = PropertyPanel(registry, project)
@@ -98,6 +100,12 @@ class MainWindow(QMainWindow):
         self.add_workflow_action.setObjectName("addWorkflowAction")
         self.rename_flow_action = QAction("重命名", self)
         self.rename_flow_action.setObjectName("renameFlowAction")
+        self.move_workflow_up_action = QAction("流程上移", self)
+        self.move_workflow_up_action.setObjectName("moveWorkflowUpAction")
+        self.move_workflow_down_action = QAction("流程下移", self)
+        self.move_workflow_down_action.setObjectName("moveWorkflowDownAction")
+        self.move_workflow_group_action = QAction("移动到组", self)
+        self.move_workflow_group_action.setObjectName("moveWorkflowGroupAction")
         self.delete_flow_action = QAction("删除组/流程", self)
         self.delete_flow_action.setObjectName("deleteFlowAction")
         self.settings_action = QAction("设置", self)
@@ -113,6 +121,9 @@ class MainWindow(QMainWindow):
                 self.add_group_action,
                 self.add_workflow_action,
                 self.rename_flow_action,
+                self.move_workflow_up_action,
+                self.move_workflow_down_action,
+                self.move_workflow_group_action,
                 self.delete_flow_action,
                 self.settings_action,
                 self.add_parallel_action,
@@ -165,6 +176,9 @@ class MainWindow(QMainWindow):
         self.add_group_action.triggered.connect(self._add_group)
         self.add_workflow_action.triggered.connect(self._add_workflow)
         self.rename_flow_action.triggered.connect(self._rename_selected_flow)
+        self.move_workflow_up_action.triggered.connect(lambda: self._move_selected_workflow(-1))
+        self.move_workflow_down_action.triggered.connect(lambda: self._move_selected_workflow(1))
+        self.move_workflow_group_action.triggered.connect(self._move_workflow_to_group)
         self.delete_flow_action.triggered.connect(self._delete_selected_flow)
         self.settings_action.triggered.connect(self._edit_project_settings)
         self.add_parallel_action.triggered.connect(self._add_parallel_block)
@@ -343,6 +357,47 @@ class MainWindow(QMainWindow):
                 self.view_model.rename_group(group.id, name)
             return
         self.statusBar().showMessage("请先选择流程组或流程")
+
+    def _move_selected_workflow(self, direction: int) -> None:
+        if self._workflow_id is None:
+            self.statusBar().showMessage("请先选择要移动的流程")
+            return
+        self.view_model.move_workflow(self._workflow_id, direction)
+
+    def _move_workflow_to_group(self) -> None:
+        if self._workflow_id is None:
+            self.statusBar().showMessage("请先选择要移动的流程")
+            return
+        target_group_id = self.select_group_target(
+            self.view_model.project,
+            self._workflow_id,
+        )
+        if target_group_id is None:
+            return
+        self.view_model.move_workflow_to_group(self._workflow_id, target_group_id)
+
+    def _prompt_workflow_group(
+        self,
+        project: Project,
+        workflow_id: UUID,
+    ) -> UUID | None:
+        current_group = self._group_for_workflow(workflow_id)
+        choices = [group for group in project.groups if group.id != current_group.id]
+        if not choices:
+            self.statusBar().showMessage("没有其它可移动到的流程组")
+            return None
+        labels = [group.name for group in choices]
+        selected, accepted = QInputDialog.getItem(
+            self,
+            "移动流程",
+            "目标流程组",
+            labels,
+            0,
+            False,
+        )
+        if not accepted:
+            return None
+        return choices[labels.index(selected)].id
 
     def _delete_selected_flow(self) -> None:
         if self._workflow_id is not None:

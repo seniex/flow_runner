@@ -9,6 +9,7 @@ from flow_runner.domain.project import (
     Workflow,
 )
 from flow_runner.domain.results import StepResult
+from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.engine.runner import Runner
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
@@ -47,16 +48,68 @@ def test_panels_expose_semantic_object_names(qtbot):
 
 
 def test_reordering_workflows_does_not_change_route_ids(qtbot):
-    first = Workflow(name="一")
     second = Workflow(name="二")
+    first = Workflow(
+        name="一",
+        steps=[
+            AutomationStep(
+                name="跳转",
+                routes=[
+                    RouteRule(
+                        outcome=StepOutcome.SUCCESS,
+                        target=RouteTarget.jump_workflow(second.id),
+                    )
+                ],
+            )
+        ],
+    )
     project = Project(name="p", groups=[FlowGroup(name="g", workflows=[first, second])])
     window = MainWindow(project)
     qtbot.addWidget(window)
+    window.flow_tree.select_workflow(second.id)
 
-    window.view_model.move_workflow(second.id, -1)
+    window.move_workflow_up_action.trigger()
 
     assert window.view_model.project.groups[0].workflows[0].id == second.id
     assert window.view_model.project.groups[0].workflows[1].id == first.id
+    assert (
+        window.view_model.project.groups[0].workflows[1].steps[0].routes[0].target.workflow_id
+        == second.id
+    )
+
+
+def test_moving_workflow_across_groups_preserves_uuid_routes(qtbot):
+    target = Workflow(name="目标")
+    moved = Workflow(
+        name="待移动",
+        steps=[
+            AutomationStep(
+                name="跳转",
+                routes=[
+                    RouteRule(
+                        outcome=StepOutcome.SUCCESS,
+                        target=RouteTarget.jump_workflow(target.id),
+                    )
+                ],
+            )
+        ],
+    )
+    source_group = FlowGroup(name="A", workflows=[moved])
+    target_group = FlowGroup(name="B", workflows=[target])
+    project = Project(name="p", groups=[source_group, target_group])
+    window = MainWindow(
+        project,
+        select_group_target=lambda _project, _workflow_id: target_group.id,
+    )
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(moved.id)
+
+    window.move_workflow_group_action.trigger()
+
+    assert window.view_model.project.groups[0].workflows == []
+    relocated = window.view_model.project.groups[1].workflows[1]
+    assert relocated.id == moved.id
+    assert relocated.steps[0].routes[0].target.workflow_id == target.id
 
 
 def test_runtime_toolbar_starts_selected_workflow_and_tracks_completion(qtbot):

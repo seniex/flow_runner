@@ -172,6 +172,29 @@ class ProjectViewModel(QObject):
                 self._commit(self.project.model_copy(update={"groups": groups}))
                 return
 
+    def move_workflow_to_group(self, workflow_id: UUID, target_group_id: UUID) -> None:
+        workflow: Workflow | None = None
+        source_group_id: UUID | None = None
+        if not any(group.id == target_group_id for group in self.project.groups):
+            raise KeyError(target_group_id)
+        for group in self.project.groups:
+            for candidate in group.workflows:
+                if candidate.id == workflow_id:
+                    workflow = candidate
+                    source_group_id = group.id
+                    break
+        if workflow is None or source_group_id is None:
+            raise KeyError(workflow_id)
+        if source_group_id == target_group_id:
+            return
+        groups: list[FlowGroup] = []
+        for group in self.project.groups:
+            workflows = [item for item in group.workflows if item.id != workflow_id]
+            if group.id == target_group_id:
+                workflows.append(workflow)
+            groups.append(FlowGroup(id=group.id, name=group.name, workflows=workflows))
+        self._commit(self.project.model_copy(update={"groups": groups}))
+
     def _replace_workflow(
         self,
         workflow_id: UUID,

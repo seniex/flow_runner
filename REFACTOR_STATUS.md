@@ -25,6 +25,7 @@
 - 显式并行块，共享任务变量和资源，隔离流程变量和调用栈。
 - 资源竞争的开始、完成和取消诊断；取消多资源等待不会泄漏锁。
 - 三栏编辑器、检测/执行/控制添加入口、条件树/动作/策略/路由引导编辑。
+- 流程可在组内排序或跨组移动，稳定 UUID 路由不会因分类调整而改变。
 - 区域、坐标和文件路径使用专用表单控件；动作坐标可直接保存 `$result...` 运行时绑定。
 - 已有动作、路由和策略层每轮前/未命中后动作可在引导编辑器中加载、修改和重新排序。
 - 新增控制步骤可从项目感知的下拉框选择当前流程步骤或跨组流程，不必手写 UUID。
@@ -41,7 +42,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 191 passed
+# 192 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -58,7 +59,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `32B7E243F8AC8EC2A02450C14CE4200D70BED5C09D243D6F3D105470732F397F`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `D516E37D43BD0D2C157E60A9F6A15ED5D009BF17C35C16117C42730AACAFCAC5`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
