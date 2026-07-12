@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from time import monotonic
 from typing import Any, cast
@@ -15,6 +16,7 @@ from flow_runner.domain.results import ActionResult, ConditionResult, StepResult
 from flow_runner.engine.bindings import resolve_binding
 from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.context import StepContext
+from flow_runner.engine.resources import ResourceCoordinator
 
 SleepCallable = Callable[[float], Awaitable[None]]
 ClockCallable = Callable[[], float]
@@ -27,6 +29,7 @@ class StepRuntime:
     cancellation: CancellationToken
     sleep: SleepCallable | None = None
     clock: ClockCallable = monotonic
+    resources: ResourceCoordinator | None = None
 
     def __post_init__(self) -> None:
         if self.sleep is None:
@@ -149,10 +152,20 @@ class StepExecutor:
             provider = self.runtime.registry.condition(condition.capability)
             config = provider.config_model.model_validate(condition.config)
             try:
-                result = cast(
-                    ConditionResult,
-                    await provider.evaluate(config, self.runtime.context),
-                )
+                async with AsyncExitStack() as stack:
+                    if self.runtime.resources is not None:
+                        required = provider.required_resources(config)
+                        targets = [
+                            resource.removeprefix("observe:")
+                            for resource in required
+                            if resource.startswith("observe:")
+                        ]
+                        for target in sorted(targets):
+                            await stack.enter_async_context(self.runtime.resources.observe(target))
+                    result = cast(
+                        ConditionResult,
+                        await provider.evaluate(config, self.runtime.context),
+                    )
             except Cancelled:
                 raise
             except Exception as error:
@@ -207,10 +220,30 @@ class StepExecutor:
         resolved_config = _resolve_config(action.config, self.runtime.context)
         config = provider.config_model.model_validate(resolved_config)
         try:
-            return cast(
-                ActionResult,
-                await provider.execute(config, self.runtime.context),
+            required = provider.required_resources(config)
+            if self.runtime.resources is None or not required:
+                return cast(
+                    ActionResult,
+                    await provider.execute(config, self.runtime.context),
+                )
+            window_targets = sorted(
+                resource for resource in required if resource.startswith("window:")
             )
+            target = window_targets[0] if window_targets else "desktop"
+            named_resources = required.difference(window_targets)
+            async with self.runtime.resources.interact(
+                target,
+                resources=named_resources,
+            ):
+                try:
+                    return cast(
+                        ActionResult,
+                        await provider.execute(config, self.runtime.context),
+                    )
+                finally:
+                    perception = self.runtime.resources.perception
+                    if perception is not None:
+                        perception.mark_scene_changed(target)
         except Cancelled:
             raise
         except Exception as error:

@@ -1,3 +1,4 @@
+import asyncio
 from collections import deque
 
 import pytest
@@ -9,6 +10,7 @@ from flow_runner.domain.project import AutomationStep
 from flow_runner.domain.results import ActionResult, ConditionResult
 from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.context import StepContext
+from flow_runner.engine.resources import ResourceCoordinator
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 
 
@@ -86,6 +88,47 @@ async def test_once_no_match_returns_not_matched_without_retry():
     assert condition.call_count == 1
     assert delays == []
     assert runtime.context.result is None
+
+
+@pytest.mark.asyncio
+async def test_shared_resource_coordinator_serializes_exclusive_actions():
+    active = 0
+    maximum_active = 0
+
+    class ExclusiveAction(CountingAction):
+        async def execute(self, config, context):
+            nonlocal active, maximum_active
+            active += 1
+            maximum_active = max(maximum_active, active)
+            await asyncio.sleep(0.02)
+            active -= 1
+            return ActionResult(outcome=StepOutcome.SUCCESS)
+
+        def required_resources(self, config):
+            return frozenset({"mouse"})
+
+    action = ExclusiveAction("exclusive")
+    registry = CapabilityRegistry()
+    registry.register_action(action)
+    coordinator = ResourceCoordinator()
+    step = AutomationStep(
+        name="exclusive",
+        actions=[{"capability": "exclusive", "config": {}}],
+    )
+
+    def executor():
+        return StepExecutor(
+            StepRuntime(
+                registry=registry,
+                context=StepContext(),
+                cancellation=CancellationToken(),
+                resources=coordinator,
+            )
+        )
+
+    await asyncio.gather(executor().execute(step), executor().execute(step))
+
+    assert maximum_active == 1
 
 
 @pytest.mark.asyncio

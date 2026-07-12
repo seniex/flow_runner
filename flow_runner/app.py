@@ -28,6 +28,7 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.project import Project
 from flow_runner.engine.context import StepContext
 from flow_runner.engine.perception import PerceptionService
+from flow_runner.engine.resources import ResourceCoordinator
 from flow_runner.engine.runner import Runner
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
@@ -60,6 +61,7 @@ class ApplicationComposition:
     hotkey_service: HotkeyService
     recorder: RecordingRecorder
     recording_path: Path
+    resource_coordinator: ResourceCoordinator
 
     def start_services(self) -> None:
         self.hotkey_service.start()
@@ -97,6 +99,7 @@ def create_application(
     store = ProjectStore(path)
     project = store.load() if path.exists() else Project(name="新项目")
     perception = PerceptionService(DesktopCapture())
+    resource_coordinator = ResourceCoordinator(perception)
     registry = _build_registry(perception, asyncio.sleep)
 
     def step_executor_factory(token: object) -> StepExecutor:
@@ -110,6 +113,7 @@ def create_application(
                 registry=execution_registry,
                 context=StepContext(),
                 cancellation=token,
+                resources=resource_coordinator,
             )
         )
 
@@ -139,6 +143,7 @@ def create_application(
         hotkey_service=hotkey_service,
         recorder=recorder,
         recording_path=recording_path or path.parent / "recordings" / "latest.json",
+        resource_coordinator=resource_coordinator,
     )
     window.recordRequested.connect(lambda: composition.toggle_recording())
     app.aboutToQuit.connect(lambda: composition.shutdown())
