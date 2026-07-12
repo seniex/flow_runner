@@ -10,7 +10,7 @@ from time import monotonic
 from typing import Any, Protocol
 from uuid import uuid4
 
-from PIL.Image import Image
+from PIL.Image import Image, Resampling
 
 from flow_runner.domain.capture_targets import canonical_capture_target
 from flow_runner.infrastructure.capture.base import CaptureAdapter, CapturedFrame
@@ -159,6 +159,7 @@ class PerceptionService:
         provider: OcrProvider,
         language: str = "",
         preprocessing: str = "",
+        scale: float = 1.0,
     ) -> Any:
         key = (
             snapshot.frame_id,
@@ -166,12 +167,19 @@ class PerceptionService:
             provider.name,
             language,
             preprocessing,
+            scale,
         )
         if key in self._ocr_cache:
             self._ocr_cache.move_to_end(key)
             return self._ocr_cache[key]
 
         image = self.crop_image(snapshot.image, region) if region else snapshot.image
+        if scale != 1:
+            width, height = image.size
+            image = image.resize(
+                (round(width * scale), round(height * scale)),
+                Resampling.LANCZOS,
+            )
         result = await provider.recognize(
             image,
             language=language,

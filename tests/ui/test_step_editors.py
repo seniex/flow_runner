@@ -197,6 +197,7 @@ def test_guided_dialog_builds_execution_and_control_steps(qtbot):
                 "region": None,
                 "language": "chi_sim",
                 "preprocessing": "",
+                "scale": 1.0,
             },
         )
     ]
@@ -593,7 +594,7 @@ def test_condition_editor_switches_leaf_capability_and_preserves_region(qtbot, t
 
     assert condition.capability == "vision.image"
     assert condition.config["region"] == (1, 2, 30, 40)
-    assert discarded_fields == [("keywords", "language", "preprocessing")]
+    assert discarded_fields == [("keywords", "language", "preprocessing", "scale")]
 
 
 def test_condition_editor_can_cancel_capability_switch_that_discards_fields(qtbot):
@@ -615,4 +616,4 @@ def test_condition_editor_can_cancel_capability_switch_that_discards_fields(qtbo
 
     assert editor.capability_combo.currentData() == "vision.ocr"
     assert editor.config_form.model_type is OcrConditionConfig
-    assert discarded_fields == [("keywords", "language", "preprocessing")]
+    assert discarded_fields == [("keywords", "language", "preprocessing", "scale")]

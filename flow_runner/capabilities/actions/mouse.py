@@ -1,3 +1,5 @@
+import random
+from collections.abc import Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -25,6 +27,7 @@ class MouseActionConfig(BaseModel):
     interval: float = Field(default=0.0, ge=0)
     duration: float = Field(default=0.0, ge=0)
     scroll_units: int = 1
+    jitter_pixels: int = Field(default=0, ge=0)
 
 
 class MouseAction:
@@ -32,8 +35,14 @@ class MouseAction:
     config_model = MouseActionConfig
     binds_to_scene = True
 
-    def __init__(self, device: MouseDevice) -> None:
+    def __init__(
+        self,
+        device: MouseDevice,
+        *,
+        randint: Callable[[int, int], int] = random.randint,
+    ) -> None:
         self.device = device
+        self.randint = randint
 
     async def execute(self, config: MouseActionConfig, context: Any) -> ActionResult:
         del context
@@ -41,6 +50,11 @@ class MouseAction:
             config.position[0] + config.offset[0],
             config.position[1] + config.offset[1],
         )
+        if config.jitter_pixels:
+            position = (
+                position[0] + self.randint(-config.jitter_pixels, config.jitter_pixels),
+                position[1] + self.randint(-config.jitter_pixels, config.jitter_pixels),
+            )
         if config.operation == "click":
             await self.device.click(
                 position=position,

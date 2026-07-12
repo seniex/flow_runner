@@ -157,7 +157,10 @@ the Tesseract executable, and the requested language data.
 - `flow_runner/ui`: PySide6 views, ViewModels, dialogs, and application-wide QSS management
 
 The legacy `flow_runner_p1.py`, `flow_runner_p2.py`, and `flow_runner_p3.py` files remain
-reference-only during the refactor. The new package must not import them.
+reference-only during the refactor. The new package does not import them. The checked-in
+`project.json` was generated from `config/flow_runner.json` by
+`python -m flow_runner.migration.cli`; converted recordings are stored in `recordings/legacy/`.
+See `LEGACY_CONVERSION_REPORT.md` for the exact mappings and validation evidence.
 
-Generating a new project configuration from the legacy configuration and applying the future
-`DESIGN.md` visual design are intentionally separate follow-up tasks requested by the user.
+Applying the future `DESIGN.md` visual design remains a separate follow-up task requested by the
+user.

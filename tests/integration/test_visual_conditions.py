@@ -72,6 +72,41 @@ async def test_ocr_condition_preserves_or_and_keyword_grammar_and_position():
 
 
 @pytest.mark.asyncio
+async def test_ocr_condition_scales_input_and_normalizes_result_coordinates():
+    capture = StaticCapture(Image.new("RGB", (200, 100), "white"))
+
+    class ScaledOcr:
+        name = "scaled"
+
+        async def recognize(self, image, *, language, preprocessing):
+            assert image.size == (200, 100)
+            return OcrObservation(
+                text="开始游戏",
+                items=[
+                    OcrItem(
+                        text="开始游戏",
+                        bounds=(40, 20, 160, 80),
+                        confidence=0.9,
+                    )
+                ],
+            )
+
+    provider = OcrCondition(PerceptionService(capture), ScaledOcr())
+
+    result = await provider.evaluate(
+        OcrConditionConfig(
+            region=(10, 5, 110, 55),
+            keywords="开始游戏",
+            scale=2,
+        ),
+        None,
+    )
+
+    assert result.bounds == (30, 15, 90, 45)
+    assert result.position == (60, 30)
+
+
+@pytest.mark.asyncio
 async def test_visual_condition_translates_target_local_coordinates_to_screen_coordinates():
     class OffsetCapture:
         async def capture(self, target):

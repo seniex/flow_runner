@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import random
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -127,18 +128,29 @@ class RecordingPlayer:
         *,
         sleep: Callable[[float], Awaitable[None]],
         backend: Any | None = None,
+        uniform: Callable[[float, float], float] = random.uniform,
     ) -> None:
         self.sleep = sleep
         self.backend = backend or importlib.import_module("pyautogui")
+        self.uniform = uniform
         self._held_keys: set[str] = set()
 
-    async def __call__(self, path: Path, speed: float, max_gap: float) -> None:
+    async def __call__(
+        self,
+        path: Path,
+        speed: float,
+        max_gap: float,
+        jitter_ms: int = 0,
+    ) -> None:
         events = RecordingStore.load(path)
         previous = 0.0
         self._held_keys.clear()
         try:
             for event in events:
                 delay = min(max(0.0, event.timestamp - previous) / speed, max_gap)
+                if jitter_ms:
+                    jitter_seconds = jitter_ms / 1000
+                    delay = max(0.0, delay + self.uniform(-jitter_seconds, jitter_seconds))
                 await self.sleep(delay)
                 await asyncio.to_thread(self._dispatch, event)
                 previous = event.timestamp

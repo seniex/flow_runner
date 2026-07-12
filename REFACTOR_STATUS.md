@@ -46,16 +46,16 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 213 passed
+# 219 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
 
 .\.venv\Scripts\python.exe -m ruff format --check flow_runner tests
-# 117 files already formatted
+# 121 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
-# Success: no issues found in 95 source files
+# Success: no issues found in 98 source files
 
 .\.venv\Scripts\python.exe -m pip check
 # No broken requirements found
@@ -63,7 +63,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，100 个条目，包含 `base.qss`、输入适配器和滚动属性面板；SHA-256 为 `FCB98880B6C2BB947DF4EAA21FC86C369D2E2093E964AE2359909A96C451DE36`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，103 个条目，包含 `base.qss`、输入适配器、滚动属性面板和旧配置迁移工具；SHA-256 为 `E74EE2A3B9AF6DC294833951A45769C10EBEEF24F6CBFFED1C99F59FCE5166CC`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
@@ -89,7 +89,10 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 配置恢复与原子保存已在一次性真实文件目录复验：连续保存只保留 5 份备份；损坏主 JSON 后最新备份可加载；模拟 `os.replace` 失败时原文件字节保持不变且 `.tmp` 已清理。
 
+## 旧配置转换
+
+`config/flow_runner.json` 已转换为根目录 `project.json`：4 个流程组、99 个流程、159 个步骤，能力配置、UUID 路由和 76 个外部文件引用全部验证通过。3 份旧录制脚本已转换到 `recordings/legacy/`。转换器位于 `flow_runner.migration`，详细映射见 `LEGACY_CONVERSION_REPORT.md`。
+
 ## 明确延期项
 
-- 不生成旧配置到新配置的转换结果；用户将在重构稳定后单独要求。
 - 不进行最终视觉设计；等待用户提供 `DESIGN.md` 后只通过 QSS/资源系统应用。

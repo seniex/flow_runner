@@ -164,6 +164,29 @@ async def test_mouse_action_supports_result_offset_hold_release_and_drag():
 
 
 @pytest.mark.asyncio
+async def test_mouse_action_applies_configured_coordinate_jitter_once():
+    mouse = FakeMouse()
+    action = MouseAction(mouse, randint=lambda lower, upper: upper)
+
+    await action.execute(
+        MouseActionConfig(
+            operation="click",
+            position=(10, 20),
+            jitter_pixels=3,
+            clicks=2,
+        ),
+        StepContext(),
+    )
+
+    assert mouse.calls == [
+        (
+            "click",
+            {"position": (13, 23), "button": "left", "clicks": 2, "interval": 0.0},
+        )
+    ]
+
+
+@pytest.mark.asyncio
 async def test_keyboard_action_supports_explicit_key_down_and_key_up():
     keyboard = FakeKeyboard()
     action = KeyboardAction(keyboard)
@@ -192,8 +215,8 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
     async def launch(path, arguments, run_as_admin, working_directory):
         launches.append((path, arguments, run_as_admin, working_directory))
 
-    async def playback(path, speed, max_gap):
-        playbacks.append((path, speed, max_gap))
+    async def playback(path, speed, max_gap, jitter_ms):
+        playbacks.append((path, speed, max_gap, jitter_ms))
 
     process_result = await LaunchProcessAction(launch).execute(
         LaunchProcessConfig(
@@ -205,13 +228,13 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
         StepContext(),
     )
     script_result = await PlaybackScriptAction(playback).execute(
-        PlaybackScriptConfig(path=script, speed=2.0, max_gap=1.5), StepContext()
+        PlaybackScriptConfig(path=script, speed=2.0, max_gap=1.5, jitter_ms=25), StepContext()
     )
 
     assert process_result.outcome is StepOutcome.SUCCESS
     assert script_result.outcome is StepOutcome.SUCCESS
     assert launches == [(app.resolve(), ("--safe",), True, tmp_path.resolve())]
-    assert playbacks == [(script.resolve(), 2.0, 1.5)]
+    assert playbacks == [(script.resolve(), 2.0, 1.5, 25)]
 
 
 @pytest.mark.asyncio
@@ -293,6 +316,35 @@ async def test_recording_player_applies_speed_gap_and_dispatches(tmp_path):
         ("move", 4, 5),
         ("click", {"x": 4, "y": 5, "button": "left"}),
     ]
+
+
+@pytest.mark.asyncio
+async def test_recording_player_applies_per_event_jitter_without_negative_delay(tmp_path):
+    path = tmp_path / "recording.json"
+    RecordingStore.save(
+        path,
+        [
+            RecordedEvent(timestamp=0.0, kind="move", data={"x": 1, "y": 2}),
+            RecordedEvent(timestamp=1.0, kind="move", data={"x": 3, "y": 4}),
+        ],
+    )
+    delays = []
+    jitters = iter([-0.05, 0.05])
+
+    async def sleep(seconds):
+        delays.append(seconds)
+
+    class Backend:
+        def moveTo(self, x, y):
+            pass
+
+    await RecordingPlayer(
+        sleep=sleep,
+        backend=Backend(),
+        uniform=lambda lower, upper: next(jitters),
+    )(path, speed=1.0, max_gap=2.0, jitter_ms=100)
+
+    assert delays == [0.0, 1.05]
 
 
 @pytest.mark.asyncio

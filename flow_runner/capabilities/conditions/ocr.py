@@ -18,6 +18,7 @@ class OcrConditionConfig(BaseModel):
     keywords: str = Field(min_length=1)
     language: str = "chi_sim"
     preprocessing: str = ""
+    scale: float = Field(default=1.0, gt=0)
 
 
 class OcrCondition:
@@ -41,6 +42,7 @@ class OcrCondition:
             provider=self.engine,
             language=config.language,
             preprocessing=config.preprocessing,
+            scale=config.scale,
         )
         if not isinstance(observation, OcrObservation):
             observation = OcrObservation.model_validate(observation)
@@ -55,7 +57,7 @@ class OcrCondition:
                 scene_generation=snapshot.scene_generation,
                 provider_data={**snapshot.metadata, "frame_id": snapshot.frame_id},
             )
-        bounds = _offset_bounds(matched_item.bounds, config.region)
+        bounds = _offset_bounds(_scaled_bounds(matched_item.bounds, config.scale), config.region)
         if bounds is not None:
             bounds = snapshot.absolute_bounds(bounds)
         position = _center(bounds) if bounds else None
@@ -102,6 +104,18 @@ def _offset_bounds(bounds: Region | None, region: Region | None) -> Region | Non
         return bounds
     left, top, right, bottom = bounds
     return left + region[0], top + region[1], right + region[0], bottom + region[1]
+
+
+def _scaled_bounds(bounds: Region | None, scale: float) -> Region | None:
+    if bounds is None or scale == 1:
+        return bounds
+    left, top, right, bottom = bounds
+    return (
+        int(left / scale),
+        int(top / scale),
+        int(right / scale),
+        int(bottom / scale),
+    )
 
 
 def _center(bounds: Region) -> tuple[int, int]:

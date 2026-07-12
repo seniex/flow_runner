@@ -8,7 +8,7 @@ from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.errors import ActionError
 from flow_runner.domain.results import ActionResult
 
-Playback = Callable[[Path, float, float], Awaitable[None]]
+Playback = Callable[[Path, float, float, int], Awaitable[None]]
 
 
 class PlaybackScriptConfig(BaseModel):
@@ -16,6 +16,7 @@ class PlaybackScriptConfig(BaseModel):
     path: Path
     speed: float = Field(default=1.0, gt=0)
     max_gap: float = Field(default=2.0, ge=0)
+    jitter_ms: int = Field(default=0, ge=0)
 
 
 class PlaybackScriptAction:
@@ -30,7 +31,7 @@ class PlaybackScriptAction:
         path = config.path.resolve()
         if not path.is_file():
             raise ActionError(f"recording path does not exist: {path}")
-        await self.playback(path, config.speed, config.max_gap)
+        await self.playback(path, config.speed, config.max_gap, config.jitter_ms)
         return ActionResult(outcome=StepOutcome.SUCCESS)
 
     def required_resources(self, config: PlaybackScriptConfig) -> frozenset[str]:
