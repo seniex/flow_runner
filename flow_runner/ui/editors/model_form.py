@@ -55,6 +55,30 @@ class ModelForm(QWidget):
                     values[name] = json.loads(text)
         return values
 
+    def set_values(self, values: dict[str, Any]) -> None:
+        for name, value in values.items():
+            editor = self.editors.get(name)
+            if editor is None:
+                continue
+            annotation = self.annotations[name]
+            if isinstance(editor, QCheckBox):
+                editor.setChecked(bool(value))
+            elif isinstance(editor, QSpinBox):
+                editor.setValue(int(value))
+            elif isinstance(editor, QDoubleSpinBox):
+                editor.setValue(float(value))
+            elif isinstance(editor, QComboBox):
+                index = editor.findData(value)
+                if index >= 0:
+                    editor.setCurrentIndex(index)
+            elif isinstance(editor, QLineEdit):
+                if value is None:
+                    editor.clear()
+                elif _is_plain_text(annotation):
+                    editor.setText(str(value))
+                else:
+                    editor.setText(json.dumps(value, ensure_ascii=False))
+
 
 def _create_editor(annotation: Any, default: Any, optional: bool) -> QWidget:
     if optional:

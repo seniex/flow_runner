@@ -4,12 +4,13 @@ from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
+from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import ConditionMode, StepOutcome
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.routing import RouteRule, RouteTarget, RouteTargetKind
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.editors.action_editor import ActionEditor
-from flow_runner.ui.editors.condition_editor import switch_condition_capability
+from flow_runner.ui.editors.condition_editor import ConditionEditor, switch_condition_capability
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
@@ -232,3 +233,24 @@ def test_property_panel_applies_guided_action_editor_changes(qtbot):
 
     assert blocker.args[0].actions[0].capability == "system.wait"
     assert blocker.args[0].actions[0].config["keywords"] == "等待"
+
+
+def test_condition_editor_switches_leaf_capability_and_preserves_region(qtbot, tmp_path):
+    editor = ConditionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_condition(
+        LeafCondition(
+            id="screen",
+            capability="vision.ocr",
+            config=OcrConditionConfig(keywords="开始", region=(1, 2, 30, 40)).model_dump(
+                mode="python"
+            ),
+        )
+    )
+    editor.capability_combo.setCurrentIndex(editor.capability_combo.findData("vision.image"))
+    editor.config_form.editor("template_path").setText(str(tmp_path / "target.png"))
+
+    condition = editor.condition()
+
+    assert condition.capability == "vision.image"
+    assert condition.config["region"] == (1, 2, 30, 40)

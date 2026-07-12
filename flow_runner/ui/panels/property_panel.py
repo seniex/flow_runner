@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.ui.editors.action_editor import ActionEditor
+from flow_runner.ui.editors.condition_editor import ConditionEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 
 
@@ -33,6 +34,7 @@ class PropertyPanel(QWidget):
         self.setObjectName("propertyPanel")
         self.step_id: UUID | None = None
         self._step: AutomationStep | None = None
+        self._condition_json_baseline = ""
         self._actions_json_baseline = ""
         self._routes_json_baseline = ""
         self.title = QLabel("")
@@ -51,6 +53,7 @@ class PropertyPanel(QWidget):
         self.routes_edit = QPlainTextEdit()
         self.routes_edit.setObjectName("routesModelEditor")
         self.action_editor = ActionEditor(registry) if registry is not None else None
+        self.condition_editor = ConditionEditor(registry) if registry is not None else None
         self.route_editor = RouteEditor(project) if registry is not None else None
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
@@ -59,6 +62,8 @@ class PropertyPanel(QWidget):
         form = QFormLayout()
         form.addRow("名称", self.name_edit)
         form.addRow("状态", self.enabled_check)
+        if self.condition_editor is not None:
+            form.addRow("条件引导", self.condition_editor)
         form.addRow("条件", self.condition_edit)
         if self.action_editor is not None:
             form.addRow("动作引导", self.action_editor)
@@ -79,7 +84,10 @@ class PropertyPanel(QWidget):
         self.title.setText(step.name)
         self.name_edit.setText(step.name)
         self.enabled_check.setChecked(step.enabled)
-        self.condition_edit.setPlainText(_json(step.condition))
+        self._condition_json_baseline = _json(step.condition)
+        self.condition_edit.setPlainText(self._condition_json_baseline)
+        if self.condition_editor is not None:
+            self.condition_editor.set_condition(step.condition)
         self._actions_json_baseline = _json(step.actions)
         self.actions_edit.setPlainText(self._actions_json_baseline)
         if self.action_editor is not None:
@@ -119,7 +127,12 @@ class PropertyPanel(QWidget):
                     "id": self._step.id,
                     "name": self.name_edit.text(),
                     "enabled": self.enabled_check.isChecked(),
-                    "condition": json.loads(self.condition_edit.toPlainText()),
+                    "condition": (
+                        self.condition_editor.condition()
+                        if self.condition_editor is not None
+                        and self.condition_edit.toPlainText() == self._condition_json_baseline
+                        else json.loads(self.condition_edit.toPlainText())
+                    ),
                     "actions": (
                         self.action_editor.action_specs()
                         if self.action_editor is not None
