@@ -45,6 +45,7 @@ from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 from flow_runner.infrastructure.processes.query import WindowsProcessQuery
+from flow_runner.infrastructure.windowing.dpi import enable_per_monitor_dpi_awareness
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController, Win32WindowQuery
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
 from flow_runner.ui.main_window import MainWindow
@@ -98,6 +99,7 @@ def create_application(
     recording_listener_factory: RecordingListenerFactory | None = None,
     recording_path: Path | None = None,
 ) -> ApplicationComposition:
+    enable_per_monitor_dpi_awareness()
     existing = QApplication.instance()
     app = existing if isinstance(existing, QApplication) else QApplication(list(argv or []))
     path = project_path or Path.cwd() / "project.json"
