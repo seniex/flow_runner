@@ -10,6 +10,8 @@ from flow_runner.capabilities.conditions.region_change import (
 from flow_runner.capabilities.conditions.window import WindowCondition, WindowConditionConfig
 from flow_runner.domain.enums import ConditionOutcome
 from flow_runner.engine.perception import PerceptionService
+from flow_runner.infrastructure.processes.query import WindowsProcessQuery
+from flow_runner.infrastructure.windowing.win32 import Win32WindowQuery
 
 
 class SequenceCapture:
@@ -63,3 +65,24 @@ async def test_window_and_process_conditions_use_query_adapters():
     )
     assert window.outcome is ConditionOutcome.MATCH
     assert process.outcome is ConditionOutcome.MATCH
+
+
+def test_win32_window_query_normalizes_injected_backend_result():
+    class Backend:
+        def query(self, title):
+            assert title == "Game"
+            return {"exists": True, "foreground": True, "title": "Game Window", "handle": 42}
+
+    assert Win32WindowQuery(Backend()).query("Game") == {
+        "exists": True,
+        "foreground": True,
+        "title": "Game Window",
+        "handle": 42,
+    }
+
+
+def test_windows_process_query_matches_tasklist_rows_case_insensitively():
+    query = WindowsProcessQuery(run_tasklist=lambda: '"Game.EXE","123","Console","1","10,000 K"\n')
+
+    assert query.exists("game.exe")
+    assert not query.exists("other.exe")

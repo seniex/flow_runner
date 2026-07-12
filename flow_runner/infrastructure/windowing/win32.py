@@ -14,6 +14,14 @@ class WindowController(Protocol):
     async def move_resize(self, title: str, geometry: tuple[int, int, int, int]) -> None: ...
 
 
+class Win32WindowQuery:
+    def __init__(self, backend: Any | None = None) -> None:
+        self.backend = backend or _PyWin32WindowBackend()
+
+    def query(self, title: str) -> dict[str, Any]:
+        return dict(self.backend.query(title))
+
+
 class Win32WindowController:
     def __init__(self, backend: Any | None = None) -> None:
         self.backend = backend or _PyWin32WindowBackend()
@@ -36,7 +44,7 @@ class _PyWin32WindowBackend:
         self.win32con = importlib.import_module("win32con")
         self.win32gui = importlib.import_module("win32gui")
 
-    def _find(self, title: str) -> int:
+    def _find_optional(self, title: str) -> int | None:
         matches: list[int] = []
 
         def visit(handle: int, extra: object) -> None:
@@ -47,9 +55,24 @@ class _PyWin32WindowBackend:
                 matches.append(handle)
 
         self.win32gui.EnumWindows(visit, None)
-        if not matches:
+        return matches[0] if matches else None
+
+    def _find(self, title: str) -> int:
+        handle = self._find_optional(title)
+        if handle is None:
             raise LookupError(f"window not found: {title}")
-        return matches[0]
+        return handle
+
+    def query(self, title: str) -> dict[str, Any]:
+        handle = self._find_optional(title)
+        if handle is None:
+            return {"exists": False, "foreground": False, "title": "", "handle": None}
+        return {
+            "exists": True,
+            "foreground": handle == self.win32gui.GetForegroundWindow(),
+            "title": self.win32gui.GetWindowText(handle),
+            "handle": handle,
+        }
 
     def activate(self, title: str) -> None:
         handle = self._find(title)

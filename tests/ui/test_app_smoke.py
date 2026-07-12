@@ -21,6 +21,8 @@ def test_application_starts_offscreen_with_injected_project_path(qtbot, tmp_path
         "vision.ocr",
         "vision.image",
         "vision.pixel",
+        "system.window",
+        "system.process",
     }
     assert composition.runner_bridge.runner is composition.runner
     assert {item.name for item in composition.registry.action_metadata()} >= {

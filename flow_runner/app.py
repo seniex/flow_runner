@@ -19,9 +19,11 @@ from flow_runner.capabilities.conditions.count import CountCondition
 from flow_runner.capabilities.conditions.image import ImageCondition
 from flow_runner.capabilities.conditions.ocr import OcrCondition
 from flow_runner.capabilities.conditions.pixel import PixelCondition
+from flow_runner.capabilities.conditions.process import ProcessCondition
 from flow_runner.capabilities.conditions.region_change import RegionChangeCondition
 from flow_runner.capabilities.conditions.time import TimeCondition
 from flow_runner.capabilities.conditions.variables import VariableCondition
+from flow_runner.capabilities.conditions.window import WindowCondition
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.project import Project
 from flow_runner.engine.context import StepContext
@@ -35,7 +37,8 @@ from flow_runner.infrastructure.input.recording import RecordingPlayer
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
-from flow_runner.infrastructure.windowing.win32 import Win32WindowController
+from flow_runner.infrastructure.processes.query import WindowsProcessQuery
+from flow_runner.infrastructure.windowing.win32 import Win32WindowController, Win32WindowQuery
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
@@ -129,6 +132,8 @@ def _build_registry(
         TimeCondition(),
         CountCondition(),
         VariableCondition(),
+        WindowCondition(Win32WindowQuery()),
+        ProcessCondition(WindowsProcessQuery()),
     ):
         registry.register_condition(condition)
     registry.register_action(MouseAction(PyAutoGuiMouseDevice()))
