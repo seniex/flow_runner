@@ -105,11 +105,14 @@ class PropertyPanel(QWidget):
         self._routes_json_baseline = _json(step.routes)
         self.routes_edit.setPlainText(self._routes_json_baseline)
         if self.route_editor is not None:
+            self.route_editor.set_step_context(step.id)
             self.route_editor.set_routes(step.routes)
 
     def clear_step(self) -> None:
         self.step_id = None
         self._step = None
+        if self.route_editor is not None:
+            self.route_editor.set_step_context(None)
         self.title.clear()
         self.name_edit.clear()
         self.enabled_check.setChecked(False)

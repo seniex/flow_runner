@@ -302,6 +302,50 @@ def test_route_editor_selects_cross_group_workflow_target(qtbot):
     assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
 
 
+def test_route_editor_selects_next_step_from_current_workflow(qtbot):
+    first_step = AutomationStep(name="first")
+    second_step = AutomationStep(name="second")
+    workflow = Workflow(name="main", steps=[first_step, second_step])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.set_step_context(first_step.id)
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.NEXT_STEP))
+    editor.step_combo.setCurrentIndex(editor.step_combo.findData(second_step.id))
+
+    editor.add_button.click()
+
+    assert editor.routes()[0].target == RouteTarget.next_step(second_step.id)
+
+
+def test_route_editor_selects_count_predicate_reference(qtbot):
+    first = Workflow(name="A")
+    counted_step = AutomationStep(name="counted")
+    second = Workflow(name="B", steps=[counted_step])
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+    )
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.END))
+    editor.predicate_source_combo.setCurrentIndex(
+        editor.predicate_source_combo.findData("step_count")
+    )
+    editor.predicate_step_combo.setCurrentIndex(
+        editor.predicate_step_combo.findData(counted_step.id)
+    )
+    editor.predicate_expected_edit.setText("3")
+
+    editor.add_button.click()
+
+    assert editor.routes()[0].predicate == RoutePredicate.step_count(
+        counted_step.id,
+        ComparisonOperator.EQ,
+        3,
+    )
+
+
 def test_route_editor_adds_variable_predicate(qtbot):
     editor = RouteEditor()
     qtbot.addWidget(editor)

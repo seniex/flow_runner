@@ -27,6 +27,8 @@ from flow_runner.domain.routing import (
 class RouteEditor(QWidget):
     def __init__(self, project: Project | None = None) -> None:
         super().__init__()
+        self._project: Project | None = None
+        self._current_step_id: UUID | None = None
         self._routes: list[RouteRule] = []
         self.outcome_combo = QComboBox()
         for outcome in StepOutcome:
@@ -35,9 +37,7 @@ class RouteEditor(QWidget):
         for kind in RouteTargetKind:
             self.target_combo.addItem(kind.value, kind)
         self.workflow_combo = QComboBox()
-        if project is not None:
-            self.set_project(project)
-        self.step_id_edit = QLineEdit()
+        self.step_combo = QComboBox()
         self.predicate_source_combo = QComboBox()
         self.predicate_source_combo.addItem("无", "")
         for source in (
@@ -48,6 +48,8 @@ class RouteEditor(QWidget):
         ):
             self.predicate_source_combo.addItem(source, source)
         self.predicate_key_edit = QLineEdit()
+        self.predicate_workflow_combo = QComboBox()
+        self.predicate_step_combo = QComboBox()
         self.predicate_operator_combo = QComboBox()
         for operator in ComparisonOperator:
             self.predicate_operator_combo.addItem(operator.value, operator)
@@ -63,9 +65,11 @@ class RouteEditor(QWidget):
         form.addRow("结果", self.outcome_combo)
         form.addRow("目标类型", self.target_combo)
         form.addRow("目标流程", self.workflow_combo)
-        form.addRow("目标步骤 UUID", self.step_id_edit)
+        form.addRow("目标步骤", self.step_combo)
         form.addRow("附加条件来源", self.predicate_source_combo)
-        form.addRow("条件键/UUID", self.predicate_key_edit)
+        form.addRow("变量名称", self.predicate_key_edit)
+        form.addRow("计数流程", self.predicate_workflow_combo)
+        form.addRow("计数步骤", self.predicate_step_combo)
         form.addRow("比较", self.predicate_operator_combo)
         form.addRow("期望值（JSON）", self.predicate_expected_edit)
         layout.addLayout(form)
@@ -84,17 +88,63 @@ class RouteEditor(QWidget):
         self.remove_button.clicked.connect(self._remove_current)
         self.up_button.clicked.connect(lambda: self._move_current(-1))
         self.down_button.clicked.connect(lambda: self._move_current(1))
+        self.target_combo.currentIndexChanged.connect(lambda _: self._update_controls())
+        self.predicate_source_combo.currentIndexChanged.connect(
+            lambda _: self._update_controls()
+        )
+        if project is not None:
+            self.set_project(project)
+        self._update_controls()
 
     def set_project(self, project: Project) -> None:
+        self._project = project
         current = self.workflow_combo.currentData()
+        predicate_workflow = self.predicate_workflow_combo.currentData()
+        predicate_step = self.predicate_step_combo.currentData()
         self.workflow_combo.clear()
+        self.predicate_workflow_combo.clear()
+        self.predicate_step_combo.clear()
         for group in project.groups:
             for workflow in group.workflows:
-                self.workflow_combo.addItem(f"{group.name} / {workflow.name}", workflow.id)
+                label = f"{group.name} / {workflow.name}"
+                self.workflow_combo.addItem(label, workflow.id)
+                self.predicate_workflow_combo.addItem(label, workflow.id)
+                for step in workflow.steps:
+                    self.predicate_step_combo.addItem(
+                        f"{label} / {step.name}",
+                        step.id,
+                    )
         if isinstance(current, UUID):
             index = self.workflow_combo.findData(current)
             if index >= 0:
                 self.workflow_combo.setCurrentIndex(index)
+        if isinstance(predicate_workflow, UUID):
+            index = self.predicate_workflow_combo.findData(predicate_workflow)
+            if index >= 0:
+                self.predicate_workflow_combo.setCurrentIndex(index)
+        if isinstance(predicate_step, UUID):
+            index = self.predicate_step_combo.findData(predicate_step)
+            if index >= 0:
+                self.predicate_step_combo.setCurrentIndex(index)
+        self.set_step_context(self._current_step_id)
+
+    def set_step_context(self, step_id: UUID | None) -> None:
+        self._current_step_id = step_id
+        current_target = self.step_combo.currentData()
+        self.step_combo.clear()
+        if self._project is None or step_id is None:
+            return
+        for group in self._project.groups:
+            for workflow in group.workflows:
+                if not any(step.id == step_id for step in workflow.steps):
+                    continue
+                for step in workflow.steps:
+                    self.step_combo.addItem(step.name, step.id)
+                if isinstance(current_target, UUID):
+                    index = self.step_combo.findData(current_target)
+                    if index >= 0:
+                        self.step_combo.setCurrentIndex(index)
+                return
 
     def set_routes(self, routes: list[RouteRule]) -> None:
         self._routes = list(routes)
@@ -126,7 +176,10 @@ class RouteEditor(QWidget):
         if kind is RouteTargetKind.RETURN:
             return RouteTarget.return_to_caller()
         if kind is RouteTargetKind.NEXT_STEP:
-            return RouteTarget.next_step(UUID(self.step_id_edit.text().strip()))
+            step_id = self.step_combo.currentData()
+            if not isinstance(step_id, UUID):
+                raise ValueError("请选择当前流程中的目标步骤")
+            return RouteTarget.next_step(step_id)
         workflow_id = self.workflow_combo.currentData()
         if not isinstance(workflow_id, UUID):
             raise ValueError("请选择目标流程")
@@ -138,9 +191,20 @@ class RouteEditor(QWidget):
         source = self.predicate_source_combo.currentData()
         if not source:
             return None
-        key = self.predicate_key_edit.text().strip()
-        if not key:
-            raise ValueError("条件键不能为空")
+        if source == "workflow_count":
+            key_value = self.predicate_workflow_combo.currentData()
+            if not isinstance(key_value, UUID):
+                raise ValueError("请选择计数流程")
+            key = str(key_value)
+        elif source == "step_count":
+            key_value = self.predicate_step_combo.currentData()
+            if not isinstance(key_value, UUID):
+                raise ValueError("请选择计数步骤")
+            key = str(key_value)
+        else:
+            key = self.predicate_key_edit.text().strip()
+            if not key:
+                raise ValueError("变量名称不能为空")
         expected_text = self.predicate_expected_edit.text().strip()
         if not expected_text:
             raise ValueError("期望值不能为空")
@@ -154,6 +218,19 @@ class RouteEditor(QWidget):
             operator=ComparisonOperator(self.predicate_operator_combo.currentData()),
             expected=expected,
         )
+
+    def _update_controls(self) -> None:
+        target = self.target_combo.currentData()
+        self.workflow_combo.setVisible(
+            target in {RouteTargetKind.JUMP_WORKFLOW, RouteTargetKind.CALL_WORKFLOW}
+        )
+        self.step_combo.setVisible(target is RouteTargetKind.NEXT_STEP)
+        source = self.predicate_source_combo.currentData()
+        self.predicate_key_edit.setVisible(
+            source in {"task_variable", "workflow_variable"}
+        )
+        self.predicate_workflow_combo.setVisible(source == "workflow_count")
+        self.predicate_step_combo.setVisible(source == "step_count")
 
     def _remove_current(self) -> None:
         row = self.route_list.currentRow()
