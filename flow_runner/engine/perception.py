@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 from collections import OrderedDict
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from time import monotonic
 from typing import Any, Protocol
@@ -63,9 +66,29 @@ class PerceptionService:
         self._inflight: dict[str, asyncio.Task[PerceptionSnapshot]] = {}
         self._frame_cache: OrderedDict[str, PerceptionSnapshot] = OrderedDict()
         self._ocr_cache: OrderedDict[tuple[Any, ...], Any] = OrderedDict()
+        self._tick_snapshots: ContextVar[dict[str, PerceptionSnapshot] | None] = ContextVar(
+            f"perception_tick_{id(self)}",
+            default=None,
+        )
+
+    @asynccontextmanager
+    async def evaluation_tick(self) -> AsyncIterator[None]:
+        if self._tick_snapshots.get() is not None:
+            yield
+            return
+        token = self._tick_snapshots.set({})
+        try:
+            yield
+        finally:
+            self._tick_snapshots.reset(token)
 
     async def snapshot(self, target: str) -> PerceptionSnapshot:
         generation = self.current_generation(target)
+        tick_snapshots = self._tick_snapshots.get()
+        if tick_snapshots is not None:
+            tick_snapshot = tick_snapshots.get(target)
+            if tick_snapshot is not None and tick_snapshot.scene_generation == generation:
+                return tick_snapshot
         latest = self._latest.get(target)
         if (
             latest is not None
@@ -80,7 +103,12 @@ class PerceptionService:
             inflight = asyncio.create_task(self._capture(target, generation))
             self._inflight[target] = inflight
         try:
-            return await inflight
+            snapshot = await inflight
+            if tick_snapshots is not None and snapshot.scene_generation == self.current_generation(
+                target
+            ):
+                tick_snapshots[target] = snapshot
+            return snapshot
         finally:
             if self._inflight.get(target) is inflight:
                 self._inflight.pop(target, None)

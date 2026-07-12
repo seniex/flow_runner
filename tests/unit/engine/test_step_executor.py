@@ -322,6 +322,73 @@ async def test_stale_visual_result_is_revalidated_before_bound_mouse_action():
 
 
 @pytest.mark.asyncio
+async def test_composite_visual_conditions_share_one_frame_per_evaluation_tick():
+    class Capture:
+        def __init__(self):
+            self.calls = 0
+
+        async def capture(self, target):
+            self.calls += 1
+            return Image.new("RGB", (10, 10), "white")
+
+    capture = Capture()
+    perception = PerceptionService(capture)
+
+    class VisualCondition:
+        name = "visual"
+        config_model = EmptyConfig
+
+        async def evaluate(self, config, context):
+            snapshot = await perception.snapshot("desktop")
+            return ConditionResult(
+                node_id=self.name,
+                outcome=ConditionOutcome.MATCH,
+                target="desktop",
+                frame_id=snapshot.frame_id,
+                scene_generation=snapshot.scene_generation,
+            )
+
+        def required_resources(self, config):
+            return frozenset({"observe:desktop"})
+
+    registry = CapabilityRegistry()
+    registry.register_condition(VisualCondition())
+    executor = StepExecutor(
+        StepRuntime(
+            registry=registry,
+            context=StepContext(),
+            cancellation=CancellationToken(),
+            resources=ResourceCoordinator(perception),
+        )
+    )
+    step = AutomationStep.model_validate(
+        {
+            "name": "shared frame",
+            "condition": {
+                "id": "all",
+                "operator": "and",
+                "children": [
+                    {"id": "first", "capability": "visual", "config": {}},
+                    {"id": "second", "capability": "visual", "config": {}},
+                ],
+            },
+        }
+    )
+
+    first_result = await executor.execute(step)
+    second_result = await executor.execute(step)
+
+    assert capture.calls == 2
+    assert first_result.condition_result is not None
+    assert second_result.condition_result is not None
+    first_children = first_result.condition_result.children
+    second_children = second_result.condition_result.children
+    assert first_children["first"].frame_id == first_children["second"].frame_id
+    assert second_children["first"].frame_id == second_children["second"].frame_id
+    assert first_children["first"].frame_id != second_children["first"].frame_id
+
+
+@pytest.mark.asyncio
 async def test_condition_preview_does_not_execute_main_actions():
     condition = QueuedCondition(
         [ConditionResult(node_id="provider", outcome=ConditionOutcome.MATCH, text="ready")]

@@ -197,6 +197,25 @@ class StepExecutor:
         *,
         acquire_resources: bool = True,
     ) -> ConditionResult:
+        coordinator = self.runtime.resources
+        perception = coordinator.perception if coordinator is not None else None
+        if perception is not None:
+            async with perception.evaluation_tick():
+                return await self._evaluate_condition_node(
+                    condition,
+                    acquire_resources=acquire_resources,
+                )
+        return await self._evaluate_condition_node(
+            condition,
+            acquire_resources=acquire_resources,
+        )
+
+    async def _evaluate_condition_node(
+        self,
+        condition: ConditionNode,
+        *,
+        acquire_resources: bool,
+    ) -> ConditionResult:
         await self.runtime.wait_until_active()
         if isinstance(condition, LeafCondition):
             try:
@@ -235,7 +254,7 @@ class StepExecutor:
             return result
 
         children = [
-            await self._evaluate_condition(child, acquire_resources=acquire_resources)
+            await self._evaluate_condition_node(child, acquire_resources=acquire_resources)
             for child in condition.children
         ]
         return self._combine_group(condition, children)
