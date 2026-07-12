@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
@@ -26,12 +28,19 @@ ConditionOperator = Literal["and", "or", "not"]
 
 
 class ConditionEditor(QWidget):
-    def __init__(self, registry: CapabilityRegistry) -> None:
+    def __init__(
+        self,
+        registry: CapabilityRegistry,
+        *,
+        confirm_discard: Callable[[tuple[str, ...]], bool] | None = None,
+    ) -> None:
         super().__init__()
         self.registry = registry
+        self.confirm_discard = confirm_discard or self._confirm_discard
         self._root: ConditionNode | None = None
         self._selected_path: tuple[int, ...] | None = None
         self._loading = False
+        self._active_capability: str | None = None
         self.enabled_check = QCheckBox("使用条件")
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
@@ -428,8 +437,37 @@ class ConditionEditor(QWidget):
         return result
 
     def _capability_changed(self, _index: int) -> None:
-        if not self._loading:
-            self._switch_form()
+        if self._loading:
+            return
+        capability = self.capability_combo.currentData()
+        if not isinstance(capability, str) or capability == self._active_capability:
+            return
+        previous: dict[str, Any] = {}
+        if self.config_form is not None:
+            try:
+                previous = self.config_form.values()
+            except ValueError as error:
+                self.message_label.setText(str(error))
+                self._restore_active_capability()
+                return
+        allowed = set(self.registry.condition(capability).config_model.model_fields)
+        discarded = tuple(name for name in previous if name not in allowed)
+        if discarded and not self.confirm_discard(discarded):
+            self._restore_active_capability()
+            return
+        self._switch_form(previous)
+        self.message_label.setText(
+            f"已舍弃检测能力专属字段：{', '.join(discarded)}" if discarded else ""
+        )
+
+    def _restore_active_capability(self) -> None:
+        if self._active_capability is None:
+            return
+        self._loading = True
+        self.capability_combo.setCurrentIndex(
+            self.capability_combo.findData(self._active_capability)
+        )
+        self._loading = False
 
     def _switch_form(self, values: dict[str, Any] | None = None) -> None:
         previous = values
@@ -457,6 +495,20 @@ class ConditionEditor(QWidget):
                 {name: value for name, value in previous.items() if name in allowed}
             )
         self.form_layout.addWidget(self.config_form)
+        self._active_capability = capability
+
+    def _confirm_discard(self, fields: tuple[str, ...]) -> bool:
+        field_list = "、".join(fields)
+        return (
+            QMessageBox.question(
+                self,
+                "确认切换检测能力",
+                f"切换后将舍弃以下专属字段：{field_list}\n是否继续？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            is QMessageBox.StandardButton.Yes
+        )
 
     def _update_enabled(self, enabled: bool) -> None:
         self.tree.setEnabled(enabled)

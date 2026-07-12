@@ -571,7 +571,11 @@ def test_property_panel_applies_guided_action_editor_changes(qtbot):
 
 
 def test_condition_editor_switches_leaf_capability_and_preserves_region(qtbot, tmp_path):
-    editor = ConditionEditor(registry())
+    discarded_fields = []
+    editor = ConditionEditor(
+        registry(),
+        confirm_discard=lambda fields: discarded_fields.append(fields) or True,
+    )
     qtbot.addWidget(editor)
     editor.set_condition(
         LeafCondition(
@@ -589,3 +593,26 @@ def test_condition_editor_switches_leaf_capability_and_preserves_region(qtbot, t
 
     assert condition.capability == "vision.image"
     assert condition.config["region"] == (1, 2, 30, 40)
+    assert discarded_fields == [("keywords", "language", "preprocessing")]
+
+
+def test_condition_editor_can_cancel_capability_switch_that_discards_fields(qtbot):
+    discarded_fields = []
+    editor = ConditionEditor(
+        registry(),
+        confirm_discard=lambda fields: discarded_fields.append(fields) or False,
+    )
+    qtbot.addWidget(editor)
+    editor.set_condition(
+        LeafCondition(
+            id="screen",
+            capability="vision.ocr",
+            config=OcrConditionConfig(keywords="开始").model_dump(mode="python"),
+        )
+    )
+
+    editor.capability_combo.setCurrentIndex(editor.capability_combo.findData("vision.image"))
+
+    assert editor.capability_combo.currentData() == "vision.ocr"
+    assert editor.config_form.model_type is OcrConditionConfig
+    assert discarded_fields == [("keywords", "language", "preprocessing")]

@@ -28,6 +28,7 @@
 - 区域、坐标和文件路径使用专用表单控件；动作坐标可直接保存 `$result...` 运行时绑定。
 - 已有动作、路由和策略层每轮前/未命中后动作可在引导编辑器中加载、修改和重新排序。
 - 新增控制步骤可从项目感知的下拉框选择当前流程步骤或跨组流程，不必手写 UUID。
+- OCR、图片等检测能力切换前会列出将舍弃的专属字段并允许取消，公共字段继续保留。
 - 保存、备份、撤销、脏关闭确认、项目设置、F6–F9 热键和输入录制。
 - 启动/暂停/继续/停止、单步运行、条件预览和结构化诊断截图通道。
 - PaddleOCR-json v1.4.x 进程生命周期和 stdin/stdout JSON 协议。
@@ -40,7 +41,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 190 passed
+# 191 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -57,7 +58,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `F621DCCE716B1D27285F95483BFAFE050C4A9A93172AC663C239DF58F8ACAE0D`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，98 个条目，包含 `base.qss`；SHA-256 为 `32B7E243F8AC8EC2A02450C14CE4200D70BED5C09D243D6F3D105470732F397F`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
