@@ -2,7 +2,9 @@ from pathlib import Path
 
 import pytest
 
+from flow_runner.capabilities.actions.keyboard import KeyboardActionConfig
 from flow_runner.capabilities.actions.mouse import MouseActionConfig
+from flow_runner.capabilities.actions.wait import WaitActionConfig
 from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
@@ -385,6 +387,21 @@ def test_action_editor_adds_action_from_generated_config_form(qtbot):
     assert editor.action_specs()[0].config["keywords"] == "等待"
 
 
+def test_pending_unadded_action_or_route_requires_explicit_add(qtbot):
+    actions = ActionEditor(registry())
+    routes = RouteEditor()
+    qtbot.addWidget(actions)
+    qtbot.addWidget(routes)
+
+    actions.config_form.editor("keywords").setText("draft")
+    routes.target_combo.setCurrentIndex(routes.target_combo.findData(RouteTargetKind.END))
+
+    with pytest.raises(ValueError, match="请先添加当前动作"):
+        actions.commit_pending()
+    with pytest.raises(ValueError, match="请先添加当前路由"):
+        routes.commit_pending()
+
+
 def test_action_editor_preserves_runtime_coordinate_binding(qtbot):
     capabilities = registry()
     capabilities.register_action(Capability("input.mouse", MouseActionConfig))
@@ -420,6 +437,84 @@ def test_action_editor_loads_and_updates_an_existing_action(qtbot):
     assert editor.action_specs()[0].config["keywords"] == "新值"
 
 
+def test_action_editor_commits_pending_form_before_switching_or_copying(qtbot):
+    editor = ActionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_actions(
+        [
+            ActionSpec(capability="system.wait", config={"keywords": "first"}),
+            ActionSpec(capability="system.wait", config={"keywords": "second"}),
+        ]
+    )
+
+    editor.config_form.editor("keywords").setText("switched")
+    editor.action_list.setCurrentRow(1)
+    assert editor.action_specs()[0].config["keywords"] == "switched"
+
+    editor.config_form.editor("keywords").setText("copied")
+    editor.copy_button.click()
+    assert [action.config["keywords"] for action in editor.action_specs()] == [
+        "switched",
+        "copied",
+        "copied",
+    ]
+
+
+def test_action_editor_localizes_and_summarizes_mixed_action_sequence(qtbot):
+    capabilities = CapabilityRegistry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    capabilities.register_action(Capability("input.keyboard", KeyboardActionConfig))
+    capabilities.register_action(Capability("system.wait", WaitActionConfig))
+    editor = ActionEditor(capabilities)
+    qtbot.addWidget(editor)
+    editor.set_actions(
+        [
+            ActionSpec(
+                capability="input.mouse",
+                config={"operation": "click", "position": [100, 200]},
+            ),
+            ActionSpec(
+                capability="input.keyboard",
+                config={"operation": "press", "key": "q"},
+            ),
+            ActionSpec(capability="system.wait", config={"seconds": 0.5}),
+        ]
+    )
+
+    labels = [editor.action_list.item(index).text() for index in range(3)]
+
+    assert (
+        editor.capability_combo.itemText(editor.capability_combo.findData("input.mouse"))
+        == "鼠标操作"
+    )
+    assert labels == [
+        "1. 鼠标：左键点击 (100, 200)",
+        "2. 键盘：按下并释放 q",
+        "3. 等待：0.5 秒",
+    ]
+
+
+def test_action_editor_copies_selected_action(qtbot):
+    editor = ActionEditor(registry())
+    qtbot.addWidget(editor)
+    action = ActionSpec(capability="system.wait", config={"keywords": "保留"})
+    editor.set_actions([action])
+
+    editor.copy_button.click()
+
+    assert editor.action_specs() == [action, action]
+
+
+def test_model_form_uses_chinese_field_and_choice_labels(qtbot):
+    form = ModelForm(MouseActionConfig)
+    qtbot.addWidget(form)
+    operation = form.editor("operation")
+    settle_delay = form.editor("settle_delay")
+
+    assert form.layout().labelForField(settle_delay).text() == "点击前稳定等待（秒）"
+    assert operation.itemText(operation.findData("click")) == "点击"
+
+
 def test_route_editor_selects_cross_group_workflow_target(qtbot):
     first = Workflow(name="A1")
     second = Workflow(name="B1")
@@ -433,7 +528,7 @@ def test_route_editor_selects_cross_group_workflow_target(qtbot):
     editor = RouteEditor(project)
     qtbot.addWidget(editor)
     editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.JUMP_WORKFLOW))
-    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(second.id))
+    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(str(second.id)))
 
     editor.add_button.click()
 
@@ -451,12 +546,46 @@ def test_route_editor_loads_and_updates_an_existing_route(qtbot):
     qtbot.addWidget(editor)
     editor.set_routes([RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end())])
     editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.JUMP_WORKFLOW))
-    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(second.id))
+    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(str(second.id)))
 
     editor.update_button.click()
 
     assert len(editor.routes()) == 1
     assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
+
+
+def test_route_editor_commits_pending_form_before_switching_or_reordering(qtbot):
+    first = Workflow(name="A")
+    second = Workflow(name="B")
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[first, second])])
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    original_second = RouteRule(outcome=StepOutcome.FAILURE, target=RouteTarget.end())
+    editor.set_routes(
+        [
+            RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end()),
+            original_second,
+        ]
+    )
+
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.JUMP_WORKFLOW))
+    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(str(second.id)))
+    editor.route_list.setCurrentRow(1)
+    assert editor.routes()[0].target == RouteTarget.jump_workflow(second.id)
+
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.CALL_WORKFLOW))
+    editor.workflow_combo.setCurrentIndex(editor.workflow_combo.findData(str(first.id)))
+    editor.up_button.click()
+    assert editor.routes() == [
+        RouteRule(
+            outcome=StepOutcome.FAILURE,
+            target=RouteTarget.call_workflow(first.id),
+        ),
+        RouteRule(
+            outcome=StepOutcome.SUCCESS,
+            target=RouteTarget.jump_workflow(second.id),
+        ),
+    ]
 
 
 def test_route_editor_selects_next_step_from_current_workflow(qtbot):
@@ -468,7 +597,7 @@ def test_route_editor_selects_next_step_from_current_workflow(qtbot):
     qtbot.addWidget(editor)
     editor.set_step_context(first_step.id)
     editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.NEXT_STEP))
-    editor.step_combo.setCurrentIndex(editor.step_combo.findData(second_step.id))
+    editor.step_combo.setCurrentIndex(editor.step_combo.findData(str(second_step.id)))
 
     editor.add_button.click()
 
@@ -490,7 +619,7 @@ def test_route_editor_selects_count_predicate_reference(qtbot):
         editor.predicate_source_combo.findData("step_count")
     )
     editor.predicate_step_combo.setCurrentIndex(
-        editor.predicate_step_combo.findData(counted_step.id)
+        editor.predicate_step_combo.findData(str(counted_step.id))
     )
     editor.predicate_expected_edit.setText("3")
 
@@ -501,6 +630,89 @@ def test_route_editor_selects_count_predicate_reference(qtbot):
         ComparisonOperator.EQ,
         3,
     )
+
+
+def test_route_editor_round_trips_independently_loaded_uuid_targets(qtbot):
+    next_step = AutomationStep(name="next")
+    target = Workflow(name="B")
+    current_step = AutomationStep(
+        name="current",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                target=RouteTarget.jump_workflow(target.id),
+            ),
+            RouteRule(
+                outcome=StepOutcome.FAILURE,
+                target=RouteTarget.call_workflow(target.id),
+            ),
+            RouteRule(
+                outcome=StepOutcome.TIMEOUT,
+                target=RouteTarget.next_step(next_step.id),
+            ),
+        ],
+    )
+    current = Workflow(name="A", steps=[current_step, next_step])
+    loaded = Project.model_validate_json(
+        Project(
+            name="p",
+            groups=[FlowGroup(name="g", workflows=[current, target])],
+        ).model_dump_json()
+    )
+    loaded_current = loaded.groups[0].workflows[0]
+    loaded_step = loaded_current.steps[0]
+    editor = RouteEditor(loaded)
+    qtbot.addWidget(editor)
+    editor.set_step_context(loaded_step.id)
+
+    for route in loaded_step.routes:
+        editor.set_routes([route])
+        editor.commit_current()
+        assert editor.routes() == [route]
+
+
+def test_route_editor_round_trips_independently_loaded_count_references(qtbot):
+    counted_step = AutomationStep(name="counted")
+    counted = Workflow(name="B", steps=[counted_step])
+    current_step = AutomationStep(
+        name="current",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                target=RouteTarget.end(),
+                predicate=RoutePredicate.workflow_count(
+                    counted.id,
+                    ComparisonOperator.GE,
+                    2,
+                ),
+            ),
+            RouteRule(
+                outcome=StepOutcome.FAILURE,
+                target=RouteTarget.end(),
+                predicate=RoutePredicate.step_count(
+                    counted_step.id,
+                    ComparisonOperator.EQ,
+                    3,
+                ),
+            ),
+        ],
+    )
+    current = Workflow(name="A", steps=[current_step])
+    loaded = Project.model_validate_json(
+        Project(
+            name="p",
+            groups=[FlowGroup(name="g", workflows=[current, counted])],
+        ).model_dump_json()
+    )
+    loaded_step = loaded.groups[0].workflows[0].steps[0]
+    editor = RouteEditor(loaded)
+    qtbot.addWidget(editor)
+    editor.set_step_context(loaded_step.id)
+
+    for route in loaded_step.routes:
+        editor.set_routes([route])
+        editor.commit_current()
+        assert editor.routes() == [route]
 
 
 def test_route_editor_limits_count_predicates_to_numeric_operators(qtbot):
@@ -569,6 +781,65 @@ def test_property_panel_applies_guided_action_editor_changes(qtbot):
 
     assert blocker.args[0].actions[0].capability == "system.wait"
     assert blocker.args[0].actions[0].config["keywords"] == "等待"
+
+
+def test_property_panel_commits_pending_policy_action_without_update_click(qtbot):
+    before = ActionSpec(capability="system.wait", config={"keywords": "旧值"})
+    panel = PropertyPanel(registry(), Project(name="p"))
+    qtbot.addWidget(panel)
+    panel.set_step(
+        AutomationStep(
+            name="step",
+            condition_policy=ConditionPolicy(before_attempt_actions=[before]),
+        )
+    )
+    panel.policy_editor.before_actions_editor.config_form.editor("keywords").setText("新值")
+
+    step = panel.apply_pending()
+
+    assert step is not None
+    assert step.condition_policy.before_attempt_actions[0].config["keywords"] == "新值"
+
+
+def test_property_panel_does_not_rebuild_untouched_guided_subeditors(qtbot, monkeypatch):
+    action = ActionSpec(capability="system.wait", config={"keywords": "动作"})
+    policy_action = ActionSpec(capability="system.wait", config={"keywords": "策略"})
+    route = RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end())
+    panel = PropertyPanel(registry(), Project(name="p"))
+    qtbot.addWidget(panel)
+    panel.set_step(
+        AutomationStep(
+            name="old",
+            actions=[action],
+            condition_policy=ConditionPolicy(before_attempt_actions=[policy_action]),
+            routes=[route],
+        )
+    )
+
+    monkeypatch.setattr(
+        panel.action_editor,
+        "_build_current_action",
+        lambda: pytest.fail("untouched action editor was rebuilt"),
+    )
+    monkeypatch.setattr(
+        panel.policy_editor.before_actions_editor,
+        "_build_current_action",
+        lambda: pytest.fail("untouched policy action editor was rebuilt"),
+    )
+    monkeypatch.setattr(
+        panel.route_editor,
+        "_current_route",
+        lambda: pytest.fail("untouched route editor was rebuilt"),
+    )
+    panel.name_edit.setText("new")
+
+    updated = panel.apply_pending()
+
+    assert updated is not None
+    assert updated.name == "new"
+    assert updated.actions == [action]
+    assert updated.condition_policy.before_attempt_actions == [policy_action]
+    assert updated.routes == [route]
 
 
 def test_condition_editor_switches_leaf_capability_and_preserves_region(qtbot, tmp_path):

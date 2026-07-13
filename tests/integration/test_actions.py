@@ -18,6 +18,7 @@ from flow_runner.infrastructure.input.recording import (
     RecordingRecorder,
     RecordingStore,
 )
+from flow_runner.infrastructure.processes import launch as process_launch_module
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 
 
@@ -247,8 +248,8 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
     app.write_bytes(b"")
     script.write_text("[]", encoding="utf-8")
 
-    async def launch(path, arguments, run_as_admin, working_directory):
-        launches.append((path, arguments, run_as_admin, working_directory))
+    async def launch(path, arguments, run_as_admin, working_directory, hide_window):
+        launches.append((path, arguments, run_as_admin, working_directory, hide_window))
 
     async def playback(path, speed, max_gap, jitter_ms):
         playbacks.append((path, speed, max_gap, jitter_ms))
@@ -259,6 +260,7 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
             arguments=["--safe"],
             run_as_admin=True,
             working_directory=tmp_path,
+            hide_window=True,
         ),
         StepContext(),
     )
@@ -268,7 +270,7 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
 
     assert process_result.outcome is StepOutcome.SUCCESS
     assert script_result.outcome is StepOutcome.SUCCESS
-    assert launches == [(app.resolve(), ("--safe",), True, tmp_path.resolve())]
+    assert launches == [(app.resolve(), ("--safe",), True, tmp_path.resolve(), True)]
     assert playbacks == [(script.resolve(), 2.0, 1.5, 25)]
 
 
@@ -276,21 +278,45 @@ async def test_process_and_script_actions_normalize_inputs(tmp_path):
 async def test_windows_process_launcher_selects_normal_or_admin_backend(tmp_path):
     calls = []
 
-    def popen(command, *, cwd):
-        calls.append(("popen", command, cwd))
+    def popen(command, *, cwd, hide_window):
+        calls.append(("popen", command, cwd, hide_window))
 
-    def shell_execute(path, arguments, working_directory):
-        calls.append(("admin", path, arguments, working_directory))
+    def shell_execute(path, arguments, working_directory, hide_window):
+        calls.append(("admin", path, arguments, working_directory, hide_window))
 
     launcher = WindowsProcessLauncher(popen=popen, shell_execute=shell_execute)
     path = (tmp_path / "game.exe").resolve()
     working_directory = tmp_path.resolve()
-    await launcher(path, ("--safe",), False, working_directory)
-    await launcher(path, ("--admin",), True, working_directory)
+    await launcher(path, ("--safe",), False, working_directory, True)
+    await launcher(path, ("--admin",), True, working_directory, False)
 
     assert calls == [
-        ("popen", [str(path), "--safe"], working_directory),
-        ("admin", path, "--admin", working_directory),
+        ("popen", [str(path), "--safe"], working_directory, True),
+        ("admin", path, "--admin", working_directory, False),
+    ]
+
+
+def test_hidden_popen_uses_create_no_window(monkeypatch, tmp_path):
+    calls = []
+
+    def popen(command, **kwargs):
+        calls.append((command, kwargs))
+        return object()
+
+    monkeypatch.setattr(process_launch_module.subprocess, "Popen", popen)
+    monkeypatch.setattr(process_launch_module.subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    process_launch_module._popen(
+        ["python.exe", "helper.py"],
+        cwd=tmp_path,
+        hide_window=True,
+    )
+
+    assert calls == [
+        (
+            ["python.exe", "helper.py"],
+            {"cwd": tmp_path, "creationflags": 0x08000000},
+        )
     ]
 
 

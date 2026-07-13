@@ -10,6 +10,7 @@ from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workf
 from flow_runner.domain.results import StepResult
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.logging.events import RuntimeEvent
+from flow_runner.infrastructure.logging.sinks import JsonLinesEventSink
 from flow_runner.ui.dialogs.diagnostics_dialog import DiagnosticsDialog
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.view_models.run_view_model import RunViewModel
@@ -44,6 +45,23 @@ def test_runner_bridge_delivers_events_and_completion_on_qt_thread(qtbot):
         "runner.state",
     ]
     assert all(thread is bridge.thread() for thread in received_threads)
+
+
+def test_runner_bridge_fans_out_events_to_persistent_log(qtbot, tmp_path):
+    workflow = Workflow(name="main", steps=[AutomationStep(name="step")])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    log_path = tmp_path / "logs" / "runtime.jsonl"
+    bridge = RunnerBridge(
+        Runner(ImmediateExecutor()),
+        persistent_event_sink=JsonLinesEventSink(log_path),
+    )
+
+    with qtbot.waitSignal(bridge.finished, timeout=3000):
+        bridge.start(project, workflow.id)
+
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 4
+    assert '"kind":"step.finished"' in lines[2]
 
 
 def test_runner_bridge_rejects_parallel_start(qtbot):
@@ -100,12 +118,12 @@ def test_diagnostics_dialog_displays_structured_event(qtbot):
 
     dialog.update_event(event)
 
-    assert dialog.state_value.text() == "running"
-    assert dialog.kind_value.text() == "step.finished"
+    assert dialog.state_value.text() == "运行中"
+    assert dialog.kind_value.text() == "步骤完成"
     assert dialog.task_value.text() == str(task_id)
     assert dialog.workflow_value.text() == str(workflow_id)
     assert dialog.step_value.text() == str(step_id)
-    assert dialog.outcome_value.text() == "success"
+    assert dialog.outcome_value.text() == "成功"
     assert dialog.frame_value.text() == "frame-1"
     assert dialog.scene_value.text() == "4"
     assert "retry" in dialog.details_value.toPlainText()

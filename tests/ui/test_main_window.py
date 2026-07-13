@@ -218,6 +218,38 @@ def test_dirty_window_can_cancel_close_through_injected_confirmation(qtbot):
     assert not event.isAccepted()
 
 
+def test_pending_property_edit_can_cancel_close_before_apply(qtbot):
+    project = sample_project()
+    workflow = project.groups[0].workflows[0]
+    window = MainWindow(project, confirm_close=lambda: "cancel")
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(workflow.steps[0].id)
+    window.property_panel.name_edit.setText("尚未应用")
+    event = QCloseEvent()
+
+    window.closeEvent(event)
+
+    assert window.property_panel.has_pending_edits
+    assert not event.isAccepted()
+
+
+def test_selecting_another_step_commits_pending_editor_values_in_memory(qtbot):
+    project = sample_project()
+    workflow = project.groups[0].workflows[0]
+    window = MainWindow(project)
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(workflow.steps[0].id)
+    window.property_panel.name_edit.setText("已自动提交")
+
+    window.step_list.select_step(workflow.steps[1].id)
+
+    saved_step = window.view_model.project.groups[0].workflows[0].steps[0]
+    assert saved_step.name == "已自动提交"
+    assert window.view_model.dirty
+
+
 def test_step_toolbar_adds_moves_removes_and_undoes_steps(qtbot):
     project = sample_project()
     workflow = project.groups[0].workflows[0]

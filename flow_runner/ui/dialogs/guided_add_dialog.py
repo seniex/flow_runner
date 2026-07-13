@@ -20,6 +20,7 @@ from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.ui.editors.model_form import ModelForm
+from flow_runner.ui.localization import capability_label, choice_label
 
 CONTROL_CAPABILITIES = (
     ("下一步骤", "next_step"),
@@ -51,7 +52,7 @@ class GuidedAddDialog(QDialog):
         self.config_form: ModelForm | None = None
         self.control_outcome_combo = QComboBox()
         for outcome in StepOutcome:
-            self.control_outcome_combo.addItem(outcome.value, outcome)
+            self.control_outcome_combo.addItem(choice_label(outcome), outcome)
         self.control_workflow_combo = QComboBox()
         self.control_step_combo = QComboBox()
         self._populate_control_targets()
@@ -146,9 +147,14 @@ class GuidedAddDialog(QDialog):
     def _populate_capabilities(self, category: str) -> None:
         self.capability_combo.clear()
         if category == "检测":
-            items = [(item.name, item.name) for item in self.registry.condition_metadata()]
+            items = [
+                (capability_label(item.name), item.name)
+                for item in self.registry.condition_metadata()
+            ]
         elif category == "执行":
-            items = [(item.name, item.name) for item in self.registry.action_metadata()]
+            items = [
+                (capability_label(item.name), item.name) for item in self.registry.action_metadata()
+            ]
         else:
             items = list(CONTROL_CAPABILITIES)
         for label, capability in items:

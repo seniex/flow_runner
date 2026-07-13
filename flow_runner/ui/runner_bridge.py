@@ -12,7 +12,7 @@ from PySide6.QtCore import QMetaObject, QObject, Qt, Signal, Slot
 from flow_runner.domain.project import Project
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.logging.events import RuntimeEvent
-from flow_runner.infrastructure.logging.sinks import EventSink
+from flow_runner.infrastructure.logging.sinks import CompositeEventSink, EventSink
 
 
 class _SignalEventSink(EventSink):
@@ -29,10 +29,15 @@ class RunnerBridge(QObject):
     failed = Signal(str)
     terminated = Signal()
 
-    def __init__(self, runner: Runner) -> None:
+    def __init__(self, runner: Runner, *, persistent_event_sink: EventSink | None = None) -> None:
         super().__init__()
         self.runner = runner
-        self.runner.event_sink = _SignalEventSink(self)
+        signal_sink = _SignalEventSink(self)
+        self.runner.event_sink = (
+            CompositeEventSink(signal_sink, persistent_event_sink)
+            if persistent_event_sink is not None
+            else signal_sink
+        )
         self._running = False
         self._thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None

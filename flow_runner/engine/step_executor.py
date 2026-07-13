@@ -339,7 +339,7 @@ class StepExecutor:
             ):
                 self.runtime.cancellation.raise_if_cancelled()
                 if not await self._refresh_stale_condition(
-                    revalidate_condition,
+                    revalidate_condition if _uses_result_binding(action.config) else None,
                     target,
                 ):
                     return ActionResult(
@@ -408,6 +408,16 @@ def _resolve_config(value: Any, context: StepContext) -> Any:
     if isinstance(value, tuple):
         return tuple(_resolve_config(item, context) for item in value)
     return value
+
+
+def _uses_result_binding(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.startswith("$result.")
+    if isinstance(value, dict):
+        return any(_uses_result_binding(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_uses_result_binding(item) for item in value)
+    return False
 
 
 def _single_scene_target(result: ConditionResult | None) -> str | None:

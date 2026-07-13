@@ -5,6 +5,7 @@ from types import UnionType
 from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -19,8 +20,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flow_runner.ui.localization import choice_label, field_label
+
 
 class TupleFieldEditor(QWidget):
+    changed = Signal()
+
     def __init__(
         self,
         annotation: Any,
@@ -59,10 +64,17 @@ class TupleFieldEditor(QWidget):
         layout.addWidget(self.mode_combo)
         layout.addWidget(self.pages, 1)
         self.mode_combo.currentIndexChanged.connect(self.pages.setCurrentIndex)
+        self.mode_combo.currentIndexChanged.connect(self._emit_changed)
+        self.binding_edit.textChanged.connect(self._emit_changed)
+        for editor in self.value_editors:
+            editor.valueChanged.connect(self._emit_changed)
         if default is None and optional:
             self.mode_combo.setCurrentIndex(self.mode_combo.findData("none"))
         else:
             self.setValue(default if default is not None else _zero_tuple(self._arguments))
+
+    def _emit_changed(self) -> None:
+        self.changed.emit()
 
     def value(self) -> tuple[int | float, ...] | str | None:
         mode = self.mode_combo.currentData()
@@ -91,6 +103,8 @@ class TupleFieldEditor(QWidget):
 
 
 class PathFieldEditor(QWidget):
+    changed = Signal()
+
     def __init__(self, default: Any = None) -> None:
         super().__init__()
         self.setProperty("fieldKind", "path")
@@ -102,8 +116,12 @@ class PathFieldEditor(QWidget):
         layout.addWidget(self.line_edit, 1)
         layout.addWidget(self.browse_button)
         self.browse_button.clicked.connect(self._browse)
+        self.line_edit.textChanged.connect(self._emit_changed)
         if default is not None:
             self.setText(str(default))
+
+    def _emit_changed(self) -> None:
+        self.changed.emit()
 
     def text(self) -> str:
         return self.line_edit.text()
@@ -121,6 +139,8 @@ class PathFieldEditor(QWidget):
 
 
 class ModelForm(QWidget):
+    changed = Signal()
+
     def __init__(self, model_type: type[BaseModel]) -> None:
         super().__init__()
         self.model_type = model_type
@@ -134,7 +154,23 @@ class ModelForm(QWidget):
             editor.setObjectName(f"configField_{name}")
             self.editors[name] = editor
             self.annotations[name] = annotation
-            layout.addRow(name, editor)
+            layout.addRow(field_label(name), editor)
+            self._connect_editor(editor)
+
+    def _connect_editor(self, editor: QWidget) -> None:
+        if isinstance(editor, QCheckBox):
+            editor.toggled.connect(self._emit_changed)
+        elif isinstance(editor, (QSpinBox, QDoubleSpinBox)):
+            editor.valueChanged.connect(self._emit_changed)
+        elif isinstance(editor, QComboBox):
+            editor.currentIndexChanged.connect(self._emit_changed)
+        elif isinstance(editor, (TupleFieldEditor, PathFieldEditor)):
+            editor.changed.connect(self._emit_changed)
+        elif isinstance(editor, QLineEdit):
+            editor.textChanged.connect(self._emit_changed)
+
+    def _emit_changed(self) -> None:
+        self.changed.emit()
 
     def editor(self, name: str) -> QWidget:
         return self.editors[name]
@@ -215,13 +251,13 @@ def _create_editor(annotation: Any, default: Any, optional: bool) -> QWidget:
     if origin is Literal:
         combo = QComboBox()
         for choice in get_args(annotation):
-            combo.addItem(str(choice), choice)
+            combo.addItem(choice_label(choice), choice)
         _select_combo_default(combo, default)
         return combo
     if isinstance(annotation, type) and issubclass(annotation, Enum):
         enum_combo = QComboBox()
         for choice in annotation:
-            enum_combo.addItem(str(choice.value), choice)
+            enum_combo.addItem(choice_label(choice), choice)
         _select_combo_default(enum_combo, default)
         return enum_combo
     if annotation is bool:

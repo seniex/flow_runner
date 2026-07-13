@@ -121,6 +121,7 @@ def test_legacy_conversion_preserves_conditions_actions_and_workflow_routes(tmp_
     assert str(launch_actions[0].config["path"]).endswith("python.exe")
     assert launch_actions[0].config["arguments"] == [str(tmp_path / "helper.py")]
     assert launch_actions[0].config["run_as_admin"] is False
+    assert launch_actions[0].config["hide_window"] is True
     assert launch_actions[1].config == {"seconds": 1.0}
     assert project.settings["hotkeys"] == {
         "start": "F11",

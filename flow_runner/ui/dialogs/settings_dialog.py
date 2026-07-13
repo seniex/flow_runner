@@ -54,7 +54,15 @@ class SettingsDialog(QDialog):
         for action, value in hotkeys.model_dump().items():
             entry = QLineEdit(value)
             self.entries[action] = entry
-            layout.addRow(action, entry)
+            layout.addRow(
+                {
+                    "start": "启动热键",
+                    "stop": "停止热键",
+                    "pause": "暂停/继续热键",
+                    "record": "录制热键",
+                }.get(action, action),
+                entry,
+            )
         self.error_label = QLabel("")
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel

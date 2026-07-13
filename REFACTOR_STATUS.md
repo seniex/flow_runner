@@ -19,6 +19,7 @@
 - `keys`、`unicode`、`clipboard` 三种文本模式；剪贴板模式结束后恢复原格式。
 - 长移动、拖拽、重复按键和间隔文本分段执行，Runner 停止会取消正在运行的动作。
 - 程序启动支持可选工作目录，普通与管理员路径使用同一配置。
+- 程序启动支持隐藏窗口；旧配置转换出的 47 个 Python/Pythonw 辅助脚本均默认隐藏运行。
 - 鼠标坐标偏移、按下/释放/拖拽与键盘按下/释放；运行终止和回放取消时兜底释放已保持输入。
 - 跨组 UUID 路由、调用/返回、变量与流程/步骤计数条件路由。
 - 路由谓词可直接比较 `$result.primary.*` 或 `$result.children["别名"].*`，并保持复合条件的歧义保护。
@@ -32,10 +33,17 @@
 - 流程可在组内排序或跨组移动，稳定 UUID 路由不会因分类调整而改变。
 - 区域、坐标和文件路径使用专用表单控件；动作坐标可直接保存 `$result...` 运行时绑定。
 - 已有动作、路由和策略层每轮前/未命中后动作可在引导编辑器中加载、修改和重新排序。
+- 同一步可混合排列鼠标、键盘、等待、变量、程序、回放和窗口动作，并以中文摘要显示；动作支持复制和排序。
+- `Ctrl+S`/工具栏保存会自动提交当前条件、动作、策略钩子、路由和步骤，无需逐层点击“更新动作”和“应用”。
+- 路由编辑器在 Qt 边界统一使用 UUID 字符串，独立反序列化的跨流程/步骤引用可可靠回显；未修改的
+  子编辑器不会在保存时被无条件重构。列表切换、复制和排序会先提交当前表单；步骤更新与项目
+  引用校验同步完成，未添加的新动作/路由草稿不会被静默丢弃，保存失败会保留具体错误和待编辑状态。
+- 所有能力名、参数名、枚举选项、路由结果和诊断状态使用中文显示，内部 JSON 字段保持稳定英文键。
 - 新增控制步骤可从项目感知的下拉框选择当前流程步骤或跨组流程，不必手写 UUID。
 - OCR、图片等检测能力切换前会列出将舍弃的专属字段并允许取消，公共字段继续保留。
 - 保存、备份、撤销、脏关闭确认、项目设置、F6–F9 热键和输入录制。
 - 启动/暂停/继续/停止、单步运行、条件预览和结构化诊断截图通道。
+- 结构化运行事件同步写入项目旁的 `logs/runtime.jsonl`，可在实际失败后追溯步骤结果和错误。
 - PaddleOCR-json v1.4.x 进程生命周期和 stdin/stdout JSON 协议。
 - 应用级 QSS；Python UI 文件没有局部视觉样式。
 
@@ -46,13 +54,13 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 224 passed
+# 244 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
 
 .\.venv\Scripts\python.exe -m ruff format --check flow_runner tests
-# 121 files already formatted
+# 122 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
 # Success: no issues found in 98 source files

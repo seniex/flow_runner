@@ -1,11 +1,20 @@
+import json
+from uuid import uuid4
+
 import pytest
 from pydantic import ValidationError
+from PySide6.QtGui import QKeySequence
 
 from flow_runner.app import create_application
-from flow_runner.domain.enums import ConditionOutcome
+from flow_runner.domain.enums import ConditionOutcome, StepOutcome
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
-from flow_runner.domain.routing import ComparisonOperator
+from flow_runner.domain.routing import (
+    ComparisonOperator,
+    RouteRule,
+    RouteTarget,
+    RouteTargetKind,
+)
 from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCaptureMode
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
@@ -223,6 +232,236 @@ def test_application_save_action_persists_property_edits(qtbot, tmp_path):
 
     assert ProjectStore(path).load().groups[0].workflows[0].steps[0].name == "new"
     assert not composition.window.view_model.dirty
+
+
+def test_ctrl_s_commits_all_pending_step_editors_and_mixed_actions(qtbot, tmp_path):
+    step = AutomationStep.model_validate(
+        {
+            "name": "old",
+            "condition": {
+                "id": "detector",
+                "capability": "vision.ocr",
+                "config": {"keywords": "旧文字"},
+            },
+            "actions": [
+                {
+                    "capability": "input.mouse",
+                    "config": {"operation": "click", "position": [100, 200]},
+                },
+                {
+                    "capability": "input.keyboard",
+                    "config": {"operation": "press", "key": "q"},
+                },
+                {"capability": "system.wait", "config": {"seconds": 0.5}},
+            ],
+            "condition_policy": {"mode": "until", "max_attempts": 5},
+            "routes": [{"outcome": "success", "target": {"kind": "end"}}],
+        }
+    )
+    workflow = Workflow(name="main", steps=[step])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])]))
+    composition = create_application([], project_path=path)
+    window = composition.window
+    qtbot.addWidget(window)
+    window.show()
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+    panel = window.property_panel
+
+    panel.name_edit.setText("new")
+    panel.condition_editor.config_form.editor("keywords").setText("新文字")
+    panel.action_editor.config_form.editor("settle_delay").setValue(0.75)
+    panel.policy_editor.interval_spin.setValue(2.5)
+    panel.route_editor.outcome_combo.setCurrentIndex(
+        panel.route_editor.outcome_combo.findData(StepOutcome.TIMEOUT)
+    )
+
+    assert panel.has_pending_edits
+    assert window.save_action.isEnabled()
+    assert (
+        window.save_shortcut.key().matches(QKeySequence(QKeySequence.StandardKey.Save))
+        is QKeySequence.SequenceMatch.ExactMatch
+    )
+    window.save_shortcut.activated.emit()
+
+    saved = ProjectStore(path).load().groups[0].workflows[0].steps[0]
+    assert saved.name == "new"
+    assert saved.condition.config["keywords"] == "新文字"
+    assert [action.capability for action in saved.actions] == [
+        "input.mouse",
+        "input.keyboard",
+        "system.wait",
+    ]
+    assert saved.actions[0].config["settle_delay"] == 0.75
+    assert saved.condition_policy.interval_seconds == 2.5
+    assert saved.routes[0].outcome is StepOutcome.TIMEOUT
+    assert not panel.has_pending_edits
+    assert not window.view_model.dirty
+    assert str(path) in window.statusBar().currentMessage()
+
+
+def test_ctrl_s_deletes_action_without_rebuilding_independently_loaded_route(qtbot, tmp_path):
+    target = Workflow(name="target")
+    step = AutomationStep.model_validate(
+        {
+            "name": "game over",
+            "actions": [
+                {
+                    "capability": "input.mouse",
+                    "config": {"operation": "click", "position": [100, 200]},
+                },
+                {
+                    "capability": "input.mouse",
+                    "config": {"operation": "click", "position": [300, 400]},
+                },
+            ],
+            "routes": [
+                RouteRule(
+                    outcome=StepOutcome.SUCCESS,
+                    target=RouteTarget.jump_workflow(target.id),
+                )
+            ],
+        }
+    )
+    workflow = Workflow(name="main", steps=[step])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow, target])])
+    )
+    composition = create_application([], project_path=path)
+    window = composition.window
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+
+    window.property_panel.action_editor.action_list.setCurrentRow(0)
+    window.property_panel.action_editor.remove_button.click()
+    window.save_shortcut.activated.emit()
+
+    saved = ProjectStore(path).load().groups[0].workflows[0].steps[0]
+    assert [action.config["position"] for action in saved.actions] == [[300, 400]]
+    assert saved.routes == step.routes
+    assert "项目已保存" in window.statusBar().currentMessage()
+
+
+def test_ctrl_s_commits_mixed_parameter_edits_without_rebuilding_route(
+    qtbot,
+    tmp_path,
+    monkeypatch,
+):
+    step = AutomationStep.model_validate(
+        {
+            "name": "mixed",
+            "condition": {
+                "id": "detector",
+                "capability": "vision.ocr",
+                "config": {"keywords": "old"},
+            },
+            "actions": [
+                {
+                    "capability": "input.mouse",
+                    "config": {"operation": "click", "position": [100, 200]},
+                },
+                {
+                    "capability": "input.keyboard",
+                    "config": {"operation": "press", "key": "q"},
+                },
+                {"capability": "system.wait", "config": {"seconds": 0.5}},
+            ],
+            "routes": [{"outcome": "success", "target": {"kind": "end"}}],
+        }
+    )
+    workflow = Workflow(name="main", steps=[step])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])]))
+    composition = create_application([], project_path=path)
+    window = composition.window
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+    panel = window.property_panel
+    monkeypatch.setattr(
+        panel.route_editor,
+        "_current_route",
+        lambda: pytest.fail("untouched route editor was rebuilt"),
+    )
+
+    panel.action_editor.config_form.editor("settle_delay").setValue(0.25)
+    panel.action_editor.action_list.setCurrentRow(1)
+    panel.action_editor.config_form.editor("key").setText("w")
+    panel.action_editor.action_list.setCurrentRow(2)
+    panel.action_editor.config_form.editor("seconds").setValue(1.25)
+    panel.condition_editor.config_form.editor("keywords").setText("new")
+    panel.policy_editor.interval_spin.setValue(2.0)
+    window.save_shortcut.activated.emit()
+
+    saved = ProjectStore(path).load().groups[0].workflows[0].steps[0]
+    assert saved.actions[0].config["settle_delay"] == 0.25
+    assert saved.actions[1].config["key"] == "w"
+    assert saved.actions[2].config["seconds"] == 1.25
+    assert saved.condition.config["keywords"] == "new"
+    assert saved.condition_policy.interval_seconds == 2.0
+    assert saved.routes == step.routes
+
+
+def test_ctrl_s_reports_specific_pending_route_validation_error(qtbot, tmp_path):
+    step = AutomationStep(
+        name="step",
+        routes=[RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end())],
+    )
+    workflow = Workflow(name="main", steps=[step])
+    target = Workflow(name="target")
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow, target])])
+    )
+    composition = create_application([], project_path=path)
+    window = composition.window
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+    editor = window.property_panel.route_editor
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.JUMP_WORKFLOW))
+    editor.workflow_combo.setCurrentIndex(-1)
+
+    window.save_shortcut.activated.emit()
+
+    assert window.statusBar().currentMessage() == (
+        "项目保存失败：路由“成功 → 跳转流程”未选择目标流程"
+    )
+
+
+def test_ctrl_s_reports_project_reference_error_without_clearing_pending_edit(qtbot, tmp_path):
+    step = AutomationStep(
+        name="step",
+        routes=[RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end())],
+    )
+    workflow = Workflow(name="main", steps=[step])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])]))
+    composition = create_application([], project_path=path)
+    window = composition.window
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+    window.property_panel.routes_edit.setPlainText(
+        json.dumps(
+            [
+                {
+                    "outcome": "success",
+                    "target": {"kind": "jump_workflow", "workflow_id": str(uuid4())},
+                }
+            ]
+        )
+    )
+
+    window.save_shortcut.activated.emit()
+
+    assert "references missing workflow" in window.statusBar().currentMessage()
+    assert window.property_panel.has_pending_edits
+    saved = ProjectStore(path).load().groups[0].workflows[0].steps[0]
+    assert saved.routes == step.routes
 
 
 def test_application_selects_paddle_ocr_from_project_settings(qtbot, tmp_path):

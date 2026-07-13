@@ -1,3 +1,4 @@
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QFormLayout, QSpinBox, QWidget
 
 from flow_runner.capabilities.registry import CapabilityRegistry
@@ -7,8 +8,11 @@ from flow_runner.ui.editors.action_editor import ActionEditor
 
 
 class PolicyEditor(QWidget):
+    changed = Signal()
+
     def __init__(self, registry: CapabilityRegistry | None = None) -> None:
         super().__init__()
+        self._loading = False
         self.mode_combo = QComboBox()
         self.mode_combo.addItem("检查一次", ConditionMode.ONCE)
         self.mode_combo.addItem("等待满足", ConditionMode.UNTIL)
@@ -45,7 +49,27 @@ class PolicyEditor(QWidget):
         if self.after_no_match_actions_editor is not None:
             layout.addRow("每轮未命中后动作", self.after_no_match_actions_editor)
         self.mode_combo.currentIndexChanged.connect(self._mode_changed)
+        for editor in (
+            self.mode_combo,
+            self.interval_spin,
+            self.max_attempts_spin,
+            self.timeout_spin,
+            self.action_attempts_spin,
+            self.action_retry_spin,
+        ):
+            if isinstance(editor, QComboBox):
+                editor.currentIndexChanged.connect(self._mark_changed)
+            else:
+                editor.valueChanged.connect(self._mark_changed)
+        if self.before_actions_editor is not None:
+            self.before_actions_editor.changed.connect(self._mark_changed)
+        if self.after_no_match_actions_editor is not None:
+            self.after_no_match_actions_editor.changed.connect(self._mark_changed)
         self.set_policies(self._condition_policy, self._action_policy)
+
+    def _mark_changed(self) -> None:
+        if not self._loading:
+            self.changed.emit()
 
     def set_mode(self, mode: ConditionMode) -> None:
         index = self.mode_combo.findData(mode)
@@ -59,6 +83,7 @@ class PolicyEditor(QWidget):
         condition_policy: ConditionPolicy,
         action_policy: ActionPolicy,
     ) -> None:
+        self._loading = True
         self._condition_policy = condition_policy
         self._action_policy = action_policy
         self.set_mode(condition_policy.mode)
@@ -71,8 +96,16 @@ class PolicyEditor(QWidget):
             self.before_actions_editor.set_actions(condition_policy.before_attempt_actions)
         if self.after_no_match_actions_editor is not None:
             self.after_no_match_actions_editor.set_actions(condition_policy.after_no_match_actions)
+        self._loading = False
+
+    def commit_pending(self) -> None:
+        if self.before_actions_editor is not None:
+            self.before_actions_editor.commit_pending()
+        if self.after_no_match_actions_editor is not None:
+            self.after_no_match_actions_editor.commit_pending()
 
     def policies(self) -> tuple[ConditionPolicy, ActionPolicy]:
+        self.commit_pending()
         mode = self.mode()
         max_attempts = 1 if mode is ConditionMode.ONCE else self.max_attempts_spin.value() or None
         condition = ConditionPolicy(

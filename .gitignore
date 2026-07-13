@@ -16,6 +16,7 @@ dist/
 
 # Runtime output
 log/
+logs/
 *.log
 PaddleOCR-json_v*/
 

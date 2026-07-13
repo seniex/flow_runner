@@ -430,6 +430,82 @@ async def test_stale_visual_result_is_revalidated_before_bound_mouse_action():
 
 
 @pytest.mark.asyncio
+async def test_fixed_mouse_actions_do_not_revalidate_condition_after_scene_changes():
+    class Capture:
+        async def capture(self, target):
+            raise AssertionError("capture is not needed by this fake condition")
+
+    perception = PerceptionService(Capture())
+    coordinator = ResourceCoordinator(perception)
+
+    class VisualCondition:
+        name = "visual"
+        config_model = EmptyConfig
+
+        def __init__(self):
+            self.calls = 0
+
+        async def evaluate(self, config, context):
+            self.calls += 1
+            return ConditionResult(
+                node_id=self.name,
+                outcome=ConditionOutcome.MATCH,
+                target="desktop",
+                frame_id="frame-1",
+                scene_generation=perception.current_generation("desktop"),
+            )
+
+        def required_resources(self, config):
+            return frozenset({"observe:desktop"})
+
+    class PositionConfig(BaseModel):
+        position: tuple[int, int]
+
+    class MouseAction:
+        name = "mouse"
+        config_model = PositionConfig
+        binds_to_scene = True
+
+        def __init__(self):
+            self.positions = []
+
+        async def execute(self, config, context):
+            self.positions.append(config.position)
+            return ActionResult(outcome=StepOutcome.SUCCESS)
+
+        def required_resources(self, config):
+            return frozenset({"mouse"})
+
+    condition = VisualCondition()
+    action = MouseAction()
+    registry = CapabilityRegistry()
+    registry.register_condition(condition)
+    registry.register_action(action)
+    step = AutomationStep.model_validate(
+        {
+            "name": "fixed clicks",
+            "condition": {"id": "screen", "capability": "visual", "config": {}},
+            "actions": [
+                {"capability": "mouse", "config": {"position": [10, 20]}},
+                {"capability": "mouse", "config": {"position": [30, 40]}},
+            ],
+        }
+    )
+    runtime = StepRuntime(
+        registry=registry,
+        context=StepContext(),
+        cancellation=CancellationToken(),
+        resources=coordinator,
+    )
+
+    result = await StepExecutor(runtime).execute(step)
+
+    assert result.outcome is StepOutcome.SUCCESS
+    assert condition.calls == 1
+    assert action.positions == [(10, 20), (30, 40)]
+
+
+@pytest.mark.asyncio
 async def test_composite_visual_conditions_share_one_frame_per_evaluation_tick():
     class Capture:
         def __init__(self):

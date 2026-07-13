@@ -1,6 +1,7 @@
 import json
 from uuid import UUID
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -8,6 +9,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QListWidgetItem,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -22,20 +24,25 @@ from flow_runner.domain.routing import (
     RouteTarget,
     RouteTargetKind,
 )
+from flow_runner.ui.localization import choice_label
 
 
 class RouteEditor(QWidget):
+    changed = Signal()
+
     def __init__(self, project: Project | None = None) -> None:
         super().__init__()
+        self._loading = False
+        self._current_pending = False
         self._project: Project | None = None
         self._current_step_id: UUID | None = None
         self._routes: list[RouteRule] = []
         self.outcome_combo = QComboBox()
         for outcome in StepOutcome:
-            self.outcome_combo.addItem(outcome.value, outcome)
+            self.outcome_combo.addItem(choice_label(outcome), outcome)
         self.target_combo = QComboBox()
         for kind in RouteTargetKind:
-            self.target_combo.addItem(kind.value, kind)
+            self.target_combo.addItem(choice_label(kind), kind)
         self.workflow_combo = QComboBox()
         self.step_combo = QComboBox()
         self.predicate_source_combo = QComboBox()
@@ -47,13 +54,13 @@ class RouteEditor(QWidget):
             "step_count",
             "binding",
         ):
-            self.predicate_source_combo.addItem(source, source)
+            self.predicate_source_combo.addItem(choice_label(source), source)
         self.predicate_key_edit = QLineEdit()
         self.predicate_workflow_combo = QComboBox()
         self.predicate_step_combo = QComboBox()
         self.predicate_operator_combo = QComboBox()
         for operator in ComparisonOperator:
-            self.predicate_operator_combo.addItem(operator.value, operator)
+            self.predicate_operator_combo.addItem(choice_label(operator), operator)
         self.predicate_expected_edit = QLineEdit()
         self.route_list = QListWidget()
         self.add_button = QPushButton("添加路由")
@@ -94,12 +101,26 @@ class RouteEditor(QWidget):
         self.down_button.clicked.connect(lambda: self._move_current(1))
         self.target_combo.currentIndexChanged.connect(lambda _: self._update_controls())
         self.predicate_source_combo.currentIndexChanged.connect(lambda _: self._update_controls())
-        self.route_list.currentRowChanged.connect(self._load_current)
+        self.route_list.currentItemChanged.connect(self._selection_changed)
+        for combo in (
+            self.outcome_combo,
+            self.target_combo,
+            self.workflow_combo,
+            self.step_combo,
+            self.predicate_source_combo,
+            self.predicate_workflow_combo,
+            self.predicate_step_combo,
+            self.predicate_operator_combo,
+        ):
+            combo.currentIndexChanged.connect(self._mark_changed)
+        for line_edit in (self.predicate_key_edit, self.predicate_expected_edit):
+            line_edit.textChanged.connect(self._mark_changed)
         if project is not None:
             self.set_project(project)
         self._update_controls()
 
     def set_project(self, project: Project) -> None:
+        self._loading = True
         self._project = project
         current = self.workflow_combo.currentData()
         predicate_workflow = self.predicate_workflow_combo.currentData()
@@ -110,26 +131,27 @@ class RouteEditor(QWidget):
         for group in project.groups:
             for workflow in group.workflows:
                 label = f"{group.name} / {workflow.name}"
-                self.workflow_combo.addItem(label, workflow.id)
-                self.predicate_workflow_combo.addItem(label, workflow.id)
+                self.workflow_combo.addItem(label, str(workflow.id))
+                self.predicate_workflow_combo.addItem(label, str(workflow.id))
                 for step in workflow.steps:
                     self.predicate_step_combo.addItem(
                         f"{label} / {step.name}",
-                        step.id,
+                        str(step.id),
                     )
-        if isinstance(current, UUID):
-            index = self.workflow_combo.findData(current)
+        if current is not None:
+            index = _find_uuid_data(self.workflow_combo, current)
             if index >= 0:
                 self.workflow_combo.setCurrentIndex(index)
-        if isinstance(predicate_workflow, UUID):
-            index = self.predicate_workflow_combo.findData(predicate_workflow)
+        if predicate_workflow is not None:
+            index = _find_uuid_data(self.predicate_workflow_combo, predicate_workflow)
             if index >= 0:
                 self.predicate_workflow_combo.setCurrentIndex(index)
-        if isinstance(predicate_step, UUID):
-            index = self.predicate_step_combo.findData(predicate_step)
+        if predicate_step is not None:
+            index = _find_uuid_data(self.predicate_step_combo, predicate_step)
             if index >= 0:
                 self.predicate_step_combo.setCurrentIndex(index)
         self.set_step_context(self._current_step_id)
+        self._loading = False
 
     def set_step_context(self, step_id: UUID | None) -> None:
         self._current_step_id = step_id
@@ -142,29 +164,63 @@ class RouteEditor(QWidget):
                 if not any(step.id == step_id for step in workflow.steps):
                     continue
                 for step in workflow.steps:
-                    self.step_combo.addItem(step.name, step.id)
-                if isinstance(current_target, UUID):
-                    index = self.step_combo.findData(current_target)
+                    self.step_combo.addItem(step.name, str(step.id))
+                if current_target is not None:
+                    index = _find_uuid_data(self.step_combo, current_target)
                     if index >= 0:
                         self.step_combo.setCurrentIndex(index)
                 return
 
     def set_routes(self, routes: list[RouteRule]) -> None:
+        self._loading = True
+        self._current_pending = False
         self._routes = list(routes)
         self._refresh_list()
         if self._routes:
             self.route_list.setCurrentRow(0)
+        self._loading = False
+        if self._routes:
+            self._load_current(0)
 
     def routes(self) -> list[RouteRule]:
         return list(self._routes)
+
+    def commit_current(self) -> None:
+        row = self.route_list.currentRow()
+        if not 0 <= row < len(self._routes):
+            return
+        self._commit_row(row)
+
+    def _commit_row(self, row: int) -> None:
+        route = self._current_route()
+        if route is None:
+            raise ValueError(self._current_error())
+        self._routes[row] = route
+        self._current_pending = False
+        item = self.route_list.item(row)
+        if item is not None:
+            item.setText(_route_summary(route))
+
+    def commit_pending(self) -> None:
+        if not self._current_pending:
+            return
+        if not 0 <= self.route_list.currentRow() < len(self._routes):
+            raise ValueError("请先添加当前路由")
+        self.commit_current()
+
+    def _mark_changed(self) -> None:
+        if not self._loading:
+            self._current_pending = True
+            self.changed.emit()
 
     def _add_current(self) -> None:
         route = self._current_route()
         if route is None:
             return
         self._routes.append(route)
-        self._refresh_list()
-        self.route_list.setCurrentRow(len(self._routes) - 1)
+        self._current_pending = False
+        self._refresh_and_select(len(self._routes) - 1)
+        self.changed.emit()
 
     def _update_current(self) -> None:
         row = self.route_list.currentRow()
@@ -175,8 +231,11 @@ class RouteEditor(QWidget):
         if route is None:
             return
         self._routes[row] = route
-        self._refresh_list()
-        self.route_list.setCurrentRow(row)
+        self._current_pending = False
+        item = self.route_list.item(row)
+        if item is not None:
+            item.setText(_route_summary(route))
+        self.changed.emit()
 
     def _current_route(self) -> RouteRule | None:
         try:
@@ -193,18 +252,39 @@ class RouteEditor(QWidget):
         self.error_label.clear()
         return route
 
+    def _selection_changed(
+        self,
+        current: QListWidgetItem | None,
+        previous: QListWidgetItem | None,
+    ) -> None:
+        if self._loading:
+            return
+        previous_row = self.route_list.row(previous) if previous is not None else -1
+        if self._current_pending and previous is not None and 0 <= previous_row < len(self._routes):
+            try:
+                self._commit_row(previous_row)
+            except ValueError as error:
+                self.error_label.setText(str(error))
+                self._loading = True
+                self.route_list.setCurrentItem(previous)
+                self._loading = False
+                return
+        self._load_current(self.route_list.row(current) if current is not None else -1)
+
     def _load_current(self, row: int) -> None:
         if not 0 <= row < len(self._routes):
             return
+        self._loading = True
+        self._current_pending = False
         route = self._routes[row]
         self.outcome_combo.setCurrentIndex(self.outcome_combo.findData(route.outcome))
         self.target_combo.setCurrentIndex(self.target_combo.findData(route.target.kind))
         if route.target.workflow_id is not None:
             self.workflow_combo.setCurrentIndex(
-                self.workflow_combo.findData(route.target.workflow_id)
+                _find_uuid_data(self.workflow_combo, route.target.workflow_id)
             )
         if route.target.step_id is not None:
-            self.step_combo.setCurrentIndex(self.step_combo.findData(route.target.step_id))
+            self.step_combo.setCurrentIndex(_find_uuid_data(self.step_combo, route.target.step_id))
         predicate = route.predicate
         source = "" if predicate is None else predicate.source
         self.predicate_source_combo.setCurrentIndex(self.predicate_source_combo.findData(source))
@@ -212,14 +292,15 @@ class RouteEditor(QWidget):
         self.predicate_expected_edit.clear()
         if predicate is None:
             self.error_label.clear()
+            self._loading = False
             return
         if predicate.source == "workflow_count":
             self.predicate_workflow_combo.setCurrentIndex(
-                self.predicate_workflow_combo.findData(UUID(predicate.key))
+                _find_uuid_data(self.predicate_workflow_combo, predicate.key)
             )
         elif predicate.source == "step_count":
             self.predicate_step_combo.setCurrentIndex(
-                self.predicate_step_combo.findData(UUID(predicate.key))
+                _find_uuid_data(self.predicate_step_combo, predicate.key)
             )
         else:
             self.predicate_key_edit.setText(predicate.key)
@@ -228,6 +309,17 @@ class RouteEditor(QWidget):
         )
         self.predicate_expected_edit.setText(json.dumps(predicate.expected, ensure_ascii=False))
         self.error_label.clear()
+        self._loading = False
+
+    def _current_error(self) -> str:
+        outcome = choice_label(self.outcome_combo.currentData())
+        target = choice_label(self.target_combo.currentData())
+        detail = self.error_label.text() or "路由配置无效"
+        if detail.startswith("请选择"):
+            detail = f"未选择{detail.removeprefix('请选择')}"
+        else:
+            detail = f"：{detail}"
+        return f"路由“{outcome} → {target}”{detail}"
 
     def _target(self, kind: RouteTargetKind) -> RouteTarget:
         if kind is RouteTargetKind.END:
@@ -235,13 +327,9 @@ class RouteEditor(QWidget):
         if kind is RouteTargetKind.RETURN:
             return RouteTarget.return_to_caller()
         if kind is RouteTargetKind.NEXT_STEP:
-            step_id = self.step_combo.currentData()
-            if not isinstance(step_id, UUID):
-                raise ValueError("请选择当前流程中的目标步骤")
+            step_id = _uuid_from_combo(self.step_combo, "请选择当前流程中的目标步骤")
             return RouteTarget.next_step(step_id)
-        workflow_id = self.workflow_combo.currentData()
-        if not isinstance(workflow_id, UUID):
-            raise ValueError("请选择目标流程")
+        workflow_id = _uuid_from_combo(self.workflow_combo, "请选择目标流程")
         if kind is RouteTargetKind.JUMP_WORKFLOW:
             return RouteTarget.jump_workflow(workflow_id)
         return RouteTarget.call_workflow(workflow_id)
@@ -251,15 +339,9 @@ class RouteEditor(QWidget):
         if not source:
             return None
         if source == "workflow_count":
-            key_value = self.predicate_workflow_combo.currentData()
-            if not isinstance(key_value, UUID):
-                raise ValueError("请选择计数流程")
-            key = str(key_value)
+            key = str(_uuid_from_combo(self.predicate_workflow_combo, "请选择计数流程"))
         elif source == "step_count":
-            key_value = self.predicate_step_combo.currentData()
-            if not isinstance(key_value, UUID):
-                raise ValueError("请选择计数步骤")
-            key = str(key_value)
+            key = str(_uuid_from_combo(self.predicate_step_combo, "请选择计数步骤"))
         elif source == "binding":
             key = self.predicate_key_edit.text().strip()
             if not key:
@@ -315,7 +397,7 @@ class RouteEditor(QWidget):
             return
         self.predicate_operator_combo.clear()
         for operator in operators:
-            self.predicate_operator_combo.addItem(operator.value, operator)
+            self.predicate_operator_combo.addItem(choice_label(operator), operator)
         selected = self.predicate_operator_combo.findData(current)
         if selected < 0:
             selected = self.predicate_operator_combo.findData(ComparisonOperator.EQ)
@@ -325,22 +407,59 @@ class RouteEditor(QWidget):
         row = self.route_list.currentRow()
         if 0 <= row < len(self._routes):
             self._routes.pop(row)
-            self._refresh_list()
+            self._current_pending = False
+            self._refresh_and_select(min(row, len(self._routes) - 1))
+            self.changed.emit()
 
     def _move_current(self, direction: int) -> None:
         row = self.route_list.currentRow()
         destination = row + direction
         if not 0 <= row < len(self._routes) or not 0 <= destination < len(self._routes):
             return
+        try:
+            self.commit_pending()
+        except ValueError as error:
+            self.error_label.setText(str(error))
+            return
         self._routes[row], self._routes[destination] = (
             self._routes[destination],
             self._routes[row],
         )
+        self._current_pending = False
+        self._refresh_and_select(destination)
+        self.changed.emit()
+
+    def _refresh_and_select(self, row: int) -> None:
+        self._loading = True
         self._refresh_list()
-        self.route_list.setCurrentRow(destination)
+        if row >= 0:
+            self.route_list.setCurrentRow(row)
+        self._loading = False
+        self._load_current(row)
 
     def _refresh_list(self) -> None:
         self.route_list.clear()
-        self.route_list.addItems(
-            [f"{route.outcome.value} → {route.target.kind.value}" for route in self._routes]
-        )
+        self.route_list.addItems([_route_summary(route) for route in self._routes])
+
+
+def _route_summary(route: RouteRule) -> str:
+    return f"{choice_label(route.outcome)} → {choice_label(route.target.kind)}"
+
+
+def _find_uuid_data(combo: QComboBox, value: object) -> int:
+    try:
+        normalized = str(UUID(str(value)))
+    except (ValueError, TypeError, AttributeError):
+        return -1
+    for index in range(combo.count()):
+        if combo.itemData(index) == normalized:
+            return index
+    return -1
+
+
+def _uuid_from_combo(combo: QComboBox, error: str) -> UUID:
+    value = combo.currentData()
+    try:
+        return UUID(value) if isinstance(value, str) else UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError(error) from None

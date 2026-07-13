@@ -396,6 +396,7 @@ def _convert_launch_actions(
                 "arguments": arguments,
                 "run_as_admin": run_as_admin,
                 "working_directory": str(application.parent),
+                "hide_window": suffix in {".py", ".pyw"},
             },
         )
     ]

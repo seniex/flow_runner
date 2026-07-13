@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -23,11 +23,14 @@ from flow_runner.domain.conditions import ConditionGroup, ConditionNode, LeafCon
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep
 from flow_runner.ui.editors.model_form import ModelForm
+from flow_runner.ui.localization import capability_label, choice_label, field_label
 
 ConditionOperator = Literal["and", "or", "not"]
 
 
 class ConditionEditor(QWidget):
+    changed = Signal()
+
     def __init__(
         self,
         registry: CapabilityRegistry,
@@ -47,18 +50,18 @@ class ConditionEditor(QWidget):
         self.node_id_edit = QLineEdit()
         self.operator_combo = QComboBox()
         for operator in ("and", "or", "not"):
-            self.operator_combo.addItem(operator.upper(), operator)
+            self.operator_combo.addItem(choice_label(operator), operator)
         self.capability_combo = QComboBox()
         for metadata in registry.condition_metadata():
-            self.capability_combo.addItem(metadata.name, metadata.name)
+            self.capability_combo.addItem(capability_label(metadata.name), metadata.name)
         self.form_container = QWidget()
         self.form_layout = QVBoxLayout(self.form_container)
         self.config_form: ModelForm | None = None
         self.message_label = QLabel("")
         self.add_leaf_button = QPushButton("添加叶子")
-        self.add_and_button = QPushButton("添加 AND")
-        self.add_or_button = QPushButton("添加 OR")
-        self.add_not_button = QPushButton("添加 NOT")
+        self.add_and_button = QPushButton("添加并且条件")
+        self.add_or_button = QPushButton("添加或者条件")
+        self.add_not_button = QPushButton("添加取反条件")
         self.remove_button = QPushButton("删除节点")
         layout = QVBoxLayout(self)
         layout.addWidget(self.enabled_check)
@@ -88,20 +91,38 @@ class ConditionEditor(QWidget):
         self.add_or_button.clicked.connect(lambda: self._add_group("or"))
         self.add_not_button.clicked.connect(lambda: self._add_group("not"))
         self.remove_button.clicked.connect(self._remove_selected)
+        self.enabled_check.toggled.connect(self._mark_changed)
+        self.node_id_edit.textChanged.connect(self._mark_changed)
+        self.operator_combo.currentIndexChanged.connect(self._mark_changed)
+        for button in (
+            self.add_leaf_button,
+            self.add_and_button,
+            self.add_or_button,
+            self.add_not_button,
+            self.remove_button,
+        ):
+            button.clicked.connect(self._mark_changed)
         self._switch_form()
         self._update_enabled(False)
 
     def set_condition(self, condition: ConditionNode | None) -> None:
+        self._loading = True
         self._root = condition
         self._selected_path = None
         if condition is None:
             self.enabled_check.setChecked(False)
             self.message_label.clear()
             self._rebuild_tree()
+            self._loading = False
             return
         self.enabled_check.setChecked(True)
         self.message_label.clear()
         self._rebuild_tree()
+        self._loading = False
+
+    def _mark_changed(self) -> None:
+        if not self._loading:
+            self.changed.emit()
 
     def condition(self) -> ConditionNode | None:
         if not self.enabled_check.isChecked():
@@ -329,8 +350,8 @@ class ConditionEditor(QWidget):
     @staticmethod
     def _node_label(node: ConditionNode) -> str:
         if isinstance(node, ConditionGroup):
-            return f"{node.id} [{node.operator.upper()}]"
-        return f"{node.id} [{node.capability}]"
+            return f"{node.id} [{choice_label(node.operator)}]"
+        return f"{node.id} [{capability_label(node.capability)}]"
 
     @staticmethod
     def _item_path(item: QTreeWidgetItem | None) -> tuple[int, ...] | None:
@@ -456,8 +477,11 @@ class ConditionEditor(QWidget):
             self._restore_active_capability()
             return
         self._switch_form(previous)
+        self._mark_changed()
         self.message_label.setText(
-            f"已舍弃检测能力专属字段：{', '.join(discarded)}" if discarded else ""
+            f"已舍弃检测能力专属字段：{'、'.join(field_label(name) for name in discarded)}"
+            if discarded
+            else ""
         )
 
     def _restore_active_capability(self) -> None:
@@ -489,6 +513,7 @@ class ConditionEditor(QWidget):
             return
         model_type = self.registry.condition(capability).config_model
         self.config_form = ModelForm(model_type)
+        self.config_form.changed.connect(self._mark_changed)
         if previous:
             allowed = set(model_type.model_fields)
             self.config_form.set_values(
@@ -498,7 +523,7 @@ class ConditionEditor(QWidget):
         self._active_capability = capability
 
     def _confirm_discard(self, fields: tuple[str, ...]) -> bool:
-        field_list = "、".join(fields)
+        field_list = "、".join(field_label(name) for name in fields)
         return (
             QMessageBox.question(
                 self,

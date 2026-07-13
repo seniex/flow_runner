@@ -1,9 +1,11 @@
 from collections.abc import Callable
+from datetime import datetime
+from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QCloseEvent
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
@@ -41,6 +43,7 @@ class MainWindow(QMainWindow):
         *,
         runner_bridge: RunnerBridge | None = None,
         save_project: Callable[[Project], None] | None = None,
+        project_path: Path | None = None,
         confirm_close: Callable[[], Literal["save", "discard", "cancel"]] | None = None,
         registry: CapabilityRegistry | None = None,
         create_step: Callable[[], AutomationStep | None] | None = None,
@@ -55,6 +58,7 @@ class MainWindow(QMainWindow):
         self.run_view_model = RunViewModel()
         self.runner_bridge = runner_bridge
         self.save_project = save_project
+        self.project_path = project_path
         self._confirm_close_injected = confirm_close is not None
         self.confirm_close = confirm_close or self._confirm_dirty_close
         self.registry = registry
@@ -66,7 +70,7 @@ class MainWindow(QMainWindow):
         self.select_group_target = select_group_target or self._prompt_workflow_group
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
-        self.property_panel = PropertyPanel(registry, project)
+        self.property_panel = PropertyPanel(registry, project, apply_step=self._apply_step_edit)
         self.diagnostics_dialog = DiagnosticsDialog(self)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self.flow_tree)
@@ -78,8 +82,8 @@ class MainWindow(QMainWindow):
         self.flow_tree.parallelBlockSelected.connect(self._select_parallel_block)
         self.step_list.stepSelected.connect(self._select_step)
         self.view_model.projectChanged.connect(self._project_changed)
-        self.property_panel.stepChanged.connect(self._apply_step_edit)
         self.property_panel.validationFailed.connect(self.statusBar().showMessage)
+        self.property_panel.pendingChanged.connect(self._pending_changed)
         self._workflow_id: UUID | None = None
         self._group_id: UUID | None = None
         self._parallel_block_id: UUID | None = None
@@ -91,6 +95,10 @@ class MainWindow(QMainWindow):
         self.addToolBar(self.project_toolbar)
         self.save_action = QAction("保存", self)
         self.save_action.setObjectName("saveProjectAction")
+        self.save_action.setToolTip("保存项目（Ctrl+S）")
+        self.save_shortcut = QShortcut(QKeySequence(QKeySequence.StandardKey.Save), self)
+        self.save_shortcut.setObjectName("saveProjectShortcut")
+        self.save_shortcut.activated.connect(self._save_project)
         self.undo_action = QAction("撤销", self)
         self.undo_action.setObjectName("undoProjectAction")
         self.add_step_action = QAction("新增步骤", self)
@@ -199,6 +207,8 @@ class MainWindow(QMainWindow):
             self.runner_bridge.eventReceived.connect(self.diagnostics_dialog.update_event)
             self.runner_bridge.failed.connect(self.statusBar().showMessage)
         self._update_runtime_actions(self.run_view_model.state)
+        self.setWindowTitle("Flow Runner[*]")
+        self._refresh_save_state()
         self._apply_initial_window_geometry()
 
     def _apply_initial_window_geometry(self) -> None:
@@ -213,6 +223,9 @@ class MainWindow(QMainWindow):
         self.move(available.center() - self.rect().center())
 
     def _select_workflow(self, workflow_id: UUID) -> None:
+        if not self._commit_pending_editor():
+            self._restore_flow_selection()
+            return
         workflow = self._workflow(workflow_id)
         self._group_id = self._group_for_workflow(workflow_id).id
         self._workflow_id = workflow.id
@@ -220,6 +233,9 @@ class MainWindow(QMainWindow):
         self.step_list.set_workflow(workflow)
 
     def _select_group(self, group_id: UUID) -> None:
+        if not self._commit_pending_editor():
+            self._restore_flow_selection()
+            return
         self._group_id = group_id
         self._workflow_id = None
         self._parallel_block_id = None
@@ -227,6 +243,9 @@ class MainWindow(QMainWindow):
         self.property_panel.clear_step()
 
     def _select_parallel_block(self, block_id: UUID) -> None:
+        if not self._commit_pending_editor():
+            self._restore_flow_selection()
+            return
         self._parallel_block_id = block_id
         self._group_id = None
         self._workflow_id = None
@@ -236,9 +255,33 @@ class MainWindow(QMainWindow):
     def _select_step(self, step_id: UUID) -> None:
         if self._workflow_id is None:
             return
+        previous_step_id = self.property_panel.step_id
+        if not self._commit_pending_editor():
+            if previous_step_id is not None:
+                self.step_list.blockSignals(True)
+                self.step_list.select_step(previous_step_id)
+                self.step_list.blockSignals(False)
+            return
         workflow = self._workflow(self._workflow_id)
         step = next(step for step in workflow.steps if step.id == step_id)
         self.property_panel.set_step(step)
+
+    def _commit_pending_editor(self) -> bool:
+        if not self.property_panel.has_pending_edits:
+            return True
+        return self.property_panel.apply_pending() is not None
+
+    def _restore_flow_selection(self) -> None:
+        self.flow_tree.blockSignals(True)
+        try:
+            if self._workflow_id is not None:
+                self.flow_tree.select_workflow(self._workflow_id)
+            elif self._group_id is not None:
+                self.flow_tree.select_group(self._group_id)
+            elif self._parallel_block_id is not None:
+                self.flow_tree.select_parallel_block(self._parallel_block_id)
+        finally:
+            self.flow_tree.blockSignals(False)
 
     def _workflow(self, workflow_id: UUID) -> Workflow:
         for group in self.view_model.project.groups:
@@ -259,7 +302,7 @@ class MainWindow(QMainWindow):
         self.view_model.update_step(self._workflow_id, step)
 
     def _project_changed(self, project: Project) -> None:
-        self.save_action.setEnabled(self.view_model.dirty)
+        self._refresh_save_state()
         self.property_panel.set_project(project)
         self.flow_tree.set_project(project)
         if self._parallel_block_id is not None:
@@ -288,18 +331,38 @@ class MainWindow(QMainWindow):
             except KeyError:
                 pass
 
+    def _pending_changed(self, _pending: bool) -> None:
+        self._refresh_save_state()
+
+    def _refresh_save_state(self) -> None:
+        modified = self.view_model.dirty or self.property_panel.has_pending_edits
+        self.save_action.setEnabled(self.save_project is not None and modified)
+        self.setWindowModified(modified)
+
     def _save_project(self) -> bool:
         if self.save_project is None:
             self.statusBar().showMessage("未配置项目保存服务")
             return False
+        if self.property_panel.has_pending_edits:
+            if self.property_panel.apply_pending() is None:
+                detail = self.property_panel.validation_error or "请修正当前步骤中的参数"
+                self.statusBar().showMessage(f"项目保存失败：{detail}")
+                return False
         try:
             self.save_project(self.view_model.project)
         except Exception as error:
             self.statusBar().showMessage(f"项目保存失败：{error}")
             return False
         self.view_model.mark_saved()
-        self.save_action.setEnabled(False)
-        self.statusBar().showMessage("项目已保存")
+        self._refresh_save_state()
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        location = f"：{self.project_path}" if self.project_path is not None else ""
+        runtime_note = (
+            "；当前运行不受影响，下次启动生效"
+            if self.run_view_model.state in {RunnerState.RUNNING, RunnerState.PAUSED}
+            else ""
+        )
+        self.statusBar().showMessage(f"项目已保存{location}（{timestamp}）{runtime_note}")
         return True
 
     def _add_step(self) -> None:
@@ -551,7 +614,8 @@ class MainWindow(QMainWindow):
         self.pause_action.setText("继续" if state is RunnerState.PAUSED else "暂停")
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self.view_model.dirty and (self.isVisible() or self._confirm_close_injected):
+        modified = self.view_model.dirty or self.property_panel.has_pending_edits
+        if modified and (self.isVisible() or self._confirm_close_injected):
             decision = self.confirm_close()
             if decision == "cancel" or (decision == "save" and not self._save_project()):
                 event.ignore()

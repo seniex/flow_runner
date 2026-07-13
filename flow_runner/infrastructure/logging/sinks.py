@@ -23,6 +23,15 @@ class MemoryEventSink:
         self.events.append(event)
 
 
+class CompositeEventSink:
+    def __init__(self, *sinks: EventSink) -> None:
+        self.sinks = sinks
+
+    def emit(self, event: RuntimeEvent) -> None:
+        for sink in self.sinks:
+            sink.emit(event)
+
+
 class JsonLinesEventSink:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)

@@ -109,6 +109,17 @@ explicit parallel blocks. Parallel execution is never inferred from routes: crea
 and select the workflows that should monitor concurrently. Children share task variables and runtime
 resources while retaining separate workflow-local variables and call stacks.
 
+The guided editor displays built-in capabilities, parameter names, choices, route outcomes, and
+runtime states in Chinese while retaining stable English schema keys in advanced JSON. A single step
+can freely mix and reorder mouse, keyboard, wait, variable, process, playback, and window actions;
+the sequence list shows a readable summary rather than internal capability identifiers.
+
+Saving from the toolbar or with `Ctrl+S` first commits the currently edited condition, selected
+action, policy hooks, route, and step, then validates and atomically writes the complete project. It
+is no longer necessary to click each nested “更新动作” and “应用” button before saving. Pending
+values are also committed in memory before switching steps, and closing with pending form values
+uses the same unsaved-change confirmation. Changes saved during a run take effect on the next run.
+
 The runtime toolbar provides start, pause/resume, stop, input recording, selected-step execution,
 condition preview, and structured diagnostics. Visual condition previews attach the recent frame as
 an in-memory PNG without creating temporary screenshot files. Diagnostics include step results,
@@ -128,9 +139,12 @@ Long moves, drags, repeated keys, and interval text are divided into cancellable
 held inputs are released whenever a run terminates or the application shuts down; recording
 playback also releases held keys on cancellation.
 
-Program launch actions accept an optional `working_directory`. Normal launches pass it to the child
-process and administrator launches pass it to `ShellExecuteW`; if omitted, normal launches inherit
-the current directory and administrator launches use the executable directory.
+Program launch actions accept an optional `working_directory` and `hide_window` flag. Normal
+launches pass the working directory to the child process and use `CREATE_NO_WINDOW` when hidden;
+administrator launches pass both settings to `ShellExecuteW`. If the working directory is omitted,
+normal launches inherit the current directory and administrator launches use the executable
+directory. Converted `.py` and `.pyw` helpers are hidden by default so they cannot cover the game or
+steal visible screen space.
 
 ## Persistence and safety
 
@@ -139,7 +153,9 @@ syntax are validated on load and again before save. Saves write and validate a t
 rotate the five newest backups, and atomically replace the main file. Desktop/window interactions
 are coordinated so read-only detection can share frames while conflicting input is serialized.
 Screen-derived coordinates are revalidated under the exclusive interaction lease if another action
-has changed the scene.
+has changed the scene. Fixed absolute coordinates remain serialized but do not re-run the original
+condition between actions. Runtime events are also appended to `logs/runtime.jsonl` beside the
+project while continuing to appear in the diagnostics UI.
 
 ## Real Windows acceptance
 

@@ -8,7 +8,7 @@ from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.errors import ActionError
 from flow_runner.domain.results import ActionResult
 
-ProcessLauncher = Callable[[Path, tuple[str, ...], bool, Path | None], Awaitable[None]]
+ProcessLauncher = Callable[[Path, tuple[str, ...], bool, Path | None, bool], Awaitable[None]]
 
 
 class LaunchProcessConfig(BaseModel):
@@ -17,6 +17,7 @@ class LaunchProcessConfig(BaseModel):
     arguments: list[str] = Field(default_factory=list)
     run_as_admin: bool = False
     working_directory: Path | None = None
+    hide_window: bool = False
 
 
 class LaunchProcessAction:
@@ -41,6 +42,7 @@ class LaunchProcessAction:
             tuple(config.arguments),
             config.run_as_admin,
             working_directory,
+            config.hide_window,
         )
         return ActionResult(outcome=StepOutcome.SUCCESS)
 

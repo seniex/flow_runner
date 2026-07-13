@@ -6,6 +6,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QDialog, QFormLayout, QLabel, QTextEdit, QWidget
 
 from flow_runner.infrastructure.logging.events import RuntimeEvent
+from flow_runner.ui.localization import choice_label
 
 
 class DiagnosticsDialog(QDialog):
@@ -38,12 +39,12 @@ class DiagnosticsDialog(QDialog):
         layout.addRow("详情", self.details_value)
 
     def update_event(self, event: RuntimeEvent) -> None:
-        self.kind_value.setText(event.kind)
-        self.state_value.setText(event.state.value)
+        self.kind_value.setText(choice_label(event.kind))
+        self.state_value.setText(choice_label(event.state))
         self.task_value.setText(str(event.task_id))
         self.workflow_value.setText(str(event.workflow_id or ""))
         self.step_value.setText(str(event.step_id or ""))
-        self.outcome_value.setText(event.outcome.value if event.outcome is not None else "")
+        self.outcome_value.setText(choice_label(event.outcome) if event.outcome is not None else "")
         self.frame_value.setText(event.frame_id or "")
         self.scene_value.setText(
             str(event.scene_generation) if event.scene_generation is not None else ""

@@ -46,6 +46,7 @@ from flow_runner.infrastructure.input.recording import (
     RecordingPlayer,
     RecordingRecorder,
 )
+from flow_runner.infrastructure.logging.sinks import JsonLinesEventSink
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
@@ -155,11 +156,15 @@ def create_application(
 
     runner = Runner(step_executor_factory=step_executor_factory)
     resource_coordinator.event_sink = runner.report_resource_event
-    runner_bridge = RunnerBridge(runner)
+    runner_bridge = RunnerBridge(
+        runner,
+        persistent_event_sink=JsonLinesEventSink(path.parent / "logs" / "runtime.jsonl"),
+    )
     window = MainWindow(
         project,
         runner_bridge=runner_bridge,
         save_project=save_project,
+        project_path=path,
         registry=registry,
     )
     recorder = RecordingRecorder(listener_factory=recording_listener_factory)

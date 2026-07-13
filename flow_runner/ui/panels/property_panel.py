@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor
@@ -26,16 +28,23 @@ from flow_runner.ui.editors.route_editor import RouteEditor
 class PropertyPanel(QScrollArea):
     stepChanged = Signal(object)
     validationFailed = Signal(str)
+    pendingChanged = Signal(bool)
 
     def __init__(
         self,
         registry: CapabilityRegistry | None = None,
         project: Project | None = None,
+        *,
+        apply_step: Callable[[AutomationStep], None] | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("propertyPanel")
         self.step_id: UUID | None = None
         self._step: AutomationStep | None = None
+        self._loading = False
+        self._pending = False
+        self._validation_error = ""
+        self.apply_step = apply_step
         self._condition_json_baseline = ""
         self._actions_json_baseline = ""
         self._routes_json_baseline = ""
@@ -87,8 +96,47 @@ class PropertyPanel(QScrollArea):
         layout.addWidget(self.apply_button)
         layout.addStretch()
         self.apply_button.clicked.connect(self._apply)
+        self.name_edit.textChanged.connect(self._mark_pending)
+        self.enabled_check.toggled.connect(self._mark_pending)
+        for editor in (
+            self.condition_edit,
+            self.actions_edit,
+            self.condition_policy_edit,
+            self.action_policy_edit,
+            self.routes_edit,
+        ):
+            editor.textChanged.connect(self._mark_pending)
+        self.policy_editor.changed.connect(self._mark_pending)
+        if self.action_editor is not None:
+            self.action_editor.changed.connect(self._mark_pending)
+        if self.condition_editor is not None:
+            self.condition_editor.changed.connect(self._mark_pending)
+        if self.route_editor is not None:
+            self.route_editor.changed.connect(self._mark_pending)
+
+    @property
+    def has_pending_edits(self) -> bool:
+        return self._pending
+
+    @property
+    def validation_error(self) -> str:
+        return self._validation_error
+
+    def _mark_pending(self) -> None:
+        if self._loading or self._step is None or self._pending:
+            return
+        self._pending = True
+        self.pendingChanged.emit(True)
+
+    def _clear_pending(self) -> None:
+        changed = self._pending
+        self._pending = False
+        if changed:
+            self.pendingChanged.emit(False)
 
     def set_step(self, step: AutomationStep) -> None:
+        self._loading = True
+        self._validation_error = ""
         self.step_id = step.id
         self._step = step
         self.title.setText(step.name)
@@ -112,8 +160,12 @@ class PropertyPanel(QScrollArea):
         if self.route_editor is not None:
             self.route_editor.set_step_context(step.id)
             self.route_editor.set_routes(step.routes)
+        self._loading = False
+        self._clear_pending()
 
     def clear_step(self) -> None:
+        self._loading = True
+        self._validation_error = ""
         self.step_id = None
         self._step = None
         if self.route_editor is not None:
@@ -129,15 +181,28 @@ class PropertyPanel(QScrollArea):
             self.routes_edit,
         ):
             editor.clear()
+        self._loading = False
+        self._clear_pending()
 
     def set_project(self, project: Project) -> None:
         if self.route_editor is not None:
             self.route_editor.set_project(project)
 
-    def _apply(self) -> None:
+    def apply_pending(self) -> AutomationStep | None:
         if self._step is None:
-            return
+            return None
+        self._validation_error = ""
         try:
+            if (
+                self.action_editor is not None
+                and self.actions_edit.toPlainText() == self._actions_json_baseline
+            ):
+                self.action_editor.commit_pending()
+            if (
+                self.route_editor is not None
+                and self.routes_edit.toPlainText() == self._routes_json_baseline
+            ):
+                self.route_editor.commit_pending()
             guided_condition_policy, guided_action_policy = self.policy_editor.policies()
             step = AutomationStep.model_validate(
                 {
@@ -176,11 +241,18 @@ class PropertyPanel(QScrollArea):
                     ),
                 }
             )
-        except ValueError as error:
-            self.validationFailed.emit(str(error))
-            return
+            if self.apply_step is not None:
+                self.apply_step(step)
+        except (ValueError, KeyError, FlowRunnerError) as error:
+            self._validation_error = str(error)
+            self.validationFailed.emit(self._validation_error)
+            return None
         self.set_step(step)
         self.stepChanged.emit(step)
+        return step
+
+    def _apply(self) -> None:
+        self.apply_pending()
 
 
 def _json(value: object) -> str:
