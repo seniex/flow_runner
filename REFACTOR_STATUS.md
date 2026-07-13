@@ -1,7 +1,7 @@
 # Flow Runner PySide6 重构状态
 
-更新日期：2026-07-13  
-分支：`refactor/pyside6-workflow`
+更新日期：2026-07-14
+分支：`main`（后续收尾在 `chore/release-completion`）
 
 ## 当前结论
 
@@ -49,7 +49,7 @@
 
 ## 自动化证据
 
-2026-07-13 在 Windows、Python 3.12、Qt offscreen 环境执行：
+2026-07-14 在 Windows、Python 3.12、Qt offscreen 环境执行：
 
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
@@ -63,7 +63,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 # 122 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
-# Success: no issues found in 98 source files
+# Success: no issues found in 99 source files
 
 .\.venv\Scripts\python.exe -m pip check
 # No broken requirements found
@@ -71,12 +71,13 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，103 个条目，包含 `base.qss`、输入适配器、滚动属性面板和旧配置迁移工具；SHA-256 为 `4BC641A5036B3EEC027D50D72CA48C253DD8A3827C4A742031C6BC384B86390C`。
+- 最新 wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，104 个条目，包含 `base.qss`、输入适配器、中文本地化、滚动属性面板和旧配置迁移工具；SHA-256 为 `B9A90CFBA172D103B4D51162353216DCCBA1CA967E046D71600AA2177801B280`。wheel 已安装到一次性干净虚拟环境，并通过 Qt offscreen 应用创建/关闭冒烟测试。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
 - 三个旧脚本与主工作区副本逐行内容一致，仅工作树换行格式不同。
 - PaddleOCR-json 客户端已识别生成的“开始游戏”图片；随后对用户提供的实际桌面/游戏截图识别 148 项，样本“无响应”边界为 `[794, 560, 837, 582]`、置信度为 `0.999757`，并正常终止子进程。
+- 主工作区根目录的 `Screenshot 2026-07-13 032847.png` 和 `project.1783952247966102600.bak.json` 仍作为用户所有的未跟踪证据保留；本轮未暂存、移动或删除。
 
 ## 尚需真实环境验收
 

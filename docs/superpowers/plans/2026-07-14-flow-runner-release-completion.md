@@ -73,7 +73,7 @@ Expected: one documentation-only commit; no user-owned root artifact is staged.
 - Generated, ignored: `dist/flow_runner_qt-0.1.0-py3-none-any.whl`
 - Modify after evidence exists: `REFACTOR_STATUS.md`
 
-- [ ] **Step 1: Remove only the isolated worktree's old build output**
+- [x] **Step 1: Remove only the isolated worktree's old build output**
 
 ```powershell
 $dist = (Join-Path (Get-Location) 'dist')
@@ -86,7 +86,7 @@ if (Test-Path -LiteralPath $dist) {
 
 Expected: `dist/` is absent before the build. Do not touch any path outside this worktree.
 
-- [ ] **Step 2: Build the wheel without dependencies**
+- [x] **Step 2: Build the wheel without dependencies**
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip wheel . --no-deps --wheel-dir dist
@@ -94,7 +94,7 @@ Expected: `dist/` is absent before the build. Do not touch any path outside this
 
 Expected: exactly one `flow_runner_qt-0.1.0-py3-none-any.whl` in `dist/`.
 
-- [ ] **Step 3: Inspect required wheel contents and hash**
+- [x] **Step 3: Inspect required wheel contents and hash**
 
 ```powershell
 $wheel = Get-ChildItem -LiteralPath dist -Filter 'flow_runner_qt-0.1.0-*.whl' -File
@@ -105,7 +105,7 @@ Get-FileHash -Algorithm SHA256 -LiteralPath $wheel.FullName
 
 Expected: no missing required files, a printed entry count, and one SHA-256 value recorded for documentation.
 
-- [ ] **Step 4: Perform a clean-environment import and offscreen application smoke test**
+- [x] **Step 4: Perform a clean-environment import and offscreen application smoke test**
 
 ```powershell
 $wheel = Get-ChildItem -LiteralPath dist -Filter 'flow_runner_qt-0.1.0-*.whl' -File
@@ -126,7 +126,7 @@ Expected: `release smoke ok`. This uses Qt offscreen and does not show a window 
 - Modify: `REFACTOR_STATUS.md`
 - Modify: `REAL_ENVIRONMENT_CHECKLIST.md`
 
-- [ ] **Step 1: Update the status header and automated evidence**
+- [x] **Step 1: Update the status header and automated evidence**
 
 Apply these exact factual changes to `REFACTOR_STATUS.md`:
 
@@ -139,7 +139,7 @@ Apply these exact factual changes to `REFACTOR_STATUS.md`:
 
 Replace the old wheel hash/count sentence with the entry count and SHA-256 produced by Task 2. Do not reuse the earlier pre-fix wheel hash.
 
-- [ ] **Step 2: Update the real-environment automated baseline**
+- [x] **Step 2: Update the real-environment automated baseline**
 
 Replace the stale baseline paragraph in `REAL_ENVIRONMENT_CHECKLIST.md` with:
 
@@ -147,11 +147,11 @@ Replace the stale baseline paragraph in `REAL_ENVIRONMENT_CHECKLIST.md` with:
 自动化基线（2026-07-14）：`244 passed`，Ruff、格式检查、严格 mypy（99 个源文件）、`pip check` 和最新 wheel 构建/干净安装冒烟均通过。此结果不替代下列真实桌面/游戏环境验收。
 ```
 
-- [ ] **Step 3: Record artifact-retention state without changing user files**
+- [x] **Step 3: Record artifact-retention state without changing user files**
 
 Add a short repository note to `REFACTOR_STATUS.md` stating that the root screenshot and `project.1783952247966102600.bak.json` remain user-owned untracked evidence and were intentionally not staged, moved, or deleted.
 
-- [ ] **Step 4: Verify documentation consistency**
+- [x] **Step 4: Verify documentation consistency**
 
 ```powershell
 rg -n "213 passed|98 source files|refactor/pyside6-workflow|4BC641A5036B3EEC027D50D72CA48C253DD8A3827C4A742031C6BC384B86390C" REFACTOR_STATUS.md REAL_ENVIRONMENT_CHECKLIST.md
@@ -160,7 +160,7 @@ git diff --check
 
 Expected: no stale baseline, source-count, old branch, or old wheel-hash matches; `git diff --check` exits successfully.
 
-- [ ] **Step 5: Commit the calibrated automated and build evidence**
+- [x] **Step 5: Commit the calibrated automated and build evidence**
 
 ```powershell
 git add REFACTOR_STATUS.md REAL_ENVIRONMENT_CHECKLIST.md
