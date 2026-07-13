@@ -129,10 +129,12 @@ class RecordingPlayer:
         sleep: Callable[[float], Awaitable[None]],
         backend: Any | None = None,
         uniform: Callable[[float, float], float] = random.uniform,
+        clock: Callable[[], float] = monotonic,
     ) -> None:
         self.sleep = sleep
         self.backend = backend or importlib.import_module("pyautogui")
         self.uniform = uniform
+        self.clock = clock
         self._held_keys: set[str] = set()
 
     async def __call__(
@@ -144,18 +146,34 @@ class RecordingPlayer:
     ) -> None:
         events = RecordingStore.load(path)
         previous = 0.0
+        scheduled = 0.0
+        started_at = self.clock()
         self._held_keys.clear()
+        missing = object()
+        original_pause = getattr(self.backend, "PAUSE", missing)
+        if original_pause is not missing:
+            _set_backend_pause(self.backend, 0)
         try:
             for event in events:
-                delay = min(max(0.0, event.timestamp - previous) / speed, max_gap)
+                gap = max(0.0, event.timestamp - previous) / speed
+                scheduled += min(gap, max_gap) if max_gap > 0 else gap
+                target = scheduled
                 if jitter_ms:
                     jitter_seconds = jitter_ms / 1000
-                    delay = max(0.0, delay + self.uniform(-jitter_seconds, jitter_seconds))
+                    target = max(
+                        0.0,
+                        target + self.uniform(-jitter_seconds, jitter_seconds),
+                    )
+                delay = max(0.0, target - (self.clock() - started_at))
                 await self.sleep(delay)
                 await asyncio.to_thread(self._dispatch, event)
                 previous = event.timestamp
         finally:
-            await asyncio.to_thread(self._release_held_keys)
+            try:
+                await asyncio.to_thread(self._release_held_keys)
+            finally:
+                if original_pause is not missing:
+                    _set_backend_pause(self.backend, original_pause)
 
     def _dispatch(self, event: RecordedEvent) -> None:
         data = event.data
@@ -230,3 +248,7 @@ def _input_name(value: object) -> str:
     if name:
         return str(name)
     return str(value).rsplit(".", 1)[-1]
+
+
+def _set_backend_pause(backend: Any, value: Any) -> None:
+    backend.PAUSE = value

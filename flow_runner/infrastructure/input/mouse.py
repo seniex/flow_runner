@@ -1,7 +1,10 @@
 import asyncio
 import importlib
+import inspect
 import math
 import threading
+from collections.abc import Awaitable, Callable
+from time import monotonic
 from typing import Any, Protocol
 
 
@@ -18,10 +21,23 @@ class MouseDevice(Protocol):
 class PyAutoGuiMouseDevice:
     _segment_seconds = 1 / 60
 
-    def __init__(self, backend: Any | None = None) -> None:
+    def __init__(
+        self,
+        backend: Any | None = None,
+        *,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        clock: Callable[[], float] = monotonic,
+    ) -> None:
         if backend is None:
             backend = importlib.import_module("pyautogui")
         self.backend = backend
+        try:
+            move_to = self.backend.moveTo
+            self._move_supports_pause = "_pause" in inspect.signature(move_to).parameters
+        except (AttributeError, TypeError, ValueError):
+            self._move_supports_pause = False
+        self.sleep = sleep
+        self.clock = clock
         self._held_buttons: set[str] = set()
         self._state_lock = threading.Lock()
 
@@ -105,18 +121,25 @@ class PyAutoGuiMouseDevice:
 
     async def _move_to(self, position: tuple[int, int], duration: float) -> None:
         if duration <= 0:
-            await asyncio.to_thread(self.backend.moveTo, position[0], position[1])
+            await asyncio.to_thread(self._move_immediate, position[0], position[1])
             return
         start = await asyncio.to_thread(self.backend.position)
         start_x, start_y = int(start[0]), int(start[1])
         steps = max(1, math.ceil(duration / self._segment_seconds))
-        delay = duration / steps
+        started_at = self.clock()
         for index in range(1, steps + 1):
-            await asyncio.sleep(delay)
+            target = started_at + duration * index / steps
+            await self.sleep(max(0.0, target - self.clock()))
             ratio = index / steps
             x = round(start_x + (position[0] - start_x) * ratio)
             y = round(start_y + (position[1] - start_y) * ratio)
-            await asyncio.to_thread(self.backend.moveTo, x, y)
+            await asyncio.to_thread(self._move_immediate, x, y)
+
+    def _move_immediate(self, x: int, y: int) -> None:
+        if self._move_supports_pause:
+            self.backend.moveTo(x, y, _pause=False)
+        else:
+            self.backend.moveTo(x, y)
 
 
 def _position(kwargs: dict[str, object]) -> tuple[int, int]:

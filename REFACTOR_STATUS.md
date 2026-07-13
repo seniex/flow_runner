@@ -46,7 +46,7 @@
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 219 passed
+# 223 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
@@ -63,7 +63,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 其他边界验证：
 
-- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，103 个条目，包含 `base.qss`、输入适配器、滚动属性面板和旧配置迁移工具；SHA-256 为 `E74EE2A3B9AF6DC294833951A45769C10EBEEF24F6CBFFED1C99F59FCE5166CC`。
+- wheel 构建成功：`flow_runner_qt-0.1.0-py3-none-any.whl`，103 个条目，包含 `base.qss`、输入适配器、滚动属性面板和旧配置迁移工具；SHA-256 为 `0F72738854BD556C8B8C20665CC66CC9D04F9D335FADFFB8EF1A621408BC1850`。
 - `import flow_runner; import flow_runner.engine.runner` 输出 `ok`，未创建日志或项目文件。
 - 新包和测试中没有 `flow_runner_p1/p2/p3` 导入。
 - 新模型中没有 `ocr_click`、`ocr_loop`、`ocr_poll` 或图片对应固定类型。
@@ -83,7 +83,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 只读真实游戏环境检查已通过：前台 `懒人修仙传2` 窗口截图非空且原点/尺寸正确；真实桌面模板匹配、像素容差内外判断、游戏窗口连续帧区域变化，以及真实窗口/进程条件均产生预期结果。
 
-真实桌面动作检查已完成：临时窗口激活/最小化/恢复/移动缩放通过；鼠标各操作和键盘按下/释放会产生真实事件，录制回放及取消时释放 Ctrl 通过。修复后停止长鼠标移动会同时取消运行状态与底层分段输入；Unicode 中文和剪贴板粘贴/恢复均实机通过。专项调度测试 61 项通过，覆盖跨组循环、调用返回、并行共享、资源冲突、陈旧坐标重检、暂停恢复和停止退出。
+真实桌面动作检查已完成：临时窗口激活/最小化/恢复/移动缩放通过；鼠标各操作和键盘按下/释放会产生真实事件，录制回放及取消时释放 Ctrl 通过。修复后停止长鼠标移动会同时取消运行状态与底层分段输入；1 秒分段移动实测为 `1.000s`，300 个轨迹点的 2 秒回放实测为 `2.047s`，不再累计 PyAutoGUI 的每事件 `0.1s` 全局暂停。Unicode 中文和剪贴板粘贴/恢复均实机通过。专项调度测试 61 项通过，覆盖跨组循环、调用返回、并行共享、资源冲突、陈旧坐标重检、暂停恢复和停止退出。
 
 后台 Windows Graphics Capture 已在同一游戏窗口实测：Chrome 完全遮挡游戏时，后台帧与遮挡前游戏帧平均像素差为 `0.037`，与屏幕可见遮挡内容的平均像素差为 `40.87`；测试结束后游戏窗口恢复前台。
 

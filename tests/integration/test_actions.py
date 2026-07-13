@@ -298,9 +298,12 @@ async def test_recording_player_applies_speed_gap_and_dispatches(tmp_path):
     )
     delays = []
     calls = []
+    now = 0.0
 
     async def sleep(seconds):
+        nonlocal now
         delays.append(seconds)
+        now += seconds
 
     class Backend:
         def moveTo(self, x, y):
@@ -309,7 +312,9 @@ async def test_recording_player_applies_speed_gap_and_dispatches(tmp_path):
         def click(self, **kwargs):
             calls.append(("click", kwargs))
 
-    await RecordingPlayer(sleep=sleep, backend=Backend())(path, speed=2.0, max_gap=1.0)
+    await RecordingPlayer(sleep=sleep, backend=Backend(), clock=lambda: now)(
+        path, speed=2.0, max_gap=1.0
+    )
 
     assert delays == [0.0, 1.0]
     assert calls == [
@@ -330,9 +335,12 @@ async def test_recording_player_applies_per_event_jitter_without_negative_delay(
     )
     delays = []
     jitters = iter([-0.05, 0.05])
+    now = 0.0
 
     async def sleep(seconds):
+        nonlocal now
         delays.append(seconds)
+        now += seconds
 
     class Backend:
         def moveTo(self, x, y):
@@ -342,9 +350,61 @@ async def test_recording_player_applies_per_event_jitter_without_negative_delay(
         sleep=sleep,
         backend=Backend(),
         uniform=lambda lower, upper: next(jitters),
+        clock=lambda: now,
     )(path, speed=1.0, max_gap=2.0, jitter_ms=100)
 
     assert delays == [0.0, 1.05]
+
+
+@pytest.mark.asyncio
+async def test_recording_player_treats_zero_max_gap_as_unlimited(tmp_path):
+    path = tmp_path / "recording.json"
+    RecordingStore.save(
+        path,
+        [
+            RecordedEvent(timestamp=0.0, kind="move", data={"x": 1, "y": 2}),
+            RecordedEvent(timestamp=4.0, kind="move", data={"x": 3, "y": 4}),
+        ],
+    )
+    delays = []
+    now = 0.0
+
+    async def sleep(seconds):
+        nonlocal now
+        delays.append(seconds)
+        now += seconds
+
+    class Backend:
+        def moveTo(self, x, y):
+            pass
+
+    await RecordingPlayer(sleep=sleep, backend=Backend(), clock=lambda: now)(
+        path, speed=1.0, max_gap=0.0
+    )
+
+    assert delays == [0.0, 4.0]
+
+
+@pytest.mark.asyncio
+async def test_recording_player_disables_and_restores_pyautogui_pause(tmp_path):
+    path = tmp_path / "recording.json"
+    RecordingStore.save(
+        path,
+        [RecordedEvent(timestamp=0.0, kind="move", data={"x": 1, "y": 2})],
+    )
+    pauses = []
+
+    class Backend:
+        PAUSE = 0.1
+
+        def moveTo(self, x, y):
+            pauses.append(self.PAUSE)
+
+    backend = Backend()
+    await RecordingPlayer(sleep=asyncio.sleep, backend=backend)(path, speed=1.0, max_gap=0.0)
+
+    assert pauses == [0]
+    assert backend.PAUSE == 0.1
 
 
 @pytest.mark.asyncio
@@ -543,6 +603,53 @@ async def test_segmented_mouse_move_stops_after_task_cancellation():
 
     assert len(backend.calls) == calls_after_cancel
     assert backend.calls[-1] != (600, 300)
+
+
+@pytest.mark.asyncio
+async def test_segmented_mouse_move_disables_backend_pause_for_each_segment():
+    class Backend:
+        def __init__(self):
+            self.pause_arguments = []
+
+        def position(self):
+            return (0, 0)
+
+        def moveTo(self, x, y, *, _pause=True):
+            self.pause_arguments.append(_pause)
+
+    backend = Backend()
+    mouse = PyAutoGuiMouseDevice(backend)
+
+    await mouse.move(position=(10, 10), duration=0.02)
+
+    assert backend.pause_arguments
+    assert set(backend.pause_arguments) == {False}
+
+
+@pytest.mark.asyncio
+async def test_segmented_mouse_move_uses_absolute_timing_without_accumulating_call_cost():
+    now = 0.0
+    delays = []
+
+    async def sleep(seconds):
+        nonlocal now
+        delays.append(seconds)
+        now += seconds
+
+    class Backend:
+        def position(self):
+            return (0, 0)
+
+        def moveTo(self, x, y):
+            nonlocal now
+            now += 0.01
+
+    mouse = PyAutoGuiMouseDevice(Backend(), sleep=sleep, clock=lambda: now)
+
+    await mouse.move(position=(10, 10), duration=0.06)
+
+    assert delays == pytest.approx([0.015, 0.005, 0.005, 0.005])
+    assert now == pytest.approx(0.07)
 
 
 @pytest.mark.asyncio
