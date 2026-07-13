@@ -22,7 +22,7 @@
 | 区域变化 | 切换游戏画面 | 连续帧变化比例正确 | PASS（2026-07-13：前台游戏窗口中央区域首帧比例 `0`，1 秒后变化比例 `0.060721`，阈值 `0.001` 时命中） |
 | 窗口/进程条件 | 查询真实窗口与进程 | 存在项命中并返回真实状态 | PASS（2026-07-13：`懒人修仙传2` 窗口存在且为前台；`explorer.exe` 进程条件命中） |
 | 窗口动作 | 激活、最小化、恢复、移动和缩放测试窗口 | 操作命中指定窗口，坐标/尺寸正确且不影响其它窗口 | PASS（2026-07-13：临时 Qt 窗口依次激活、最小化、恢复、移动缩放到 `(320,180,640,420)` 并重新置前；Win32 矩形为 `[320,180,960,600]`） |
-| 程序启动 | 分别普通启动和管理员启动测试程序 | 参数、工作路径和权限模式正确，失败时报告明确错误 | BLOCKED（2026-07-13：普通启动、参数和工作目录实机通过，`cmd.exe` 报告路径与配置的 `C:\Users\Administrator\AppData\Local\Temp\flow_runner_cwd_acceptance` 完全一致；管理员启动仍需用户确认 UAC） |
+| 程序启动 | 分别普通启动和管理员启动测试程序 | 参数、工作路径和权限模式正确，失败时报告明确错误 | PASS（普通启动：2026-07-13，参数和工作目录实机通过，`cmd.exe` 报告路径与配置的 `C:\Users\Administrator\AppData\Local\Temp\flow_runner_cwd_acceptance` 完全一致。管理员启动：2026-07-14，经用户授权后使用 `WindowsProcessLauncher(run_as_admin=True, hide_window=True)` 的 `runas` 路径；本机 `EnableLUA=1`、`ConsentPromptBehaviorAdmin=0`，因此未显示 UAC 提示；隐藏 PowerShell 在显式工作目录 `C:\Users\Administrator\AppData\Local\Temp\flow_runner_admin_acceptance` 运行，令牌包含高完整性 SID `S-1-16-12288` 和管理员组 SID `S-1-5-32-544`，`IsInRole(Administrator)=True`，`MainWindowHandle=0`；结果记录后临时目录已清理） |
 | 鼠标 | 点击、移动、滚轮 | 按配置执行且停止可中断 | PASS（2026-07-13：移动、单击、双击、右击、滚轮、按下/释放和拖拽均产生真实事件；修复后 Runner 在长移动开始 `0.25s` 时停止，鼠标停在 `(409,404)`，再等 `0.8s` 位置不变；1 秒分段移动实测 `1.000s`；`15ms` 预移动、`15ms` 稳定等待和 ±3 像素抖动的真实按钮点击成功接收） |
 | 键盘 | 单键、组合键、文本 | 按配置执行且停止可中断 | PASS（2026-07-13：单键、组合键、按下/释放和终止清理无残留；`unicode` 在中文输入法环境准确输入“中文测试”，`clipboard` 准确输入“剪贴板模式”并恢复原剪贴板 `FLOW_RUNNER_CLIPBOARD_SENTINEL`；`keys` 保留物理按键/输入法语义） |
 | 录制回放 | 保存并回放短脚本 | 事件顺序、速度、最大停顿正确 | PASS（2026-07-13：真实录制得到 click、scroll、key_press、key_release，回放后鼠标回到 `(650,400)`；按住 Ctrl 的回放中途取消后系统 Ctrl 状态为释放；修复 PyAutoGUI 每事件 `0.1s` 暂停、`max_gap=0` 和累计抖动后，300 点/2 秒轨迹实测 `2.047s`） |

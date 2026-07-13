@@ -238,7 +238,7 @@ After confirmation, use the `computer-use` skill for visible-window focus change
 
 Expected: PASS evidence includes timestamped runtime events and no duplicate trigger. Otherwise record FAIL/BLOCKED with the observed conflicting process/window.
 
-- [ ] **Step 3: Notify and wait before the administrator-launch test**
+- [x] **Step 3: Notify and wait before the administrator-launch test**
 
 Send the user this notice:
 
@@ -248,11 +248,13 @@ Send the user this notice:
 
 Do not invoke `ShellExecuteW(..., "runas", ...)` before confirmation.
 
-- [ ] **Step 4: Execute the approved administrator-launch test**
+- [x] **Step 4: Execute the approved administrator-launch test**
 
 Use `WindowsProcessLauncher` with `run_as_admin=True`, an explicit temporary working directory, and `hide_window=True`. The child command must write its working directory and administrator token result under `%TEMP%\flow_runner_admin_acceptance`; poll for the result with a bounded timeout and delete only the temporary acceptance directory after its contents are recorded.
 
 Expected: one UAC prompt, correct working directory, elevated token evidence, no visible console, and a PASS entry. If UAC is declined, record BLOCKED rather than retrying automatically.
+
+Actual (2026-07-14): PASS after user authorization. The host kept UAC enabled but configured `ConsentPromptBehaviorAdmin=0`, so no prompt appeared. `WindowsProcessLauncher` used `run_as_admin=True`, the explicit `%TEMP%\flow_runner_admin_acceptance` working directory, and `hide_window=True`; the child reported high-integrity SID `S-1-16-12288`, Administrators SID `S-1-5-32-544`, administrator role true, and `MainWindowHandle=0`. The result directory was removed after recording.
 
 - [ ] **Step 5: Notify and wait before DPI changes**
 
