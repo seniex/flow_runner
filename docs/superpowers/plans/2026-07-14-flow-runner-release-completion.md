@@ -310,7 +310,7 @@ Do not invent a visual direction. Record that final styling remains blocked on t
 - Modify: `REAL_ENVIRONMENT_CHECKLIST.md`
 - Plan: `docs/superpowers/plans/2026-07-14-flow-runner-release-completion.md`
 
-- [ ] **Step 1: Run final non-interactive verification**
+- [x] **Step 1: Run final non-interactive verification**
 
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
@@ -324,7 +324,9 @@ git diff --check
 
 Expected: all checks pass with the current documented counts.
 
-- [ ] **Step 2: Review final repository scope**
+Actual (2026-07-14): PASS — `244 passed in 26.42s`; Ruff check passed; Ruff format reported `122 files already formatted`; mypy reported no issues in 99 source files; `pip check` reported no broken requirements; `git diff --check` passed.
+
+- [x] **Step 2: Review final repository scope**
 
 ```powershell
 git status --short
@@ -333,6 +335,8 @@ git diff
 ```
 
 Expected: only the plan and evidence/status documents are tracked changes unless an approved acceptance test exposed and fixed a real defect. The root screenshot and backup remain outside this worktree and untouched.
+
+Actual (2026-07-14): PASS — the worktree was clean and `21f2f7d..HEAD` contained only `REAL_ENVIRONMENT_CHECKLIST.md`, `REFACTOR_STATUS.md`, and this plan. No application or test source files changed.
 
 - [ ] **Step 3: Request code review and resolve findings**
 
