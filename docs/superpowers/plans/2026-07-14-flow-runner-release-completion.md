@@ -291,7 +291,7 @@ git commit -m "docs: record approved Windows acceptance results"
 
 Expected: only tests actually executed after user confirmation are changed from `BLOCKED` to `PASS` or `FAIL`.
 
-Actual (2026-07-14): approved hotkey-attempt evidence was committed in `347fdaf`; approved administrator-launch PASS evidence was committed in `1343675`. Blocked DPI, multi-monitor, hotkey, and Tesseract items were not changed to PASS.
+Actual (2026-07-14): approved hotkey-attempt evidence was committed in `347fdaf`; approved administrator-launch PASS evidence was committed in `1343675`; the later approved three-scale DPI PASS evidence was committed in `1686c6c`. Multi-monitor, hotkey, and Tesseract remain `BLOCKED` and were not changed to PASS.
 
 ### Task 6: Final visual-design gate
 
@@ -346,11 +346,11 @@ Expected: only the plan and evidence/status documents are tracked changes unless
 
 Actual (2026-07-14): PASS — the worktree was clean and `21f2f7d..HEAD` contained only `REAL_ENVIRONMENT_CHECKLIST.md`, `REFACTOR_STATUS.md`, and this plan. No application or test source files changed.
 
-- [ ] **Step 3: Request code review and resolve findings**
+- [x] **Step 3: Request code review and resolve findings**
 
 Use `superpowers:requesting-code-review` for the final tracked diff. Fix every Critical/Important finding with a failing test first when code behavior changes.
 
-Actual (2026-07-14): the review through `ec8c06d` found no issue. This step was reopened after adding the later three-scale DPI acceptance evidence and will be checked again before handoff.
+Actual (2026-07-14): the review through `ec8c06d` found no issue. The independent review of the later DPI evidence found one Important stale sentence that still listed DPI as blocked; it was corrected to reference DPI PASS commit `1686c6c` while retaining multi-monitor, hotkey, and Tesseract as `BLOCKED`. Re-review returned Critical: None, Important: None, Minor: None.
 
 - [x] **Step 4: Complete the branch**
 
