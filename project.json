@@ -45,7 +45,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -391,7 +393,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -882,7 +886,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -899,6 +905,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -1114,7 +1126,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1129,7 +1143,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1147,7 +1163,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1165,7 +1183,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1183,7 +1203,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1200,6 +1222,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -1426,7 +1454,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1444,7 +1474,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1462,7 +1494,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1480,7 +1514,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1495,7 +1531,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1513,7 +1551,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1537,7 +1577,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1555,7 +1597,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1573,7 +1617,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1597,7 +1643,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1615,7 +1663,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1633,7 +1683,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1650,6 +1702,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -1934,7 +1992,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1952,7 +2012,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1970,7 +2032,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -1988,7 +2052,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2006,7 +2072,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2024,7 +2092,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -2133,7 +2203,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -2430,7 +2502,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -2531,7 +2605,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2549,7 +2625,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2567,7 +2645,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2585,7 +2665,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2603,7 +2685,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -2621,7 +2705,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -2900,7 +2986,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -3394,7 +3482,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -3740,7 +3830,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -3959,7 +4051,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -3977,7 +4071,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -3995,7 +4091,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4013,7 +4111,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4031,7 +4131,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4049,7 +4151,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4073,7 +4177,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4091,7 +4197,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4109,7 +4217,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4127,7 +4237,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4151,7 +4263,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4169,7 +4283,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4187,7 +4303,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4205,7 +4323,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -4532,7 +4652,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4549,6 +4671,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -4764,7 +4892,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4779,7 +4909,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4797,7 +4929,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4815,7 +4949,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4833,7 +4969,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -4850,6 +4988,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -5076,7 +5220,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5094,7 +5240,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5112,7 +5260,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5130,7 +5280,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5145,7 +5297,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5163,7 +5317,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5187,7 +5343,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5205,7 +5363,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5223,7 +5383,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5247,7 +5409,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5265,7 +5429,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5283,7 +5449,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5300,6 +5468,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -5584,7 +5758,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5602,7 +5778,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5620,7 +5798,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5638,7 +5818,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5656,7 +5838,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -5674,7 +5858,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -5925,7 +6111,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -6419,7 +6607,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -6733,7 +6923,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -7198,7 +7390,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7215,6 +7409,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -7430,7 +7630,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7445,7 +7647,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7463,7 +7667,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7481,7 +7687,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7499,7 +7707,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7516,6 +7726,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -7699,7 +7915,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7717,7 +7935,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7735,7 +7955,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7753,7 +7975,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7768,7 +7992,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7786,7 +8012,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7810,7 +8038,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7828,7 +8058,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7846,7 +8078,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7870,7 +8104,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7888,7 +8124,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7906,7 +8144,9 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -7923,6 +8163,12 @@
                     ],
                     "duration": 0.015,
                     "jitter_pixels": 3
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
                   }
                 }
               ],
@@ -8175,7 +8421,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -8193,7 +8441,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -8211,7 +8461,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -8229,7 +8481,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -8247,7 +8501,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -8265,7 +8521,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -8453,7 +8711,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -8642,7 +8902,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3
+                    "jitter_pixels": 3,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],
@@ -9139,7 +9401,9 @@
                     "button": "left",
                     "clicks": 2,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9167,6 +9431,12 @@
                 {
                   "capability": "system.wait",
                   "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
                     "seconds": 0.1
                   }
                 },
@@ -9185,7 +9455,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9203,7 +9475,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9223,6 +9497,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9237,7 +9517,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9255,7 +9537,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9275,6 +9559,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9289,7 +9579,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9307,7 +9599,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9327,6 +9621,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9341,7 +9641,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9359,7 +9661,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9379,6 +9683,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9393,7 +9703,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9411,7 +9723,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9431,6 +9745,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9445,7 +9765,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9463,7 +9785,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9483,6 +9807,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9497,7 +9827,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9515,7 +9847,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9535,6 +9869,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9549,7 +9889,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9567,7 +9909,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9587,6 +9931,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9601,7 +9951,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9619,7 +9971,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9639,6 +9993,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9653,7 +10013,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9671,7 +10033,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9691,6 +10055,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9705,7 +10075,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9723,7 +10095,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9743,6 +10117,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9757,7 +10137,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9775,7 +10157,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9795,6 +10179,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9809,7 +10199,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9827,7 +10219,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9847,6 +10241,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9861,7 +10261,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9879,7 +10281,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9899,6 +10303,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9913,7 +10323,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9931,7 +10343,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9951,6 +10365,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -9965,7 +10385,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -9983,7 +10405,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10003,6 +10427,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10017,7 +10447,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10035,7 +10467,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10055,6 +10489,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10069,7 +10509,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10087,7 +10529,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10107,6 +10551,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10121,7 +10571,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10139,7 +10591,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10159,6 +10613,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10173,7 +10633,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10191,7 +10653,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10211,6 +10675,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10225,7 +10695,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10243,7 +10715,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10263,6 +10737,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10277,7 +10757,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10295,7 +10777,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10315,6 +10799,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10329,7 +10819,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10347,7 +10839,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10367,6 +10861,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10381,7 +10881,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10399,7 +10901,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 },
                 {
@@ -10419,6 +10923,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.015
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "click",
@@ -10433,7 +10943,9 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0
+                    "jitter_pixels": 0,
+                    "duration": 0.015,
+                    "settle_delay": 0.015
                   }
                 }
               ],

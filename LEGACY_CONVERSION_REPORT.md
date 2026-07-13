@@ -26,7 +26,7 @@
 - OCR/图片循环转换为 `UNTIL`，旧版首轮前等待和 `pre_action` 放入每轮前动作。
 - `max_retries` 按旧版实际的 `max_retries + 1` 次检测转换。
 - OCR 轮询的 `on_timeout=continue` 转换为 `TIMEOUT` 路由到下一步骤或下一流程。
-- 识别坐标点击使用 `$result.primary.position`；绝对坐标、偏移、左右键、双击、次数和前置等待均保留。
+- 识别坐标点击使用 `$result.primary.position`；绝对坐标、偏移、左右键、双击、次数和前置等待均保留。每次点击恢复旧版约 `15ms` 的预移动和 `15ms` 稳定等待，避免游戏忽略瞬移后立即发生的点击。
 - 旧版点击抖动转换为 `jitter_pixels=3`。
 - 旧版滚轮倍率转换为 Windows 原始滚轮增量（`120 × delta_mul`）。
 - Python/Pythonw 脚本通过当前项目虚拟环境解释器启动，工作目录保持为脚本目录。

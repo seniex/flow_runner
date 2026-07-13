@@ -187,6 +187,41 @@ async def test_mouse_action_applies_configured_coordinate_jitter_once():
 
 
 @pytest.mark.asyncio
+async def test_mouse_click_can_move_and_settle_before_clicking_same_jittered_position():
+    mouse = FakeMouse()
+    delays = []
+
+    async def sleep(seconds):
+        delays.append(seconds)
+
+    action = MouseAction(
+        mouse,
+        randint=lambda lower, upper: upper,
+        sleep=sleep,
+    )
+
+    await action.execute(
+        MouseActionConfig(
+            operation="click",
+            position=(10, 20),
+            jitter_pixels=3,
+            duration=0.015,
+            settle_delay=0.02,
+        ),
+        StepContext(),
+    )
+
+    assert mouse.calls == [
+        ("move", {"position": (13, 23), "duration": 0.015}),
+        (
+            "click",
+            {"position": (13, 23), "button": "left", "clicks": 1, "interval": 0.0},
+        ),
+    ]
+    assert delays == [0.02]
+
+
+@pytest.mark.asyncio
 async def test_keyboard_action_supports_explicit_key_down_and_key_up():
     keyboard = FakeKeyboard()
     action = KeyboardAction(keyboard)

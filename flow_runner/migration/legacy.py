@@ -301,6 +301,7 @@ def _convert_click_actions(raw_actions: Any, *, jitter: bool) -> list[ActionSpec
                     jitter_pixels=3 if jitter else 0,
                 )
             )
+            result.append(_wait_action(0.015))
             continue
         result.append(
             _mouse_action(
@@ -311,6 +312,8 @@ def _convert_click_actions(raw_actions: Any, *, jitter: bool) -> list[ActionSpec
                 clicks=count * (2 if click_type == "double" else 1),
                 interval=float(raw.get("interval", 0.1)),
                 jitter_pixels=3 if jitter else 0,
+                duration=0.015,
+                settle_delay=0.015,
             )
         )
     return result

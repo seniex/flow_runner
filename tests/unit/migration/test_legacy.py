@@ -106,6 +106,8 @@ def test_legacy_conversion_preserves_conditions_actions_and_workflow_routes(tmp_
     assert click.config["position"] == "$result.primary.position"
     assert click.config["offset"] == [4, -2]
     assert click.config["jitter_pixels"] == 3
+    assert click.config["duration"] == 0.015
+    assert click.config["settle_delay"] == 0.015
 
     playback = first.steps[1].actions[0]
     assert str(playback.config["path"]).replace("\\", "/").endswith("recordings/legacy/旧录制.json")

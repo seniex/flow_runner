@@ -1,5 +1,6 @@
+import asyncio
 import random
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -28,6 +29,7 @@ class MouseActionConfig(BaseModel):
     duration: float = Field(default=0.0, ge=0)
     scroll_units: int = 1
     jitter_pixels: int = Field(default=0, ge=0)
+    settle_delay: float = Field(default=0.0, ge=0)
 
 
 class MouseAction:
@@ -40,9 +42,11 @@ class MouseAction:
         device: MouseDevice,
         *,
         randint: Callable[[int, int], int] = random.randint,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         self.device = device
         self.randint = randint
+        self.sleep = sleep
 
     async def execute(self, config: MouseActionConfig, context: Any) -> ActionResult:
         del context
@@ -56,6 +60,10 @@ class MouseAction:
                 position[1] + self.randint(-config.jitter_pixels, config.jitter_pixels),
             )
         if config.operation == "click":
+            if config.duration > 0:
+                await self.device.move(position=position, duration=config.duration)
+            if config.settle_delay > 0:
+                await self.sleep(config.settle_delay)
             await self.device.click(
                 position=position,
                 button=config.button,
