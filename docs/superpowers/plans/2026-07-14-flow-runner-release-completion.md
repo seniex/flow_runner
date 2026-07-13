@@ -222,7 +222,7 @@ Expected: the commit contains evidence only and no claim that a blocked interact
 **Files:**
 - Modify after each approved test: `REAL_ENVIRONMENT_CHECKLIST.md`
 
-- [ ] **Step 1: Notify and wait before the global-hotkey test**
+- [x] **Step 1: Notify and wait before the global-hotkey test**
 
 Send the user this notice before doing anything else in this step:
 
@@ -232,7 +232,7 @@ Send the user this notice before doing anything else in this step:
 
 Do not start the app, stop processes, focus windows, or send keys before that exact confirmation.
 
-- [ ] **Step 2: Execute the approved hotkey test**
+- [x] **Step 2: Execute the approved hotkey test**
 
 After confirmation, use the `computer-use` skill for visible-window focus changes and key sending. Verify start, pause, resume, stop, and recording exactly once each from a non-Flow-Runner foreground window. Stop immediately if another application responds to F6-F9.
 
