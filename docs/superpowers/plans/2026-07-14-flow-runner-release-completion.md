@@ -266,7 +266,7 @@ Send the user this notice:
 
 Do not change display scaling automatically. The user performs each settings change; the agent only tests after the user confirms the new scale is active.
 
-Actual (2026-07-14): the notice was sent and the user selected “暂不测试 DPI，先执行最终非交互验证”. No display setting was changed; 125%/150% acceptance remains `BLOCKED` until the user later authorizes and performs the scaling changes.
+Actual (2026-07-14): after initially deferring this test, the user later replied “可以测试 DPI” and manually switched each scale only when prompted. All three scales PASS in fresh Per-Monitor V2 processes: 100% reported DPI 96 / DPR 1.0 / Qt geometry `2560×1440`; 125% reported DPI 120 / DPR 1.25 / Qt geometry `2048×1152`; 150% reported DPI 144 / DPR 1.5 / Qt geometry `1707×960`. Desktop capture remained physical `2560×1440` at every scale. A uniquely colored target rectangle was found at its physical bounds, one physical click at its center produced exactly one press, release, and click event, and the pointer was restored after every run. The user restored 100%, confirmed by DPI 96 and DPR 1.0.
 
 - [x] **Step 6: Handle multi-monitor acceptance**
 
@@ -346,11 +346,11 @@ Expected: only the plan and evidence/status documents are tracked changes unless
 
 Actual (2026-07-14): PASS — the worktree was clean and `21f2f7d..HEAD` contained only `REAL_ENVIRONMENT_CHECKLIST.md`, `REFACTOR_STATUS.md`, and this plan. No application or test source files changed.
 
-- [x] **Step 3: Request code review and resolve findings**
+- [ ] **Step 3: Request code review and resolve findings**
 
 Use `superpowers:requesting-code-review` for the final tracked diff. Fix every Critical/Important finding with a failing test first when code behavior changes.
 
-Actual (2026-07-14): the main-thread review found no issue. After receiving the complete `ec8c06d` change summary, the independent review returned Critical: None, Important: None, Minor: None, and confirmed that the branch can remain retained with PASS/BLOCKED states consistent with the user decisions and no merge, push, tag, deletion, or machine-configuration change.
+Actual (2026-07-14): the review through `ec8c06d` found no issue. This step was reopened after adding the later three-scale DPI acceptance evidence and will be checked again before handoff.
 
 - [x] **Step 4: Complete the branch**
 
