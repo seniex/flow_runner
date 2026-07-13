@@ -88,7 +88,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 - 管理员程序启动仍需单独确认 UAC；
 - 全局热键需要在旧 BgOcrClick 程序退出或确认隔离后实测；
 
-已读取的目标机环境：Windows 10 `10.0.19045`、单显示器 `2560×1440`，虚拟桌面原点 `(0, 0)`；新进程 DPI 初始化返回 `per_monitor_v2`。多显示器与三档 DPI 实测因当前硬件/设置不可用而记录为 `BLOCKED`。Tesseract 与 `pytesseract` 未安装，相关验收同样为 `BLOCKED`。
+2026-07-14 只读复核的目标机环境：Windows 10 `10.0.19045`、单显示器 `27E1Q`、`2560×1440`、Qt `devicePixelRatio=1.0`，虚拟桌面原点 `(0, 0)`；新进程 DPI 初始化返回 `per_monitor_v2`。多显示器与 125%/150% DPI 实测因当前硬件/设置不可用而记录为 `BLOCKED`。Tesseract 命令与虚拟环境中的 `pytesseract` 均不存在，相关验收同样为 `BLOCKED`。旧窗口 `[Running] BgOcrClick Qt - 懒人修仙传2`（PID `16632`）仍在运行，全局热键测试保持 `BLOCKED`，未发送 F6–F9。
 
 只读真实游戏环境检查已通过：前台 `懒人修仙传2` 窗口截图非空且原点/尺寸正确；真实桌面模板匹配、像素容差内外判断、游戏窗口连续帧区域变化，以及真实窗口/进程条件均产生预期结果。
 
@@ -104,4 +104,4 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 ## 明确延期项
 
-- 不进行最终视觉设计；等待用户提供 `DESIGN.md` 后只通过 QSS/资源系统应用。
+- 不进行最终视觉设计；2026-07-14 复核根目录仍无 `DESIGN.md`，等待用户提供后只通过 QSS/资源系统应用。

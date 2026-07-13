@@ -174,7 +174,7 @@ Expected: one documentation-only commit containing the fresh wheel and automated
 **Files:**
 - Modify only with new evidence: `REAL_ENVIRONMENT_CHECKLIST.md`
 
-- [ ] **Step 1: Audit display topology and DPI without changing settings**
+- [x] **Step 1: Audit display topology and DPI without changing settings**
 
 ```powershell
 .\.venv\Scripts\python.exe -c "from PySide6.QtGui import QGuiApplication; app=QGuiApplication([]); print([(s.name(), s.geometry().getRect(), s.devicePixelRatio()) for s in app.screens()]); app.quit()"
@@ -182,7 +182,7 @@ Expected: one documentation-only commit containing the fresh wheel and automated
 
 Expected on the current host: one screen. Keep multi-monitor acceptance `BLOCKED` if no second screen is present. This step must not change display settings.
 
-- [ ] **Step 2: Audit Tesseract availability without installing anything**
+- [x] **Step 2: Audit Tesseract availability without installing anything**
 
 ```powershell
 $command = Get-Command tesseract -ErrorAction SilentlyContinue
@@ -192,7 +192,7 @@ if ($command) { & $command.Source --version }
 
 Expected on the current host until external state changes: Tesseract command and `pytesseract` are absent; retain `BLOCKED` with fresh date/evidence.
 
-- [ ] **Step 3: Audit potentially conflicting legacy hotkey processes without stopping them**
+- [x] **Step 3: Audit potentially conflicting legacy hotkey processes without stopping them**
 
 ```powershell
 Get-CimInstance Win32_Process |
@@ -202,11 +202,11 @@ Get-CimInstance Win32_Process |
 
 Expected: evidence only. Do not terminate a process and do not send F6-F9 in this task.
 
-- [ ] **Step 4: Update only facts proven by the audit**
+- [x] **Step 4: Update only facts proven by the audit**
 
 Record the date, detected screen count/DPI ratio, Tesseract availability, and legacy-process state. Leave tests requiring a state change as `BLOCKED`.
 
-- [ ] **Step 5: Commit the non-interactive audit evidence**
+- [x] **Step 5: Commit the non-interactive audit evidence**
 
 If Task 4 changed `REAL_ENVIRONMENT_CHECKLIST.md`, run:
 
@@ -289,7 +289,7 @@ Expected: only tests actually executed after user confirmation are changed from 
 - Required user input: root `DESIGN.md`
 - Potential later modifications: `flow_runner/resources/styles/base.qss`, `flow_runner/resources/icons/`, UI semantic object names only when required by the approved design.
 
-- [ ] **Step 1: Check for the design specification**
+- [x] **Step 1: Check for the design specification**
 
 ```powershell
 Test-Path -LiteralPath DESIGN.md
@@ -297,7 +297,7 @@ Test-Path -LiteralPath DESIGN.md
 
 Expected now: `False`.
 
-- [ ] **Step 2: Keep visual design explicitly deferred**
+- [x] **Step 2: Keep visual design explicitly deferred**
 
 Do not invent a visual direction. Record that final styling remains blocked on the user-provided `DESIGN.md`. When it arrives, run a separate brainstorming/spec/plan cycle and obtain visual-direction confirmation before modifying QSS or assets.
 
