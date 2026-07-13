@@ -87,7 +87,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 - Tesseract 及语言包；
 - 全局热键需要在旧 BgOcrClick 程序退出或确认隔离后实测；
 
-2026-07-14 只读复核的目标机环境：Windows 10 `10.0.19045`、单显示器 `27E1Q`、`2560×1440`、Qt `devicePixelRatio=1.0`，虚拟桌面原点 `(0, 0)`；新进程 DPI 初始化返回 `per_monitor_v2`。多显示器与 125%/150% DPI 实测因当前硬件/设置不可用而记录为 `BLOCKED`。Tesseract 命令与虚拟环境中的 `pytesseract` 均不存在，相关验收同样为 `BLOCKED`。用户关闭旧 BgOcrClick 并确认热键测试后，Windows Computer Use 原生连接连续两次不可用；按安全规则未发送 F6–F9、未使用其它注入回退，因此全局热键仍为 `BLOCKED`。
+2026-07-14 只读复核的目标机环境：Windows 10 `10.0.19045`、单显示器 `27E1Q`、`2560×1440`、Qt `devicePixelRatio=1.0`，虚拟桌面原点 `(0, 0)`；新进程 DPI 初始化返回 `per_monitor_v2`。多显示器与 125%/150% DPI 实测因当前硬件/设置不可用而记录为 `BLOCKED`。Tesseract 命令与虚拟环境中的 `pytesseract` 均不存在；已说明安装会修改本机并下载可执行程序、语言数据和 Python 包，用户选择暂不安装，因此相关验收保持 `BLOCKED`。用户关闭旧 BgOcrClick 并确认热键测试后，Windows Computer Use 原生连接连续两次不可用；按安全规则未发送 F6–F9、未使用其它注入回退，因此全局热键仍为 `BLOCKED`。
 
 管理员程序启动已在用户授权后实机通过：本机 UAC 策略为 `EnableLUA=1`、`ConsentPromptBehaviorAdmin=0`，所以 `runas` 未显示确认提示；`WindowsProcessLauncher` 使用显式临时工作目录和隐藏启动，子进程令牌包含高完整性 SID `S-1-16-12288` 与管理员组 SID `S-1-5-32-544`，管理员角色为真，`MainWindowHandle=0`，结果记录后临时目录已删除。
 

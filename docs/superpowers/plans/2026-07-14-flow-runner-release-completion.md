@@ -256,7 +256,7 @@ Expected: one UAC prompt, correct working directory, elevated token evidence, no
 
 Actual (2026-07-14): PASS after user authorization. The host kept UAC enabled but configured `ConsentPromptBehaviorAdmin=0`, so no prompt appeared. `WindowsProcessLauncher` used `run_as_admin=True`, the explicit `%TEMP%\flow_runner_admin_acceptance` working directory, and `hide_window=True`; the child reported high-integrity SID `S-1-16-12288`, Administrators SID `S-1-5-32-544`, administrator role true, and `MainWindowHandle=0`. The result directory was removed after recording.
 
-- [ ] **Step 5: Notify and wait before DPI changes**
+- [x] **Step 5: Notify and wait before DPI changes**
 
 Send the user this notice:
 
@@ -266,15 +266,21 @@ Send the user this notice:
 
 Do not change display scaling automatically. The user performs each settings change; the agent only tests after the user confirms the new scale is active.
 
-- [ ] **Step 6: Handle multi-monitor acceptance**
+Actual (2026-07-14): the notice was sent and the user selected “暂不测试 DPI，先执行最终非交互验证”. No display setting was changed; 125%/150% acceptance remains `BLOCKED` until the user later authorizes and performs the scaling changes.
+
+- [x] **Step 6: Handle multi-monitor acceptance**
 
 If Task 4 still detects one screen, retain `BLOCKED` and state that a second physical/virtual display is required. If the user later provides two screens, notify before moving windows or the pointer across displays, then test screen origins, negative coordinates, capture regions, and clicks.
 
-- [ ] **Step 7: Notify before Tesseract installation**
+Actual (2026-07-14): handled as `BLOCKED`; the real-desktop audit detected only one physical display (`27E1Q`, `2560×1440`). No window or pointer movement was performed.
+
+- [x] **Step 7: Notify before Tesseract installation**
 
 If Tesseract remains absent, ask whether the user wants the optional engine installed. State that installation changes the machine and downloads an executable/language data. Do not install through `winget`, Chocolatey, an installer, or pip until the user confirms.
 
-- [ ] **Step 8: Commit approved real-environment evidence**
+Actual (2026-07-14): the fresh audit still found neither the Tesseract command nor `pytesseract`. The user was informed that installation would download an executable, `chi_sim`/`eng` language data, and a Python package, and selected “暂不安装，保持 BLOCKED，不修改本机”. No installation command was run and no machine state was changed.
+
+- [x] **Step 8: Commit approved real-environment evidence**
 
 After each approved acceptance batch, verify the recorded result and run:
 
@@ -284,6 +290,8 @@ git commit -m "docs: record approved Windows acceptance results"
 ```
 
 Expected: only tests actually executed after user confirmation are changed from `BLOCKED` to `PASS` or `FAIL`.
+
+Actual (2026-07-14): approved hotkey-attempt evidence was committed in `347fdaf`; approved administrator-launch PASS evidence was committed in `1343675`. Blocked DPI, multi-monitor, hotkey, and Tesseract items were not changed to PASS.
 
 ### Task 6: Final visual-design gate
 
@@ -342,9 +350,13 @@ Actual (2026-07-14): PASS — the worktree was clean and `21f2f7d..HEAD` contain
 
 Use `superpowers:requesting-code-review` for the final tracked diff. Fix every Critical/Important finding with a failing test first when code behavior changes.
 
-- [ ] **Step 4: Complete the branch**
+Actual (2026-07-14): the main-thread review of the three-document branch diff found no Critical, Important, or Minor issue. The existing independent review agent was requested twice but did not return before bounded waits and was interrupted; keep this step open until an independent review result is available.
+
+- [x] **Step 4: Complete the branch**
 
 Use `superpowers:finishing-a-development-branch`. Present merge/PR/keep/discard choices. Do not push `main`, create a tag, or publish a release without an explicit integration choice from the user.
+
+Actual (2026-07-14): the user selected “保留 `chore/release-completion`，以后继续验收”. The branch and isolated worktree remain clean and retained; nothing was merged, pushed, tagged, published, or deleted.
 
 ## Completion Rules
 
