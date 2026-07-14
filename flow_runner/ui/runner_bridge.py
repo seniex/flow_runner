@@ -93,14 +93,16 @@ class RunnerBridge(QObject):
     def is_running(self) -> bool:
         return self._running
 
-    def shutdown(self, *, timeout_seconds: float = 5.0) -> None:
+    def shutdown(self, *, timeout_seconds: float = 5.0) -> bool:
         self.stop()
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout_seconds)
-        if thread is not None and thread.is_alive():
+        stopped = thread is None or not thread.is_alive()
+        if not stopped:
             self._post("failed", "runner did not stop before shutdown timeout")
         self._drain_messages()
+        return stopped
 
     def _run(
         self,

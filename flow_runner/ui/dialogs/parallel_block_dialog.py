@@ -15,17 +15,24 @@ from flow_runner.domain.project import ParallelBlock, Project
 
 
 class ParallelBlockDialog(QDialog):
-    def __init__(self, project: Project) -> None:
+    def __init__(self, project: Project, block: ParallelBlock | None = None) -> None:
         super().__init__()
+        self._source_block = block
         self._block: ParallelBlock | None = None
         self.name_edit = QLineEdit()
+        if block is not None:
+            self.name_edit.setText(block.name)
         self.workflow_list = QListWidget()
         for group in project.groups:
             for workflow in group.workflows:
                 item = QListWidgetItem(f"{group.name} / {workflow.name}")
                 item.setData(Qt.ItemDataRole.UserRole, workflow.id)
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                item.setCheckState(Qt.CheckState.Unchecked)
+                item.setCheckState(
+                    Qt.CheckState.Checked
+                    if block is not None and workflow.id in block.workflow_ids
+                    else Qt.CheckState.Unchecked
+                )
                 self.workflow_list.addItem(item)
         self.error_label = QLabel("")
         self.buttons = QDialogButtonBox(
@@ -48,10 +55,13 @@ class ParallelBlockDialog(QDialog):
                 if isinstance(workflow_id, UUID):
                     workflow_ids.append(workflow_id)
         try:
-            self._block = ParallelBlock(
-                name=self.name_edit.text().strip(),
-                workflow_ids=workflow_ids,
-            )
+            values: dict[str, object] = {
+                "name": self.name_edit.text().strip(),
+                "workflow_ids": workflow_ids,
+            }
+            if self._source_block is not None:
+                values["id"] = self._source_block.id
+            self._block = ParallelBlock.model_validate(values)
         except ValueError as error:
             self.error_label.setText(str(error))
             return

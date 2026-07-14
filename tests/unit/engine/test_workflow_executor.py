@@ -149,6 +149,29 @@ async def test_explicit_failure_route_can_continue_to_another_step():
 
 
 @pytest.mark.asyncio
+async def test_explicit_step_route_uses_uuid_after_target_is_reordered():
+    target = AutomationStep(name="target")
+    middle = AutomationStep(name="middle")
+    first = AutomationStep(
+        name="first",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.FAILURE,
+                target=RouteTarget.next_step(target.id),
+            )
+        ],
+    )
+    reordered = Workflow(name="main", steps=[first, middle, target])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[reordered])])
+    steps = OutcomeStepExecutor([StepOutcome.FAILURE, StepOutcome.SUCCESS])
+
+    trace = await WorkflowExecutor(project, steps).run(reordered.id)
+
+    assert trace.step_names == ("first", "target")
+    assert trace.terminal_outcome is StepOutcome.SUCCESS
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("operator", "expected"),
     [

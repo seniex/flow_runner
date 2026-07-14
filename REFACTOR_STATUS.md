@@ -30,6 +30,12 @@
 - 显式并行块，共享任务变量和资源，隔离流程变量和调用栈。
 - 资源竞争的开始、完成和取消诊断；取消多资源等待不会泄漏锁。
 - 三栏编辑器、检测/执行/控制添加入口、条件树/动作/策略/路由引导编辑。
+- 属性页默认使用精简的“常用配置”，原始条件、动作、策略和路由 JSON 集中到独立高级页；
+  页签双向同步先验证再加载，错误 JSON 不会覆盖有效引导状态。
+- 策略摘要和项目名称感知的路由摘要；同结果无条件路由遮挡后续条件路由时阻止保存。
+- 六类常用步骤模板，目标步骤和流程均从项目下拉框选择并通过 UUID 引用校验。
+- 步骤、流程和流程组支持 UUID 安全复制；复制范围内引用重映射，外部引用保持不变，操作可撤销。
+- 并行块支持编辑并保留稳定 UUID；被并行块引用的流程必须先解除依赖才能删除。
 - 流程可在组内排序或跨组移动，稳定 UUID 路由不会因分类调整而改变。
 - 区域、坐标和文件路径使用专用表单控件；动作坐标可直接保存 `$result...` 运行时绑定。
 - 已有动作、路由和策略层每轮前/未命中后动作可在引导编辑器中加载、修改和重新排序。
@@ -40,8 +46,13 @@
   引用校验同步完成，未添加的新动作/路由草稿不会被静默丢弃，保存失败会保留具体错误和待编辑状态。
 - 所有能力名、参数名、枚举选项、路由结果和诊断状态使用中文显示，内部 JSON 字段保持稳定英文键。
 - 新增控制步骤可从项目感知的下拉框选择当前流程步骤或跨组流程，不必手写 UUID。
+- 路由目标“跳到本流程中的指定步骤”会显示并允许选择本流程任意步骤；新建时默认使用当前
+  排序中的下一步，步骤重排后已有路由仍按稳定 UUID 指向原目标。
 - OCR、图片等检测能力切换前会列出将舍弃的专属字段并允许取消，公共字段继续保留。
-- 保存、备份、撤销、脏关闭确认、项目设置、F6–F9 热键和输入录制。
+- 保存、备份、撤销、脏关闭确认、项目设置、F6–F9 热键和输入录制；保存成功会建立新的
+  撤销边界，工具栏撤销会先恢复当前未应用表单，不会越过最近保存状态。
+- 配置型下拉框和数字框只有获得键盘焦点后才响应滚轮；失焦时滚轮继续传递给属性页。
+- 关闭窗口使用显式中文决策：保存失败不会停止运行，任务停止超时会拒绝关闭并保留窗口。
 - 启动/暂停/继续/停止、单步运行、条件预览和结构化诊断截图通道。
 - 结构化运行事件同步写入项目旁的 `logs/runtime.jsonl`，可在实际失败后追溯步骤结果和错误。
 - PaddleOCR-json v1.4.x 进程生命周期和 stdin/stdout JSON 协议。
@@ -49,21 +60,21 @@
 
 ## 自动化证据
 
-2026-07-14 在 Windows、Python 3.12、Qt offscreen 环境执行：
+2026-07-15 在 Windows、Python 3.12、Qt offscreen 环境执行：
 
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
 .\.venv\Scripts\python.exe -m pytest -q
-# 244 passed
+# 298 passed
 
 .\.venv\Scripts\python.exe -m ruff check flow_runner tests
 # All checks passed
 
 .\.venv\Scripts\python.exe -m ruff format --check flow_runner tests
-# 122 files already formatted
+# 135 files already formatted
 
 .\.venv\Scripts\python.exe -m mypy flow_runner
-# Success: no issues found in 99 source files
+# Success: no issues found in 107 source files
 
 .\.venv\Scripts\python.exe -m pip check
 # No broken requirements found

@@ -2,16 +2,15 @@ from typing import Any
 
 from PySide6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
     QFormLayout,
     QLabel,
     QLineEdit,
 )
 
 from flow_runner.ui.hotkeys import HotkeyConfig
+from flow_runner.ui.widgets import FocusWheelComboBox, FocusWheelDoubleSpinBox
 
 
 class SettingsDialog(QDialog):
@@ -20,7 +19,7 @@ class SettingsDialog(QDialog):
         self.settings = dict(settings or {})
         self.entries: dict[str, QLineEdit] = {}
         layout = QFormLayout(self)
-        self.ocr_engine_combo = QComboBox()
+        self.ocr_engine_combo = FocusWheelComboBox()
         self.ocr_engine_combo.addItem("Tesseract", "tesseract")
         self.ocr_engine_combo.addItem("PaddleOCR-json", "paddle")
         engine = str(self.settings.get("ocr_engine", "tesseract")).casefold()
@@ -28,7 +27,7 @@ class SettingsDialog(QDialog):
         self.paddle_path_edit = QLineEdit(str(self.settings.get("paddle_exe_path", "")))
         layout.addRow("OCR 引擎", self.ocr_engine_combo)
         layout.addRow("PaddleOCR-json.exe", self.paddle_path_edit)
-        self.window_capture_mode_combo = QComboBox()
+        self.window_capture_mode_combo = FocusWheelComboBox()
         self.window_capture_mode_combo.addItem("前台可见像素（BitBlt）", "foreground")
         self.window_capture_mode_combo.addItem(
             "后台窗口内容（Windows Graphics Capture）",
@@ -42,7 +41,7 @@ class SettingsDialog(QDialog):
         self.window_capture_fallback_check.setChecked(
             bool(self.settings.get("window_capture_fallback", True))
         )
-        self.window_capture_timeout_spin = QDoubleSpinBox()
+        self.window_capture_timeout_spin = FocusWheelDoubleSpinBox()
         self.window_capture_timeout_spin.setRange(0.1, 60.0)
         self.window_capture_timeout_spin.setDecimals(2)
         self.window_capture_timeout_spin.setValue(

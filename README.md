@@ -104,10 +104,21 @@ three guided categories: `检测`, `执行`, and `控制`. Conditions can later 
 combined in the guided AND/OR/NOT tree without changing the surrounding policy and routes. Advanced
 JSON remains available for direct schema-level editing.
 
+Step properties open on a compact `常用配置` tab. Capability-specific advanced fields can be
+revealed when needed, while the separate `高级 JSON` tab round-trips conditions, actions, policies,
+and routes through the same validation path. Policy and route summaries use readable project names;
+an unconditional route that would hide a later conditional route is rejected before save.
+
 The project toolbar supports group/workflow/step editing, undo, validated save, settings, and
 explicit parallel blocks. Parallel execution is never inferred from routes: create a parallel block
 and select the workflows that should monitor concurrently. Children share task variables and runtime
 resources while retaining separate workflow-local variables and call stacks.
+
+Six common step templates cover OCR-and-click, OCR timeout continuation, delayed input, window
+activation plus input, count-based workflow jumps, and success/timeout branches. Steps, workflows,
+and groups can be copied with new UUIDs; references inside the copied scope are remapped while
+external references remain unchanged. Existing parallel blocks can be edited, and a workflow cannot
+be deleted while a named parallel block still depends on it.
 
 The guided editor displays built-in capabilities, parameter names, choices, route outcomes, and
 runtime states in Chinese while retaining stable English schema keys in advanced JSON. A single step
@@ -119,6 +130,16 @@ action, policy hooks, route, and step, then validates and atomically writes the 
 is no longer necessary to click each nested “更新动作” and “应用” button before saving. Pending
 values are also committed in memory before switching steps, and closing with pending form values
 uses the same unsaved-change confirmation. Changes saved during a run take effect on the next run.
+
+Configuration combo boxes and numeric inputs respond to the mouse wheel only while they have
+keyboard focus. Scrolling the property panel over an unfocused field therefore scrolls the panel
+without changing the parameter; click or Tab into the field before using the wheel to edit it.
+
+Undo first discards unapplied values in the current property form, then operates on project history.
+A successful save starts a new undo boundary, so undo cannot cross back into changes made before
+that save. Closing while a task is running uses one explicit decision dialog: save (when needed)
+happens before stopping, a failed save does not stop the task, and a stop timeout keeps the window
+open.
 
 The runtime toolbar provides start, pause/resume, stop, input recording, selected-step execution,
 condition preview, and structured diagnostics. Visual condition previews attach the recent frame as

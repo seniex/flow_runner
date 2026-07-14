@@ -5,7 +5,7 @@
   "groups": [
     {
       "id": "6c6cbe70-66b8-5db8-a100-232c031d8541",
-      "name": "不思议挂机",
+      "name": "不思议挂机A",
       "workflows": [
         {
           "id": "df455a93-0f3f-5cd6-b51c-9cc5dcf974c3",
@@ -29,6 +29,7 @@
                   ],
                   "keywords": "开始游戏",
                   "language": "chi_sim",
+                  "preprocessing": "",
                   "scale": 1.0
                 }
               },
@@ -54,7 +55,7 @@
               "condition_policy": {
                 "mode": "until",
                 "interval_seconds": 1.0,
-                "max_attempts": 10000,
+                "max_attempts": 9999,
                 "timeout_seconds": null,
                 "before_attempt_actions": [],
                 "after_no_match_actions": []
@@ -74,7 +75,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min_lanren.py"
                     ],
@@ -630,7 +631,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE_lanren.py"
                     ],
@@ -679,7 +680,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -817,7 +818,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -896,6 +897,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.01
+                  }
+                },
+                {
                   "capability": "input.mouse",
                   "config": {
                     "operation": "move",
@@ -964,7 +971,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -1056,7 +1063,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -1149,9 +1156,10 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 3,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 3,
+                    "settle_delay": 0.115
                   }
                 },
                 {
@@ -1169,9 +1177,10 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 3,
+                    "settle_delay": 0.025
                   }
                 },
                 {
@@ -1189,9 +1198,10 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 3,
+                    "settle_delay": 0.025
                   }
                 },
                 {
@@ -1209,9 +1219,10 @@
                     "button": "right",
                     "clicks": 1,
                     "interval": 0.05,
-                    "jitter_pixels": 3,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 3,
+                    "settle_delay": 0.025
                   }
                 },
                 {
@@ -1283,7 +1294,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -1402,7 +1413,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -1749,7 +1760,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -1887,7 +1898,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min_lanren.py"
                     ],
@@ -1920,7 +1931,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -2481,7 +2492,7 @@
             },
             {
               "id": "8a401311-4940-5d54-9d96-cebd281c457e",
-              "name": "OCR点击",
+              "name": "OCR点击验收用",
               "enabled": true,
               "condition": {
                 "kind": "leaf",
@@ -2495,8 +2506,9 @@
                     2268,
                     858
                   ],
-                  "keywords": "都不要",
+                  "keywords": "测试",
                   "language": "chi_sim",
+                  "preprocessing": "",
                   "scale": 2.0
                 }
               },
@@ -2522,7 +2534,7 @@
               "condition_policy": {
                 "mode": "until",
                 "interval_seconds": 1.0,
-                "max_attempts": 31,
+                "max_attempts": 15,
                 "timeout_seconds": null,
                 "before_attempt_actions": [],
                 "after_no_match_actions": []
@@ -2531,7 +2543,17 @@
                 "max_attempts": 1,
                 "retry_interval_seconds": 0.0
               },
-              "routes": []
+              "routes": [
+                {
+                  "outcome": "timeout",
+                  "predicate": null,
+                  "target": {
+                    "kind": "next_step",
+                    "step_id": "e66bd18a-09ff-5d15-8edf-6b979ca22083",
+                    "workflow_id": null
+                  }
+                }
+              ]
             },
             {
               "id": "e66bd18a-09ff-5d15-8edf-6b979ca22083",
@@ -2861,7 +2883,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -2947,6 +2969,20 @@
                 "retry_interval_seconds": 0.0
               },
               "routes": [
+                {
+                  "outcome": "success",
+                  "predicate": {
+                    "source": "step_count",
+                    "key": "801fdf71-ddf9-5330-b71d-98e719b3b00a",
+                    "operator": "gt",
+                    "expected": 0
+                  },
+                  "target": {
+                    "kind": "jump_workflow",
+                    "step_id": null,
+                    "workflow_id": "3c3d12d0-b784-5890-b1c9-7487b7e1b503"
+                  }
+                },
                 {
                   "outcome": "success",
                   "predicate": null,
@@ -3054,7 +3090,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -3093,7 +3129,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\restore_platform.py"
                     ],
@@ -3132,7 +3168,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\pythonw.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\pet_explore.pyw"
                     ],
@@ -3244,7 +3280,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -3413,7 +3449,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\auto_war3.py"
                     ],
@@ -3528,7 +3564,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min_lanren.py"
                     ],
@@ -4413,7 +4449,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE_lanren.py"
                     ],
@@ -4462,7 +4498,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -4600,7 +4636,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -4747,7 +4783,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -4839,7 +4875,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -5066,7 +5102,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -5185,7 +5221,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -5532,7 +5568,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -5670,7 +5706,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min_lanren.py"
                     ],
@@ -5703,7 +5739,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -6195,7 +6231,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -6234,7 +6270,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\restore_platform.py"
                     ],
@@ -6273,7 +6309,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\pythonw.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\pet_explore.pyw"
                     ],
@@ -6385,7 +6421,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -6554,7 +6590,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\auto_war3.py"
                     ],
@@ -7208,7 +7244,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -7352,7 +7388,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -7499,7 +7535,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -7591,7 +7627,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -7818,7 +7854,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -7894,7 +7930,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -8241,7 +8277,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -8379,7 +8415,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -8870,7 +8906,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -9000,7 +9036,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\min.py"
                     ],
@@ -9039,7 +9075,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\restore_platform.py"
                     ],
@@ -9078,7 +9114,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\pythonw.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\pet_explore.pyw"
                     ],
@@ -9190,7 +9226,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\RESTORE.py"
                     ],
@@ -9359,7 +9395,7 @@
                 {
                   "capability": "system.launch",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\.worktrees\\pyside6-workflow\\.venv\\Scripts\\python.exe",
+                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
                     "arguments": [
                       "D:\\3eyes\\Python\\auto_war3.py"
                     ],

@@ -21,6 +21,11 @@ from PySide6.QtWidgets import (
 )
 
 from flow_runner.ui.localization import choice_label, field_label
+from flow_runner.ui.widgets import (
+    FocusWheelComboBox,
+    FocusWheelDoubleSpinBox,
+    FocusWheelSpinBox,
+)
 
 
 class TupleFieldEditor(QWidget):
@@ -37,7 +42,7 @@ class TupleFieldEditor(QWidget):
         self.setProperty("fieldKind", "tuple")
         self._optional = optional
         self._arguments = _tuple_arguments(annotation)
-        self.mode_combo = QComboBox()
+        self.mode_combo = FocusWheelComboBox()
         if optional:
             self.mode_combo.addItem("未设置", "none")
         self.mode_combo.addItem("固定值", "fixed")
@@ -141,12 +146,25 @@ class PathFieldEditor(QWidget):
 class ModelForm(QWidget):
     changed = Signal()
 
-    def __init__(self, model_type: type[BaseModel]) -> None:
+    def __init__(
+        self,
+        model_type: type[BaseModel],
+        *,
+        common_fields: frozenset[str] | None = None,
+        show_advanced: bool = False,
+    ) -> None:
         super().__init__()
         self.model_type = model_type
+        self._common_fields = common_fields
+        self._advanced_fields = (
+            frozenset(model_type.model_fields) - common_fields
+            if common_fields is not None
+            else frozenset()
+        )
+        self._show_advanced = show_advanced
         self.editors: dict[str, QWidget] = {}
         self.annotations: dict[str, Any] = {}
-        layout = QFormLayout(self)
+        self.form_layout = QFormLayout(self)
         for name, field in model_type.model_fields.items():
             annotation, optional = _unwrap_optional(field.annotation)
             default = None if field.is_required() else field.get_default(call_default_factory=True)
@@ -154,8 +172,9 @@ class ModelForm(QWidget):
             editor.setObjectName(f"configField_{name}")
             self.editors[name] = editor
             self.annotations[name] = annotation
-            layout.addRow(field_label(name), editor)
+            self.form_layout.addRow(field_label(name), editor)
             self._connect_editor(editor)
+        self.set_advanced_visible(show_advanced)
 
     def _connect_editor(self, editor: QWidget) -> None:
         if isinstance(editor, QCheckBox):
@@ -174,6 +193,28 @@ class ModelForm(QWidget):
 
     def editor(self, name: str) -> QWidget:
         return self.editors[name]
+
+    def set_advanced_visible(self, visible: bool) -> None:
+        self._show_advanced = visible
+        for name in self._advanced_fields:
+            editor = self.editors[name]
+            label = self.form_layout.labelForField(editor)
+            editor.setVisible(visible)
+            if label is not None:
+                label.setVisible(visible)
+
+    def advanced_non_default_count(self) -> int:
+        values = self.values()
+        count = 0
+        for name in self._advanced_fields:
+            field = self.model_type.model_fields[name]
+            current = values[name]
+            if field.is_required():
+                count += current not in (None, "", [], {})
+                continue
+            default = field.get_default(call_default_factory=True)
+            count += current != default
+        return count
 
     def values(self) -> dict[str, Any]:
         values: dict[str, Any] = {}
@@ -249,13 +290,13 @@ def _create_editor(annotation: Any, default: Any, optional: bool) -> QWidget:
         return line
     origin = get_origin(annotation)
     if origin is Literal:
-        combo = QComboBox()
+        combo = FocusWheelComboBox()
         for choice in get_args(annotation):
             combo.addItem(choice_label(choice), choice)
         _select_combo_default(combo, default)
         return combo
     if isinstance(annotation, type) and issubclass(annotation, Enum):
-        enum_combo = QComboBox()
+        enum_combo = FocusWheelComboBox()
         for choice in annotation:
             enum_combo.addItem(choice_label(choice), choice)
         _select_combo_default(enum_combo, default)
@@ -265,13 +306,13 @@ def _create_editor(annotation: Any, default: Any, optional: bool) -> QWidget:
         checkbox.setChecked(bool(default))
         return checkbox
     if annotation is int:
-        integer = QSpinBox()
+        integer = FocusWheelSpinBox()
         integer.setRange(-(2**31), 2**31 - 1)
         if default is not None:
             integer.setValue(int(default))
         return integer
     if annotation is float:
-        number = QDoubleSpinBox()
+        number = FocusWheelDoubleSpinBox()
         number.setRange(-1_000_000_000.0, 1_000_000_000.0)
         number.setDecimals(4)
         if default is not None:
@@ -298,10 +339,10 @@ def _tuple_arguments(annotation: Any) -> tuple[Any, ...]:
 
 def _create_number_editor(annotation: Any) -> QSpinBox | QDoubleSpinBox:
     if annotation is int:
-        integer = QSpinBox()
+        integer = FocusWheelSpinBox()
         integer.setRange(-(2**31), 2**31 - 1)
         return integer
-    number = QDoubleSpinBox()
+    number = FocusWheelDoubleSpinBox()
     number.setRange(-1_000_000_000.0, 1_000_000_000.0)
     number.setDecimals(4)
     return number

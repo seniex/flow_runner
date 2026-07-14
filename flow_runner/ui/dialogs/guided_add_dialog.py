@@ -3,7 +3,6 @@ from typing import Any
 from uuid import UUID
 
 from PySide6.QtWidgets import (
-    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -21,6 +20,7 @@ from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import capability_label, choice_label
+from flow_runner.ui.widgets import FocusWheelComboBox
 
 CONTROL_CAPABILITIES = (
     ("下一步骤", "next_step"),
@@ -44,17 +44,17 @@ class GuidedAddDialog(QDialog):
         self.project = project
         self.current_workflow_id = current_workflow_id
         self._step: AutomationStep | None = None
-        self.category_combo = QComboBox()
+        self.category_combo = FocusWheelComboBox()
         self.category_combo.addItems(["检测", "执行", "控制"])
-        self.capability_combo = QComboBox()
+        self.capability_combo = FocusWheelComboBox()
         self.form_container = QWidget()
         self.form_layout = QVBoxLayout(self.form_container)
         self.config_form: ModelForm | None = None
-        self.control_outcome_combo = QComboBox()
+        self.control_outcome_combo = FocusWheelComboBox()
         for outcome in StepOutcome:
             self.control_outcome_combo.addItem(choice_label(outcome), outcome)
-        self.control_workflow_combo = QComboBox()
-        self.control_step_combo = QComboBox()
+        self.control_workflow_combo = FocusWheelComboBox()
+        self.control_step_combo = FocusWheelComboBox()
         self._populate_control_targets()
         self.config_edit = QPlainTextEdit("{}")
         self.config_edit.setObjectName("guidedStepConfigEditor")

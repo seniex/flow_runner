@@ -3,6 +3,7 @@ from uuid import UUID
 
 from PySide6.QtCore import QObject, Signal
 
+from flow_runner.domain.cloning import clone_group, clone_step, clone_workflow
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import (
     AutomationStep,
@@ -15,6 +16,7 @@ from flow_runner.domain.project import (
 
 class ProjectViewModel(QObject):
     projectChanged = Signal(object)
+    historyChanged = Signal(bool)
 
     def __init__(self, project: Project) -> None:
         super().__init__()
@@ -23,9 +25,15 @@ class ProjectViewModel(QObject):
         self._undo_stack: list[Project] = []
         self.dirty = False
 
+    @property
+    def can_undo(self) -> bool:
+        return bool(self._undo_stack)
+
     def mark_saved(self) -> None:
         self._saved_project = self.project
+        self._undo_stack.clear()
         self.dirty = False
+        self.historyChanged.emit(False)
 
     def update_settings(self, settings: dict[str, object]) -> None:
         self._commit(self.project.model_copy(update={"settings": dict(settings)}))
@@ -37,6 +45,16 @@ class ProjectViewModel(QObject):
             )
         )
 
+    def update_parallel_block(self, block: ParallelBlock) -> None:
+        validated = ParallelBlock.model_validate(block.model_dump(mode="python"))
+        blocks = [
+            validated if existing.id == validated.id else existing
+            for existing in self.project.parallel_blocks
+        ]
+        if not any(existing.id == validated.id for existing in self.project.parallel_blocks):
+            raise KeyError(validated.id)
+        self._commit(self.project.model_copy(update={"parallel_blocks": blocks}))
+
     def remove_parallel_block(self, block_id: UUID) -> None:
         blocks = [block for block in self.project.parallel_blocks if block.id != block_id]
         if len(blocks) == len(self.project.parallel_blocks):
@@ -45,6 +63,16 @@ class ProjectViewModel(QObject):
 
     def add_group(self, group: FlowGroup) -> None:
         self._commit(self.project.model_copy(update={"groups": [*self.project.groups, group]}))
+
+    def copy_group(self, group_id: UUID) -> FlowGroup:
+        groups = list(self.project.groups)
+        index = next((index for index, group in enumerate(groups) if group.id == group_id), None)
+        if index is None:
+            raise KeyError(group_id)
+        copied = clone_group(groups[index])
+        groups.insert(index + 1, copied)
+        self._commit(self.project.model_copy(update={"groups": groups}))
+        return copied
 
     def rename_group(self, group_id: UUID, name: str) -> None:
         groups = [
@@ -79,6 +107,28 @@ class ProjectViewModel(QObject):
             raise KeyError(group_id)
         self._commit(self.project.model_copy(update={"groups": groups}))
 
+    def copy_workflow(self, group_id: UUID, workflow_id: UUID) -> Workflow:
+        groups: list[FlowGroup] = []
+        copied: Workflow | None = None
+        for group in self.project.groups:
+            if group.id != group_id:
+                groups.append(group)
+                continue
+            workflows = list(group.workflows)
+            index = next(
+                (index for index, workflow in enumerate(workflows) if workflow.id == workflow_id),
+                None,
+            )
+            if index is None:
+                raise KeyError(workflow_id)
+            copied = clone_workflow(workflows[index])
+            workflows.insert(index + 1, copied)
+            groups.append(FlowGroup(id=group.id, name=group.name, workflows=workflows))
+        if copied is None:
+            raise KeyError(group_id)
+        self._commit(self.project.model_copy(update={"groups": groups}))
+        return copied
+
     def rename_workflow(self, workflow_id: UUID, name: str) -> None:
         self._replace_workflow(
             workflow_id,
@@ -86,6 +136,15 @@ class ProjectViewModel(QObject):
         )
 
     def remove_workflow(self, workflow_id: UUID) -> None:
+        dependencies = [
+            block.name
+            for block in self.project.parallel_blocks
+            if workflow_id in block.workflow_ids
+        ]
+        if dependencies:
+            raise ConfigurationError(
+                f"流程仍被并行监控块引用：{'、'.join(dependencies)}；请先编辑或删除这些并行块"
+            )
         groups: list[FlowGroup] = []
         found = False
         for group in self.project.groups:
@@ -107,6 +166,23 @@ class ProjectViewModel(QObject):
                 steps=[*workflow.steps, step],
             ),
         )
+
+    def copy_step(self, workflow_id: UUID, step_id: UUID) -> AutomationStep:
+        copied: AutomationStep | None = None
+
+        def copy(workflow: Workflow) -> Workflow:
+            nonlocal copied
+            steps = list(workflow.steps)
+            index = next((index for index, step in enumerate(steps) if step.id == step_id), None)
+            if index is None:
+                raise KeyError(step_id)
+            copied = clone_step(steps[index])
+            steps.insert(index + 1, copied)
+            return Workflow(id=workflow.id, name=workflow.name, steps=steps)
+
+        self._replace_workflow(workflow_id, copy)
+        assert copied is not None
+        return copied
 
     def update_step(self, workflow_id: UUID, step: AutomationStep) -> None:
         def replace(workflow: Workflow) -> Workflow:
@@ -149,6 +225,7 @@ class ProjectViewModel(QObject):
         self.project = self._undo_stack.pop()
         self.dirty = self.project != self._saved_project
         self.projectChanged.emit(self.project)
+        self.historyChanged.emit(self.can_undo)
 
     def move_workflow(self, workflow_id: UUID, direction: int) -> None:
         groups = list(self.project.groups)
@@ -224,3 +301,4 @@ class ProjectViewModel(QObject):
         self.project = project
         self.dirty = self.project != self._saved_project
         self.projectChanged.emit(self.project)
+        self.historyChanged.emit(True)

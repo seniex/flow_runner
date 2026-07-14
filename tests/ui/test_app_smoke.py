@@ -15,11 +15,13 @@ from flow_runner.domain.routing import (
     RouteTarget,
     RouteTargetKind,
 )
+from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCaptureMode
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
+from flow_runner.ui.runner_bridge import RunnerBridge
 
 
 def test_application_starts_offscreen_with_injected_project_path(qtbot, tmp_path):
@@ -59,6 +61,12 @@ def test_duplicate_hotkeys_are_rejected():
 def test_empty_hotkey_disables_the_action():
     config = HotkeyConfig(start="", stop="F7", pause="", record="")
     assert config.enabled_bindings() == {"F7": "stop"}
+
+
+def test_runner_bridge_shutdown_reports_success_when_idle():
+    bridge = RunnerBridge(Runner(object()))
+
+    assert bridge.shutdown(timeout_seconds=0.01) is True
 
 
 def test_hotkey_service_dispatches_and_stops_injected_listener():

@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -22,8 +21,10 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.conditions import ConditionGroup, ConditionNode, LeafCondition
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep
+from flow_runner.ui.editor_metadata import common_fields_for
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import capability_label, choice_label, field_label
+from flow_runner.ui.widgets import FocusWheelComboBox
 
 ConditionOperator = Literal["and", "or", "not"]
 
@@ -36,9 +37,11 @@ class ConditionEditor(QWidget):
         registry: CapabilityRegistry,
         *,
         confirm_discard: Callable[[tuple[str, ...]], bool] | None = None,
+        show_advanced: bool = False,
     ) -> None:
         super().__init__()
         self.registry = registry
+        self._show_advanced = show_advanced
         self.confirm_discard = confirm_discard or self._confirm_discard
         self._root: ConditionNode | None = None
         self._selected_path: tuple[int, ...] | None = None
@@ -48,10 +51,10 @@ class ConditionEditor(QWidget):
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
         self.node_id_edit = QLineEdit()
-        self.operator_combo = QComboBox()
+        self.operator_combo = FocusWheelComboBox()
         for operator in ("and", "or", "not"):
             self.operator_combo.addItem(choice_label(operator), operator)
-        self.capability_combo = QComboBox()
+        self.capability_combo = FocusWheelComboBox()
         for metadata in registry.condition_metadata():
             self.capability_combo.addItem(capability_label(metadata.name), metadata.name)
         self.form_container = QWidget()
@@ -512,7 +515,11 @@ class ConditionEditor(QWidget):
         if not isinstance(capability, str):
             return
         model_type = self.registry.condition(capability).config_model
-        self.config_form = ModelForm(model_type)
+        self.config_form = ModelForm(
+            model_type,
+            common_fields=common_fields_for(capability),
+            show_advanced=self._show_advanced,
+        )
         self.config_form.changed.connect(self._mark_changed)
         if previous:
             allowed = set(model_type.model_fields)
@@ -521,6 +528,11 @@ class ConditionEditor(QWidget):
             )
         self.form_layout.addWidget(self.config_form)
         self._active_capability = capability
+
+    def set_advanced_visible(self, visible: bool) -> None:
+        self._show_advanced = visible
+        if self.config_form is not None:
+            self.config_form.set_advanced_visible(visible)
 
     def _confirm_discard(self, fields: tuple[str, ...]) -> bool:
         field_list = "、".join(field_label(name) for name in fields)

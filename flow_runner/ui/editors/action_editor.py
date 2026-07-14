@@ -1,6 +1,5 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -12,19 +11,22 @@ from PySide6.QtWidgets import (
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
+from flow_runner.ui.editor_metadata import common_fields_for
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import action_summary, capability_label
+from flow_runner.ui.widgets import FocusWheelComboBox
 
 
 class ActionEditor(QWidget):
     changed = Signal()
 
-    def __init__(self, registry: CapabilityRegistry) -> None:
+    def __init__(self, registry: CapabilityRegistry, *, show_advanced: bool = False) -> None:
         super().__init__()
         self.registry = registry
+        self._show_advanced = show_advanced
         self._loading = False
         self._current_pending = False
-        self.capability_combo = QComboBox()
+        self.capability_combo = FocusWheelComboBox()
         for metadata in registry.action_metadata():
             self.capability_combo.addItem(capability_label(metadata.name), metadata.name)
         self._actions: list[ActionSpec] = []
@@ -118,9 +120,18 @@ class ActionEditor(QWidget):
         capability = self.capability_combo.currentData()
         if not isinstance(capability, str):
             return
-        self.config_form = ModelForm(self.registry.action(capability).config_model)
+        self.config_form = ModelForm(
+            self.registry.action(capability).config_model,
+            common_fields=common_fields_for(capability),
+            show_advanced=self._show_advanced,
+        )
         self.config_form.changed.connect(self._form_changed)
         self.config_layout.addWidget(self.config_form)
+
+    def set_advanced_visible(self, visible: bool) -> None:
+        self._show_advanced = visible
+        if self.config_form is not None:
+            self.config_form.set_advanced_visible(visible)
 
     def _form_changed(self) -> None:
         if not self._loading:

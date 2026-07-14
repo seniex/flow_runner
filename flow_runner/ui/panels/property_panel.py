@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -19,6 +20,7 @@ from PySide6.QtWidgets import (
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, Project
+from flow_runner.ui.editor_preferences import EditorPreferences
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
@@ -36,6 +38,7 @@ class PropertyPanel(QScrollArea):
         project: Project | None = None,
         *,
         apply_step: Callable[[AutomationStep], None] | None = None,
+        editor_preferences: EditorPreferences | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("propertyPanel")
@@ -44,7 +47,10 @@ class PropertyPanel(QScrollArea):
         self._loading = False
         self._pending = False
         self._validation_error = ""
+        self._switching_mode = False
         self.apply_step = apply_step
+        self.editor_preferences = editor_preferences or EditorPreferences()
+        show_advanced = self.editor_preferences.show_advanced
         self._condition_json_baseline = ""
         self._actions_json_baseline = ""
         self._routes_json_baseline = ""
@@ -65,10 +71,17 @@ class PropertyPanel(QScrollArea):
         self.action_policy_edit.setObjectName("actionPolicyModelEditor")
         self.routes_edit = QPlainTextEdit()
         self.routes_edit.setObjectName("routesModelEditor")
-        self.action_editor = ActionEditor(registry) if registry is not None else None
-        self.condition_editor = ConditionEditor(registry) if registry is not None else None
+        self.show_advanced_check = QCheckBox("显示高级参数")
+        self.show_advanced_check.setObjectName("showAdvancedFields")
+        self.show_advanced_check.setChecked(show_advanced)
+        self.action_editor = (
+            ActionEditor(registry, show_advanced=show_advanced) if registry is not None else None
+        )
+        self.condition_editor = (
+            ConditionEditor(registry, show_advanced=show_advanced) if registry is not None else None
+        )
         self.route_editor = RouteEditor(project) if registry is not None else None
-        self.policy_editor = PolicyEditor(registry)
+        self.policy_editor = PolicyEditor(registry, show_advanced=show_advanced)
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
         self.setWidgetResizable(True)
@@ -77,25 +90,40 @@ class PropertyPanel(QScrollArea):
         self.setWidget(self.content)
         layout = QVBoxLayout(self.content)
         layout.addWidget(self.title)
-        form = QFormLayout()
-        form.addRow("名称", self.name_edit)
-        form.addRow("状态", self.enabled_check)
+        self.mode_tabs = QTabWidget()
+        self.mode_tabs.setObjectName("propertyModeTabs")
+        self.common_tab = QWidget()
+        self.common_tab.setObjectName("commonPropertyTab")
+        common_layout = QVBoxLayout(self.common_tab)
+        common_layout.addWidget(self.show_advanced_check)
+        common_form = QFormLayout()
+        common_form.addRow("名称", self.name_edit)
+        common_form.addRow("状态", self.enabled_check)
         if self.condition_editor is not None:
-            form.addRow("条件引导", self.condition_editor)
-        form.addRow("条件", self.condition_edit)
+            common_form.addRow("条件引导", self.condition_editor)
         if self.action_editor is not None:
-            form.addRow("动作引导", self.action_editor)
-        form.addRow("动作", self.actions_edit)
-        form.addRow("策略引导", self.policy_editor)
-        form.addRow("检测策略", self.condition_policy_edit)
-        form.addRow("动作策略", self.action_policy_edit)
+            common_form.addRow("动作引导", self.action_editor)
+        common_form.addRow("策略引导", self.policy_editor)
         if self.route_editor is not None:
-            form.addRow("路由引导", self.route_editor)
-        form.addRow("路由", self.routes_edit)
-        layout.addLayout(form)
+            common_form.addRow("路由引导", self.route_editor)
+        common_layout.addLayout(common_form)
+        common_layout.addStretch()
+        self.advanced_json_tab = QWidget()
+        self.advanced_json_tab.setObjectName("advancedJsonTab")
+        advanced_form = QFormLayout(self.advanced_json_tab)
+        advanced_form.addRow("条件 JSON", self.condition_edit)
+        advanced_form.addRow("动作 JSON", self.actions_edit)
+        advanced_form.addRow("检测策略 JSON", self.condition_policy_edit)
+        advanced_form.addRow("动作策略 JSON", self.action_policy_edit)
+        advanced_form.addRow("路由 JSON", self.routes_edit)
+        self.mode_tabs.addTab(self.common_tab, "常用配置")
+        self.mode_tabs.addTab(self.advanced_json_tab, "高级 JSON")
+        layout.addWidget(self.mode_tabs)
         layout.addWidget(self.apply_button)
         layout.addStretch()
         self.apply_button.clicked.connect(self._apply)
+        self.mode_tabs.currentChanged.connect(self._mode_changed)
+        self.show_advanced_check.toggled.connect(self._advanced_visibility_changed)
         self.name_edit.textChanged.connect(self._mark_pending)
         self.enabled_check.toggled.connect(self._mark_pending)
         for editor in (
@@ -113,6 +141,127 @@ class PropertyPanel(QScrollArea):
             self.condition_editor.changed.connect(self._mark_pending)
         if self.route_editor is not None:
             self.route_editor.changed.connect(self._mark_pending)
+
+    def _advanced_visibility_changed(self, visible: bool) -> None:
+        self.editor_preferences.show_advanced = visible
+        if self.condition_editor is not None:
+            self.condition_editor.set_advanced_visible(visible)
+        if self.action_editor is not None:
+            self.action_editor.set_advanced_visible(visible)
+        self.policy_editor.set_advanced_visible(visible)
+
+    def _mode_changed(self, _index: int) -> None:
+        if self._loading or self._switching_mode or self._step is None:
+            return
+        if self.mode_tabs.currentWidget() is self.advanced_json_tab:
+            if not self._sync_guided_to_json():
+                self._restore_mode(self.common_tab)
+            return
+        if not self._sync_json_to_guided():
+            self._restore_mode(self.advanced_json_tab)
+
+    def _restore_mode(self, tab: QWidget) -> None:
+        self._switching_mode = True
+        self.mode_tabs.setCurrentWidget(tab)
+        self._switching_mode = False
+
+    def _sync_guided_to_json(self) -> bool:
+        try:
+            step = self._step_from_guided()
+        except (ValueError, KeyError, FlowRunnerError) as error:
+            self._set_validation_error(error)
+            return False
+        self._set_json_editors(step)
+        self._validation_error = ""
+        return True
+
+    def _sync_json_to_guided(self) -> bool:
+        try:
+            step = self._step_from_json()
+        except (ValueError, KeyError, FlowRunnerError) as error:
+            self._set_validation_error(error)
+            return False
+        self._loading = True
+        if self.condition_editor is not None:
+            self.condition_editor.set_condition(step.condition)
+        if self.action_editor is not None:
+            self.action_editor.set_actions(step.actions)
+        self.policy_editor.set_policies(step.condition_policy, step.action_policy)
+        if self.route_editor is not None:
+            self.route_editor.set_routes(step.routes)
+        self._loading = False
+        self._set_json_baselines()
+        self._validation_error = ""
+        return True
+
+    def _step_from_guided(self) -> AutomationStep:
+        assert self._step is not None
+        if self.action_editor is not None:
+            self.action_editor.commit_pending()
+        if self.route_editor is not None:
+            self.route_editor.commit_pending()
+        condition_policy, action_policy = self.policy_editor.policies()
+        return AutomationStep.model_validate(
+            {
+                "id": self._step.id,
+                "name": self.name_edit.text(),
+                "enabled": self.enabled_check.isChecked(),
+                "condition": (
+                    self.condition_editor.condition()
+                    if self.condition_editor is not None
+                    else json.loads(self.condition_edit.toPlainText())
+                ),
+                "actions": (
+                    self.action_editor.action_specs()
+                    if self.action_editor is not None
+                    else json.loads(self.actions_edit.toPlainText())
+                ),
+                "condition_policy": condition_policy,
+                "action_policy": action_policy,
+                "routes": (
+                    self.route_editor.routes()
+                    if self.route_editor is not None
+                    else json.loads(self.routes_edit.toPlainText())
+                ),
+            }
+        )
+
+    def _step_from_json(self) -> AutomationStep:
+        assert self._step is not None
+        return AutomationStep.model_validate(
+            {
+                "id": self._step.id,
+                "name": self.name_edit.text(),
+                "enabled": self.enabled_check.isChecked(),
+                "condition": json.loads(self.condition_edit.toPlainText()),
+                "actions": json.loads(self.actions_edit.toPlainText()),
+                "condition_policy": json.loads(self.condition_policy_edit.toPlainText()),
+                "action_policy": json.loads(self.action_policy_edit.toPlainText()),
+                "routes": json.loads(self.routes_edit.toPlainText()),
+            }
+        )
+
+    def _set_json_editors(self, step: AutomationStep) -> None:
+        previous_loading = self._loading
+        self._loading = True
+        self.condition_edit.setPlainText(_json(step.condition))
+        self.actions_edit.setPlainText(_json(step.actions))
+        self.condition_policy_edit.setPlainText(_json(step.condition_policy))
+        self.action_policy_edit.setPlainText(_json(step.action_policy))
+        self.routes_edit.setPlainText(_json(step.routes))
+        self._set_json_baselines()
+        self._loading = previous_loading
+
+    def _set_json_baselines(self) -> None:
+        self._condition_json_baseline = self.condition_edit.toPlainText()
+        self._actions_json_baseline = self.actions_edit.toPlainText()
+        self._condition_policy_json_baseline = self.condition_policy_edit.toPlainText()
+        self._action_policy_json_baseline = self.action_policy_edit.toPlainText()
+        self._routes_json_baseline = self.routes_edit.toPlainText()
+
+    def _set_validation_error(self, error: Exception) -> None:
+        self._validation_error = str(error)
+        self.validationFailed.emit(self._validation_error)
 
     @property
     def has_pending_edits(self) -> bool:
@@ -183,6 +332,12 @@ class PropertyPanel(QScrollArea):
             editor.clear()
         self._loading = False
         self._clear_pending()
+
+    def discard_pending(self, step: AutomationStep | None) -> None:
+        if step is None:
+            self.clear_step()
+        else:
+            self.set_step(step)
 
     def set_project(self, project: Project) -> None:
         if self.route_editor is not None:

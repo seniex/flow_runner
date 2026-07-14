@@ -310,6 +310,33 @@ def test_policy_editor_exposes_once_and_until(qtbot):
     assert editor.mode_combo.count() == 2
 
 
+def test_policy_editor_summarizes_core_policy_and_hides_advanced_rows(qtbot):
+    editor = PolicyEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_policies(
+        ConditionPolicy(
+            mode=ConditionMode.UNTIL,
+            interval_seconds=1.0,
+            max_attempts=31,
+            timeout_seconds=60.0,
+        ),
+        ActionPolicy(max_attempts=1, retry_interval_seconds=2.0),
+    )
+
+    assert editor.summary_label.text() == ("持续检测：每 1 秒一次，最多 31 次\n动作失败：不重试")
+    assert editor.timeout_spin.isHidden()
+    assert editor.action_retry_spin.isHidden()
+    assert editor.before_actions_editor.isHidden()
+    assert editor.after_no_match_actions_editor.isHidden()
+
+    editor.set_advanced_visible(True)
+
+    assert not editor.timeout_spin.isHidden()
+    assert not editor.action_retry_spin.isHidden()
+    assert not editor.before_actions_editor.isHidden()
+    assert not editor.after_no_match_actions_editor.isHidden()
+
+
 def test_policy_editor_preserves_tick_hooks_when_editing_limits(qtbot):
     editor = PolicyEditor()
     qtbot.addWidget(editor)
@@ -604,6 +631,88 @@ def test_route_editor_selects_next_step_from_current_workflow(qtbot):
     assert editor.routes()[0].target == RouteTarget.next_step(second_step.id)
 
 
+def test_route_editor_labels_and_exposes_editable_same_workflow_step_target(qtbot):
+    first_step = AutomationStep(name="first")
+    second_step = AutomationStep(name="second")
+    third_step = AutomationStep(name="third")
+    workflow = Workflow(name="main", steps=[first_step, second_step, third_step])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.set_step_context(first_step.id)
+
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.END))
+    editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.NEXT_STEP))
+
+    target_index = editor.target_combo.findData(RouteTargetKind.NEXT_STEP)
+    assert editor.target_combo.itemText(target_index) == "跳到本流程中的指定步骤"
+    assert not editor.step_combo.isHidden()
+    assert editor.step_combo.isEnabled()
+
+    editor.step_combo.setCurrentIndex(editor.step_combo.findData(str(third_step.id)))
+    editor.add_button.click()
+
+    assert editor.routes()[0].target == RouteTarget.next_step(third_step.id)
+
+
+def test_route_editor_defaults_to_ordered_next_step_and_leaves_last_step_unselected(qtbot):
+    first_step = AutomationStep(name="first")
+    second_step = AutomationStep(name="second")
+    third_step = AutomationStep(name="third")
+    workflow = Workflow(name="main", steps=[first_step, second_step, third_step])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+
+    editor.set_step_context(first_step.id)
+
+    assert editor.step_combo.currentData() == str(second_step.id)
+
+    editor.set_step_context(third_step.id)
+
+    assert editor.step_combo.currentIndex() == -1
+    assert [editor.step_combo.itemData(index) for index in range(editor.step_combo.count())] == [
+        str(first_step.id),
+        str(second_step.id),
+        str(third_step.id),
+    ]
+
+
+def test_route_editor_uses_reordered_sequence_for_default_but_preserves_existing_uuid_target(qtbot):
+    first_step = AutomationStep(name="first")
+    second_step = AutomationStep(name="second")
+    third_step = AutomationStep(name="third")
+    workflow = Workflow(name="main", steps=[first_step, third_step, second_step])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+
+    editor.set_step_context(first_step.id)
+
+    assert editor.step_combo.currentData() == str(third_step.id)
+
+    existing_route = RouteRule(
+        outcome=StepOutcome.SUCCESS,
+        target=RouteTarget.next_step(second_step.id),
+    )
+    editor.set_routes([existing_route])
+
+    assert editor.step_combo.currentData() == str(second_step.id)
+    editor.commit_current()
+    assert editor.routes() == [existing_route]
+
+    moved_again = Workflow(
+        id=workflow.id,
+        name=workflow.name,
+        steps=[second_step, first_step, third_step],
+    )
+    editor.set_project(Project(name="p", groups=[FlowGroup(name="g", workflows=[moved_again])]))
+
+    assert editor.step_combo.currentData() == str(second_step.id)
+    editor.commit_current()
+    assert editor.routes() == [existing_route]
+
+
 def test_route_editor_selects_count_predicate_reference(qtbot):
     first = Workflow(name="A")
     counted_step = AutomationStep(name="counted")
@@ -888,3 +997,73 @@ def test_condition_editor_can_cancel_capability_switch_that_discards_fields(qtbo
     assert editor.capability_combo.currentData() == "vision.ocr"
     assert editor.config_form.model_type is OcrConditionConfig
     assert discarded_fields == [("keywords", "language", "preprocessing", "scale")]
+
+
+def test_route_editor_summaries_use_predicates_and_project_names(qtbot):
+    current = AutomationStep(name="开始检测")
+    counted = AutomationStep(name="键盘命令")
+    primary = Workflow(name="开始游戏", steps=[current, counted])
+    alternate = Workflow(name="开始游戏")
+    project = Project(
+        name="p",
+        groups=[
+            FlowGroup(name="不思议挂机", workflows=[primary]),
+            FlowGroup(name="不思议挂机B", workflows=[alternate]),
+        ],
+    )
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.set_step_context(current.id)
+    editor.set_routes(
+        [
+            RouteRule(
+                outcome=StepOutcome.TIMEOUT,
+                target=RouteTarget.next_step(counted.id),
+            ),
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                predicate=RoutePredicate.step_count(
+                    counted.id,
+                    ComparisonOperator.GT,
+                    1,
+                ),
+                target=RouteTarget.jump_workflow(alternate.id),
+            ),
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                target=RouteTarget.jump_workflow(primary.id),
+            ),
+        ]
+    )
+
+    assert [editor.route_list.item(index).text() for index in range(3)] == [
+        "超时 → 键盘命令",
+        "成功 且 键盘命令执行次数 > 1 → 不思议挂机B / 开始游戏",
+        "成功（否则） → 不思议挂机 / 开始游戏",
+    ]
+
+
+def test_route_editor_rejects_conditional_route_shadowed_by_unconditional_route(qtbot):
+    step = AutomationStep(name="步骤")
+    workflow = Workflow(name="流程", steps=[step])
+    project = Project(name="p", groups=[FlowGroup(name="组", workflows=[workflow])])
+    editor = RouteEditor(project)
+    qtbot.addWidget(editor)
+    editor.set_step_context(step.id)
+    editor.set_routes(
+        [
+            RouteRule(outcome=StepOutcome.SUCCESS, target=RouteTarget.end()),
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                predicate=RoutePredicate.task_variable(
+                    "ready",
+                    ComparisonOperator.EQ,
+                    True,
+                ),
+                target=RouteTarget.end(),
+            ),
+        ]
+    )
+
+    with pytest.raises(ValueError, match="第 2 条路由被第 1 条同结果无条件路由遮挡"):
+        editor.commit_pending()

@@ -117,7 +117,7 @@ CHOICE_LABELS = {
     "timeout": "超时",
     "failure": "失败",
     "cancelled": "已取消",
-    "next_step": "跳到当前流程步骤",
+    "next_step": "跳到本流程中的指定步骤",
     "jump_workflow": "跳转流程",
     "call_workflow": "调用流程",
     "return": "返回调用方",
@@ -150,6 +150,17 @@ CHOICE_LABELS = {
     "resource.wait.cancelled": "资源等待已取消",
 }
 
+COMPARISON_SYMBOLS = {
+    "eq": "=",
+    "ne": "!=",
+    "lt": "<",
+    "le": "<=",
+    "gt": ">",
+    "ge": ">=",
+    "contains": "包含",
+    "matches": "正则匹配",
+}
+
 
 def capability_label(name: str) -> str:
     return CAPABILITY_LABELS.get(name, name)
@@ -162,6 +173,11 @@ def field_label(name: str) -> str:
 def choice_label(value: Any) -> str:
     raw = value.value if isinstance(value, Enum) else value
     return CHOICE_LABELS.get(str(raw), str(raw))
+
+
+def comparison_symbol(value: Any) -> str:
+    raw = value.value if isinstance(value, Enum) else value
+    return COMPARISON_SYMBOLS.get(str(raw), choice_label(raw))
 
 
 def action_summary(action: ActionSpec) -> str:

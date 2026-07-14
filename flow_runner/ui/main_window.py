@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from datetime import datetime
+from inspect import signature
 from pathlib import Path
-from typing import Literal
 from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
@@ -18,10 +18,15 @@ from PySide6.QtWidgets import (
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import RunnerState
 from flow_runner.domain.project import AutomationStep, FlowGroup, ParallelBlock, Project, Workflow
+from flow_runner.ui.dialogs.close_confirmation_dialog import (
+    CloseConfirmationDialog,
+    CloseDecision,
+)
 from flow_runner.ui.dialogs.diagnostics_dialog import DiagnosticsDialog
 from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
+from flow_runner.ui.dialogs.template_step_dialog import TemplateStepDialog
 from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
@@ -44,13 +49,15 @@ class MainWindow(QMainWindow):
         runner_bridge: RunnerBridge | None = None,
         save_project: Callable[[Project], None] | None = None,
         project_path: Path | None = None,
-        confirm_close: Callable[[], Literal["save", "discard", "cancel"]] | None = None,
+        confirm_close: Callable[..., CloseDecision | str] | None = None,
         registry: CapabilityRegistry | None = None,
         create_step: Callable[[], AutomationStep | None] | None = None,
+        create_template_step: Callable[[], AutomationStep | None] | None = None,
         request_name: Callable[[str, str], str | None] | None = None,
         confirm_delete: Callable[[str], bool] | None = None,
         edit_settings: Callable[[dict[str, object]], dict[str, object] | None] | None = None,
         create_parallel_block: Callable[[], ParallelBlock | None] | None = None,
+        edit_parallel_block: Callable[[ParallelBlock], ParallelBlock | None] | None = None,
         select_group_target: Callable[[Project, UUID], UUID | None] | None = None,
     ) -> None:
         super().__init__()
@@ -60,13 +67,18 @@ class MainWindow(QMainWindow):
         self.save_project = save_project
         self.project_path = project_path
         self._confirm_close_injected = confirm_close is not None
-        self.confirm_close = confirm_close or self._confirm_dirty_close
+        self.confirm_close: Callable[..., CloseDecision | str] = (
+            confirm_close or self._confirm_close
+        )
+        self._confirm_close_accepts_state = _accepts_close_state(self.confirm_close)
         self.registry = registry
         self.create_step = create_step or self._prompt_new_step
+        self.create_template_step = create_template_step or self._prompt_template_step
         self.request_name = request_name or self._request_name
         self.confirm_delete = confirm_delete or self._confirm_delete
         self.edit_settings = edit_settings or self._prompt_settings
         self.create_parallel_block = create_parallel_block or self._prompt_parallel_block
+        self.edit_parallel_block = edit_parallel_block or self._prompt_edit_parallel_block
         self.select_group_target = select_group_target or self._prompt_workflow_group
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
@@ -82,6 +94,7 @@ class MainWindow(QMainWindow):
         self.flow_tree.parallelBlockSelected.connect(self._select_parallel_block)
         self.step_list.stepSelected.connect(self._select_step)
         self.view_model.projectChanged.connect(self._project_changed)
+        self.view_model.historyChanged.connect(self._history_changed)
         self.property_panel.validationFailed.connect(self.statusBar().showMessage)
         self.property_panel.pendingChanged.connect(self._pending_changed)
         self._workflow_id: UUID | None = None
@@ -103,6 +116,8 @@ class MainWindow(QMainWindow):
         self.undo_action.setObjectName("undoProjectAction")
         self.add_step_action = QAction("新增步骤", self)
         self.add_step_action.setObjectName("addStepAction")
+        self.add_template_step_action = QAction("从模板新增步骤", self)
+        self.add_template_step_action.setObjectName("addTemplateStepAction")
         self.remove_step_action = QAction("删除步骤", self)
         self.remove_step_action.setObjectName("removeStepAction")
         self.move_step_up_action = QAction("上移步骤", self)
@@ -111,8 +126,12 @@ class MainWindow(QMainWindow):
         self.move_step_down_action.setObjectName("moveStepDownAction")
         self.add_group_action = QAction("新增组", self)
         self.add_group_action.setObjectName("addGroupAction")
+        self.copy_group_action = QAction("复制流程组", self)
+        self.copy_group_action.setObjectName("copyGroupAction")
         self.add_workflow_action = QAction("新增流程", self)
         self.add_workflow_action.setObjectName("addWorkflowAction")
+        self.copy_workflow_action = QAction("复制流程", self)
+        self.copy_workflow_action.setObjectName("copyWorkflowAction")
         self.rename_flow_action = QAction("重命名", self)
         self.rename_flow_action.setObjectName("renameFlowAction")
         self.move_workflow_up_action = QAction("流程上移", self)
@@ -127,14 +146,20 @@ class MainWindow(QMainWindow):
         self.settings_action.setObjectName("projectSettingsAction")
         self.add_parallel_action = QAction("新增并行块", self)
         self.add_parallel_action.setObjectName("addParallelBlockAction")
+        self.edit_parallel_action = QAction("编辑并行块", self)
+        self.edit_parallel_action.setObjectName("editParallelBlockAction")
         self.delete_parallel_action = QAction("删除并行块", self)
         self.delete_parallel_action.setObjectName("deleteParallelBlockAction")
+        self.copy_step_action = QAction("复制步骤", self)
+        self.copy_step_action.setObjectName("copyStepAction")
         self.project_toolbar.addActions(
             [
                 self.save_action,
                 self.undo_action,
                 self.add_group_action,
+                self.copy_group_action,
                 self.add_workflow_action,
+                self.copy_workflow_action,
                 self.rename_flow_action,
                 self.move_workflow_up_action,
                 self.move_workflow_down_action,
@@ -142,14 +167,18 @@ class MainWindow(QMainWindow):
                 self.delete_flow_action,
                 self.settings_action,
                 self.add_parallel_action,
+                self.edit_parallel_action,
                 self.delete_parallel_action,
+                self.add_template_step_action,
                 self.add_step_action,
+                self.copy_step_action,
                 self.remove_step_action,
                 self.move_step_up_action,
                 self.move_step_down_action,
             ]
         )
         self.save_action.setEnabled(False)
+        self.undo_action.setEnabled(False)
         self.start_action = QAction("启动", self)
         self.start_action.setObjectName("startWorkflowAction")
         self.pause_action = QAction("暂停", self)
@@ -183,13 +212,17 @@ class MainWindow(QMainWindow):
         self.preview_action.triggered.connect(self._preview_selected_condition)
         self.diagnostics_action.triggered.connect(self.diagnostics_dialog.show)
         self.save_action.triggered.connect(self._save_project)
-        self.undo_action.triggered.connect(self.view_model.undo)
+        self.undo_action.triggered.connect(self._undo_project_change)
         self.add_step_action.triggered.connect(self._add_step)
+        self.add_template_step_action.triggered.connect(self._add_template_step)
         self.remove_step_action.triggered.connect(self._remove_selected_step)
         self.move_step_up_action.triggered.connect(lambda: self._move_selected_step(-1))
         self.move_step_down_action.triggered.connect(lambda: self._move_selected_step(1))
         self.add_group_action.triggered.connect(self._add_group)
+        self.copy_group_action.triggered.connect(self._copy_selected_group)
         self.add_workflow_action.triggered.connect(self._add_workflow)
+        self.copy_workflow_action.triggered.connect(self._copy_selected_workflow)
+        self.copy_step_action.triggered.connect(self._copy_selected_step)
         self.rename_flow_action.triggered.connect(self._rename_selected_flow)
         self.move_workflow_up_action.triggered.connect(lambda: self._move_selected_workflow(-1))
         self.move_workflow_down_action.triggered.connect(lambda: self._move_selected_workflow(1))
@@ -197,6 +230,7 @@ class MainWindow(QMainWindow):
         self.delete_flow_action.triggered.connect(self._delete_selected_flow)
         self.settings_action.triggered.connect(self._edit_project_settings)
         self.add_parallel_action.triggered.connect(self._add_parallel_block)
+        self.edit_parallel_action.triggered.connect(self._edit_selected_parallel_block)
         self.delete_parallel_action.triggered.connect(self._delete_parallel_block)
         self.startRequested.connect(self._start_selected_workflow)
         self.pauseRequested.connect(self._toggle_pause)
@@ -209,6 +243,8 @@ class MainWindow(QMainWindow):
         self._update_runtime_actions(self.run_view_model.state)
         self.setWindowTitle("Flow Runner[*]")
         self._refresh_save_state()
+        self._refresh_undo_state()
+        self._refresh_context_actions()
         self._apply_initial_window_geometry()
 
     def _apply_initial_window_geometry(self) -> None:
@@ -231,6 +267,7 @@ class MainWindow(QMainWindow):
         self._workflow_id = workflow.id
         self._parallel_block_id = None
         self.step_list.set_workflow(workflow)
+        self._refresh_context_actions()
 
     def _select_group(self, group_id: UUID) -> None:
         if not self._commit_pending_editor():
@@ -241,6 +278,7 @@ class MainWindow(QMainWindow):
         self._parallel_block_id = None
         self.step_list.set_workflow(Workflow(name="空"))
         self.property_panel.clear_step()
+        self._refresh_context_actions()
 
     def _select_parallel_block(self, block_id: UUID) -> None:
         if not self._commit_pending_editor():
@@ -251,6 +289,7 @@ class MainWindow(QMainWindow):
         self._workflow_id = None
         self.step_list.set_workflow(Workflow(name="空"))
         self.property_panel.clear_step()
+        self._refresh_context_actions()
 
     def _select_step(self, step_id: UUID) -> None:
         if self._workflow_id is None:
@@ -265,6 +304,7 @@ class MainWindow(QMainWindow):
         workflow = self._workflow(self._workflow_id)
         step = next(step for step in workflow.steps if step.id == step_id)
         self.property_panel.set_step(step)
+        self._refresh_context_actions()
 
     def _commit_pending_editor(self) -> bool:
         if not self.property_panel.has_pending_edits:
@@ -301,43 +341,114 @@ class MainWindow(QMainWindow):
             return
         self.view_model.update_step(self._workflow_id, step)
 
-    def _project_changed(self, project: Project) -> None:
-        self._refresh_save_state()
-        self.property_panel.set_project(project)
-        self.flow_tree.set_project(project)
-        if self._parallel_block_id is not None:
-            try:
-                self.flow_tree.select_parallel_block(self._parallel_block_id)
-            except KeyError:
-                self._parallel_block_id = None
+    def _undo_project_change(self) -> None:
+        if self.property_panel.has_pending_edits:
+            self.property_panel.discard_pending(self._selected_project_step())
+            self._reload_selection_from_project()
+            self._refresh_save_state()
+            self._refresh_undo_state()
             return
-        if self._workflow_id is None:
+        self.view_model.undo()
+        self._refresh_save_state()
+        self._refresh_undo_state()
+
+    def _selected_project_step(self) -> AutomationStep | None:
+        if self._workflow_id is None or self.property_panel.step_id is None:
+            return None
+        try:
+            workflow = self._workflow(self._workflow_id)
+        except KeyError:
+            return None
+        return next(
+            (step for step in workflow.steps if step.id == self.property_panel.step_id),
+            None,
+        )
+
+    def _project_changed(self, _project: Project) -> None:
+        self._reload_selection_from_project()
+        self._refresh_save_state()
+        self._refresh_undo_state()
+
+    def _reload_selection_from_project(self) -> None:
+        project = self.view_model.project
+        selected_step_id = self.property_panel.step_id
+        self.property_panel.set_project(project)
+        self.flow_tree.blockSignals(True)
+        self.step_list.blockSignals(True)
+        try:
+            self.flow_tree.set_project(project)
+            if self._parallel_block_id is not None:
+                try:
+                    self.flow_tree.select_parallel_block(self._parallel_block_id)
+                except KeyError:
+                    self._parallel_block_id = None
+                else:
+                    self._group_id = None
+                    self._workflow_id = None
+                    self.step_list.set_workflow(Workflow(name="空"))
+                    self.property_panel.clear_step()
+                    return
+            if self._workflow_id is not None:
+                try:
+                    workflow = self._workflow(self._workflow_id)
+                except KeyError:
+                    self._workflow_id = None
+                else:
+                    self._group_id = self._group_for_workflow(workflow.id).id
+                    self._parallel_block_id = None
+                    self.flow_tree.select_workflow(workflow.id)
+                    self.step_list.set_workflow(workflow)
+                    selected_step = next(
+                        (step for step in workflow.steps if step.id == selected_step_id),
+                        None,
+                    )
+                    if selected_step is None:
+                        self.property_panel.clear_step()
+                    else:
+                        self.step_list.select_step(selected_step.id)
+                        self.property_panel.set_step(selected_step)
+                    return
             if self._group_id is not None:
                 try:
                     self.flow_tree.select_group(self._group_id)
                 except KeyError:
                     self._group_id = None
-            return
-        try:
-            workflow = self._workflow(self._workflow_id)
-        except KeyError:
-            self._workflow_id = None
+                else:
+                    self._workflow_id = None
+                    self._parallel_block_id = None
+                    self.step_list.set_workflow(Workflow(name="空"))
+                    self.property_panel.clear_step()
+                    return
             self.step_list.set_workflow(Workflow(name="空"))
-            return
-        self.flow_tree.select_workflow(workflow.id)
-        if self.property_panel.step_id is not None:
-            try:
-                self.step_list.select_step(self.property_panel.step_id)
-            except KeyError:
-                pass
+            self.property_panel.clear_step()
+        finally:
+            self.flow_tree.blockSignals(False)
+            self.step_list.blockSignals(False)
+            self._refresh_context_actions()
+
+    def _history_changed(self, _can_undo: bool) -> None:
+        self._refresh_undo_state()
 
     def _pending_changed(self, _pending: bool) -> None:
         self._refresh_save_state()
+        self._refresh_undo_state()
+
+    def _refresh_undo_state(self) -> None:
+        self.undo_action.setEnabled(
+            self.property_panel.has_pending_edits or self.view_model.can_undo
+        )
 
     def _refresh_save_state(self) -> None:
         modified = self.view_model.dirty or self.property_panel.has_pending_edits
         self.save_action.setEnabled(self.save_project is not None and modified)
         self.setWindowModified(modified)
+
+    def _refresh_context_actions(self) -> None:
+        self.copy_group_action.setEnabled(self._group_id is not None and self._workflow_id is None)
+        self.copy_workflow_action.setEnabled(self._workflow_id is not None)
+        selected_step = self._selected_project_step()
+        self.copy_step_action.setEnabled(selected_step is not None)
+        self.edit_parallel_action.setEnabled(self._parallel_block_id is not None)
 
     def _save_project(self) -> bool:
         if self.save_project is None:
@@ -375,6 +486,16 @@ class MainWindow(QMainWindow):
         self.view_model.add_step(self._workflow_id, step)
         self.step_list.select_step(step.id)
 
+    def _add_template_step(self) -> None:
+        if self._workflow_id is None:
+            self.statusBar().showMessage("请先选择要添加步骤的流程")
+            return
+        step = self.create_template_step()
+        if step is None:
+            return
+        self.view_model.add_step(self._workflow_id, step)
+        self.step_list.select_step(step.id)
+
     def _remove_selected_step(self) -> None:
         if self._workflow_id is None or self.property_panel.step_id is None:
             self.statusBar().showMessage("请先选择要删除的步骤")
@@ -404,6 +525,17 @@ class MainWindow(QMainWindow):
             return None
         return dialog.step()
 
+    def _prompt_template_step(self) -> AutomationStep | None:
+        if self._workflow_id is None:
+            return None
+        dialog = TemplateStepDialog(
+            self.view_model.project,
+            current_workflow_id=self._workflow_id,
+        )
+        if dialog.exec() != TemplateStepDialog.DialogCode.Accepted:
+            return None
+        return dialog.step()
+
     def _add_group(self) -> None:
         name = self.request_name("group", "")
         if not name:
@@ -411,6 +543,13 @@ class MainWindow(QMainWindow):
         group = FlowGroup(name=name)
         self.view_model.add_group(group)
         self.flow_tree.select_group(group.id)
+
+    def _copy_selected_group(self) -> None:
+        if self._group_id is None or self._workflow_id is not None:
+            self.statusBar().showMessage("请先选择要复制的流程组")
+            return
+        copied = self.view_model.copy_group(self._group_id)
+        self.flow_tree.select_group(copied.id)
 
     def _add_workflow(self) -> None:
         if self._group_id is None:
@@ -422,6 +561,23 @@ class MainWindow(QMainWindow):
         workflow = Workflow(name=name)
         self.view_model.add_workflow(self._group_id, workflow)
         self.flow_tree.select_workflow(workflow.id)
+
+    def _copy_selected_workflow(self) -> None:
+        if self._group_id is None or self._workflow_id is None:
+            self.statusBar().showMessage("请先选择要复制的流程")
+            return
+        copied = self.view_model.copy_workflow(self._group_id, self._workflow_id)
+        self.flow_tree.select_workflow(copied.id)
+
+    def _copy_selected_step(self) -> None:
+        if self._workflow_id is None or self.property_panel.step_id is None:
+            self.statusBar().showMessage("请先选择要复制的步骤")
+            return
+        copied = self.view_model.copy_step(
+            self._workflow_id,
+            self.property_panel.step_id,
+        )
+        self.step_list.select_step(copied.id)
 
     def _rename_selected_flow(self) -> None:
         if self._workflow_id is not None:
@@ -484,9 +640,21 @@ class MainWindow(QMainWindow):
     def _delete_selected_flow(self) -> None:
         if self._workflow_id is not None:
             workflow = self._workflow(self._workflow_id)
+            dependencies = [
+                block.name
+                for block in self.view_model.project.parallel_blocks
+                if workflow.id in block.workflow_ids
+            ]
+            if dependencies:
+                self.statusBar().showMessage(
+                    f"流程“{workflow.name}”仍被并行监控块引用："
+                    f"{'、'.join(dependencies)}；请先编辑或删除这些并行块"
+                )
+                return
             if self.confirm_delete(f"流程“{workflow.name}”"):
                 self.view_model.remove_workflow(workflow.id)
                 self._workflow_id = None
+                self._refresh_context_actions()
             return
         if self._group_id is not None:
             group = next(
@@ -495,6 +663,7 @@ class MainWindow(QMainWindow):
             if self.confirm_delete(f"流程组“{group.name}”"):
                 self.view_model.remove_group(group.id)
                 self._group_id = None
+                self._refresh_context_actions()
             return
         self.statusBar().showMessage("请先选择流程组或流程")
 
@@ -530,6 +699,21 @@ class MainWindow(QMainWindow):
         self.view_model.add_parallel_block(block)
         self.flow_tree.select_parallel_block(block.id)
 
+    def _edit_selected_parallel_block(self) -> None:
+        if self._parallel_block_id is None:
+            self.statusBar().showMessage("请先选择并行监控块")
+            return
+        block = next(
+            block
+            for block in self.view_model.project.parallel_blocks
+            if block.id == self._parallel_block_id
+        )
+        updated = self.edit_parallel_block(block)
+        if updated is None:
+            return
+        self.view_model.update_parallel_block(updated)
+        self.flow_tree.select_parallel_block(updated.id)
+
     def _delete_parallel_block(self) -> None:
         if self._parallel_block_id is None:
             self.statusBar().showMessage("请先选择并行监控块")
@@ -542,9 +726,16 @@ class MainWindow(QMainWindow):
         if self.confirm_delete(f"并行监控块“{block.name}”"):
             self.view_model.remove_parallel_block(block.id)
             self._parallel_block_id = None
+            self._refresh_context_actions()
 
     def _prompt_parallel_block(self) -> ParallelBlock | None:
         dialog = ParallelBlockDialog(self.view_model.project)
+        if dialog.exec() != ParallelBlockDialog.DialogCode.Accepted:
+            return None
+        return dialog.block()
+
+    def _prompt_edit_parallel_block(self, block: ParallelBlock) -> ParallelBlock | None:
+        dialog = ParallelBlockDialog(self.view_model.project, block)
         if dialog.exec() != ParallelBlockDialog.DialogCode.Accepted:
             return None
         return dialog.block()
@@ -615,31 +806,97 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         modified = self.view_model.dirty or self.property_panel.has_pending_edits
-        if modified and (self.isVisible() or self._confirm_close_injected):
-            decision = self.confirm_close()
-            if decision == "cancel" or (decision == "save" and not self._save_project()):
+        running = self.runner_bridge is not None and self.runner_bridge.is_running
+        if modified or running:
+            decision = (
+                self._request_close_decision(modified=modified, running=running)
+                if self.isVisible() or self._confirm_close_injected
+                else _hidden_close_decision(modified=modified, running=running)
+            )
+        else:
+            decision = CloseDecision.CLOSE
+
+        if decision is CloseDecision.CANCEL:
+            event.ignore()
+            return
+        if _requires_save(decision) and not self._save_project():
+            event.ignore()
+            return
+        if _requires_stop(decision):
+            if self.runner_bridge is None or not self.runner_bridge.shutdown():
+                self.statusBar().showMessage("任务未能停止，窗口保持打开")
                 event.ignore()
                 return
-        if self.runner_bridge is not None:
-            self.runner_bridge.shutdown()
         super().closeEvent(event)
 
     def set_recording_state(self, recording: bool) -> None:
         self.record_action.setText("停止录制" if recording else "录制")
         self.record_action.setProperty("status", "recording" if recording else "idle")
 
-    def _confirm_dirty_close(self) -> Literal["save", "discard", "cancel"]:
-        button = QMessageBox.warning(
-            self,
-            "未保存的更改",
-            "项目包含未保存的更改。",
-            QMessageBox.StandardButton.Save
-            | QMessageBox.StandardButton.Discard
-            | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Save,
+    def _request_close_decision(self, *, modified: bool, running: bool) -> CloseDecision:
+        if self._confirm_close_accepts_state:
+            decision = self.confirm_close(modified=modified, running=running)
+        else:
+            decision = self.confirm_close()
+        return _normalize_close_decision(decision, running=running)
+
+    def _confirm_close(self, *, modified: bool, running: bool) -> CloseDecision:
+        dialog = CloseConfirmationDialog(
+            modified=modified,
+            running=running,
+            parent=self,
         )
-        if button is QMessageBox.StandardButton.Save:
-            return "save"
-        if button is QMessageBox.StandardButton.Discard:
-            return "discard"
-        return "cancel"
+        dialog.exec()
+        return dialog.decision
+
+
+def _accepts_close_state(callback: Callable[..., object]) -> bool:
+    try:
+        signature(callback).bind(modified=False, running=False)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def _normalize_close_decision(
+    decision: CloseDecision | str,
+    *,
+    running: bool,
+) -> CloseDecision:
+    if isinstance(decision, CloseDecision):
+        return decision
+    legacy = {
+        "save": (CloseDecision.SAVE_STOP_AND_CLOSE if running else CloseDecision.SAVE_AND_CLOSE),
+        "discard": (
+            CloseDecision.DISCARD_STOP_AND_CLOSE if running else CloseDecision.DISCARD_AND_CLOSE
+        ),
+        "cancel": CloseDecision.CANCEL,
+    }
+    if decision in legacy:
+        return legacy[decision]
+    return CloseDecision(decision)
+
+
+def _hidden_close_decision(*, modified: bool, running: bool) -> CloseDecision:
+    if modified and running:
+        return CloseDecision.DISCARD_STOP_AND_CLOSE
+    if modified:
+        return CloseDecision.DISCARD_AND_CLOSE
+    if running:
+        return CloseDecision.STOP_AND_CLOSE
+    return CloseDecision.CLOSE
+
+
+def _requires_save(decision: CloseDecision) -> bool:
+    return decision in {
+        CloseDecision.SAVE_AND_CLOSE,
+        CloseDecision.SAVE_STOP_AND_CLOSE,
+    }
+
+
+def _requires_stop(decision: CloseDecision) -> bool:
+    return decision in {
+        CloseDecision.STOP_AND_CLOSE,
+        CloseDecision.SAVE_STOP_AND_CLOSE,
+        CloseDecision.DISCARD_STOP_AND_CLOSE,
+    }

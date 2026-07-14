@@ -24,7 +24,8 @@ from flow_runner.domain.routing import (
     RouteTarget,
     RouteTargetKind,
 )
-from flow_runner.ui.localization import choice_label
+from flow_runner.ui.localization import choice_label, comparison_symbol
+from flow_runner.ui.widgets import FocusWheelComboBox
 
 
 class RouteEditor(QWidget):
@@ -37,15 +38,15 @@ class RouteEditor(QWidget):
         self._project: Project | None = None
         self._current_step_id: UUID | None = None
         self._routes: list[RouteRule] = []
-        self.outcome_combo = QComboBox()
+        self.outcome_combo = FocusWheelComboBox()
         for outcome in StepOutcome:
             self.outcome_combo.addItem(choice_label(outcome), outcome)
-        self.target_combo = QComboBox()
+        self.target_combo = FocusWheelComboBox()
         for kind in RouteTargetKind:
             self.target_combo.addItem(choice_label(kind), kind)
-        self.workflow_combo = QComboBox()
-        self.step_combo = QComboBox()
-        self.predicate_source_combo = QComboBox()
+        self.workflow_combo = FocusWheelComboBox()
+        self.step_combo = FocusWheelComboBox()
+        self.predicate_source_combo = FocusWheelComboBox()
         self.predicate_source_combo.addItem("无", "")
         for source in (
             "task_variable",
@@ -56,9 +57,9 @@ class RouteEditor(QWidget):
         ):
             self.predicate_source_combo.addItem(choice_label(source), source)
         self.predicate_key_edit = QLineEdit()
-        self.predicate_workflow_combo = QComboBox()
-        self.predicate_step_combo = QComboBox()
-        self.predicate_operator_combo = QComboBox()
+        self.predicate_workflow_combo = FocusWheelComboBox()
+        self.predicate_step_combo = FocusWheelComboBox()
+        self.predicate_operator_combo = FocusWheelComboBox()
         for operator in ComparisonOperator:
             self.predicate_operator_combo.addItem(choice_label(operator), operator)
         self.predicate_expected_edit = QLineEdit()
@@ -151,24 +152,41 @@ class RouteEditor(QWidget):
             if index >= 0:
                 self.predicate_step_combo.setCurrentIndex(index)
         self.set_step_context(self._current_step_id)
+        self._update_list_texts()
         self._loading = False
 
     def set_step_context(self, step_id: UUID | None) -> None:
+        previous_step_id = self._current_step_id
         self._current_step_id = step_id
         current_target = self.step_combo.currentData()
+        preserve_current_target = (
+            previous_step_id == step_id
+            and current_target is not None
+            and self.target_combo.currentData() == RouteTargetKind.NEXT_STEP
+            and 0 <= self.route_list.currentRow() < len(self._routes)
+        )
         self.step_combo.clear()
         if self._project is None or step_id is None:
             return
         for group in self._project.groups:
             for workflow in group.workflows:
-                if not any(step.id == step_id for step in workflow.steps):
+                current_index = next(
+                    (index for index, step in enumerate(workflow.steps) if step.id == step_id),
+                    None,
+                )
+                if current_index is None:
                     continue
                 for step in workflow.steps:
                     self.step_combo.addItem(step.name, str(step.id))
-                if current_target is not None:
-                    index = _find_uuid_data(self.step_combo, current_target)
-                    if index >= 0:
-                        self.step_combo.setCurrentIndex(index)
+                if preserve_current_target:
+                    self.step_combo.setCurrentIndex(
+                        _find_uuid_data(self.step_combo, current_target)
+                    )
+                else:
+                    next_index = current_index + 1
+                    self.step_combo.setCurrentIndex(
+                        next_index if next_index < len(workflow.steps) else -1
+                    )
                 return
 
     def set_routes(self, routes: list[RouteRule]) -> None:
@@ -197,16 +215,14 @@ class RouteEditor(QWidget):
             raise ValueError(self._current_error())
         self._routes[row] = route
         self._current_pending = False
-        item = self.route_list.item(row)
-        if item is not None:
-            item.setText(_route_summary(route))
+        self._update_list_texts()
 
     def commit_pending(self) -> None:
-        if not self._current_pending:
-            return
-        if not 0 <= self.route_list.currentRow() < len(self._routes):
-            raise ValueError("请先添加当前路由")
-        self.commit_current()
+        if self._current_pending:
+            if not 0 <= self.route_list.currentRow() < len(self._routes):
+                raise ValueError("请先添加当前路由")
+            self.commit_current()
+        self._validate_route_order()
 
     def _mark_changed(self) -> None:
         if not self._loading:
@@ -232,9 +248,7 @@ class RouteEditor(QWidget):
             return
         self._routes[row] = route
         self._current_pending = False
-        item = self.route_list.item(row)
-        if item is not None:
-            item.setText(_route_summary(route))
+        self._update_list_texts()
         self.changed.emit()
 
     def _current_route(self) -> RouteRule | None:
@@ -369,7 +383,7 @@ class RouteEditor(QWidget):
         self.workflow_combo.setVisible(
             target in {RouteTargetKind.JUMP_WORKFLOW, RouteTargetKind.CALL_WORKFLOW}
         )
-        self.step_combo.setVisible(target is RouteTargetKind.NEXT_STEP)
+        self.step_combo.setVisible(target == RouteTargetKind.NEXT_STEP)
         source = self.predicate_source_combo.currentData()
         self._populate_predicate_operators(source)
         self.predicate_key_edit.setVisible(
@@ -439,11 +453,75 @@ class RouteEditor(QWidget):
 
     def _refresh_list(self) -> None:
         self.route_list.clear()
-        self.route_list.addItems([_route_summary(route) for route in self._routes])
+        self.route_list.addItems(
+            [self._route_summary(route, index) for index, route in enumerate(self._routes)]
+        )
 
+    def _update_list_texts(self) -> None:
+        for index, route in enumerate(self._routes):
+            item = self.route_list.item(index)
+            if item is not None:
+                item.setText(self._route_summary(route, index))
 
-def _route_summary(route: RouteRule) -> str:
-    return f"{choice_label(route.outcome)} → {choice_label(route.target.kind)}"
+    def _route_summary(self, route: RouteRule, index: int) -> str:
+        outcome = choice_label(route.outcome)
+        if route.predicate is None and any(
+            previous.outcome == route.outcome and previous.predicate is not None
+            for previous in self._routes[:index]
+        ):
+            outcome += "（否则）"
+        predicate = (
+            f" 且 {self._predicate_summary(route.predicate)}" if route.predicate is not None else ""
+        )
+        return f"{outcome}{predicate} → {self._target_summary(route.target)}"
+
+    def _predicate_summary(self, predicate: RoutePredicate) -> str:
+        if predicate.source == "workflow_count":
+            subject = f"{self._workflow_name(predicate.key)}执行次数"
+        elif predicate.source == "step_count":
+            subject = f"{self._step_name(predicate.key)}执行次数"
+        else:
+            subject = predicate.key
+        expected = json.dumps(predicate.expected, ensure_ascii=False)
+        return f"{subject} {comparison_symbol(predicate.operator)} {expected}"
+
+    def _target_summary(self, target: RouteTarget) -> str:
+        if target.step_id is not None:
+            return self._step_name(target.step_id)
+        if target.workflow_id is not None:
+            return self._workflow_name(target.workflow_id)
+        return choice_label(target.kind)
+
+    def _workflow_name(self, workflow_id: object) -> str:
+        if self._project is not None:
+            normalized = str(workflow_id)
+            for group in self._project.groups:
+                for workflow in group.workflows:
+                    if str(workflow.id) == normalized:
+                        return f"{group.name} / {workflow.name}"
+        return str(workflow_id)
+
+    def _step_name(self, step_id: object) -> str:
+        if self._project is not None:
+            normalized = str(step_id)
+            for group in self._project.groups:
+                for workflow in group.workflows:
+                    for step in workflow.steps:
+                        if str(step.id) == normalized:
+                            return step.name
+        return str(step_id)
+
+    def _validate_route_order(self) -> None:
+        unconditional: dict[StepOutcome, int] = {}
+        for index, route in enumerate(self._routes):
+            if route.predicate is None:
+                unconditional.setdefault(route.outcome, index)
+                continue
+            shadowing_index = unconditional.get(route.outcome)
+            if shadowing_index is not None:
+                raise ValueError(
+                    f"第 {index + 1} 条路由被第 {shadowing_index + 1} 条同结果无条件路由遮挡"
+                )
 
 
 def _find_uuid_data(combo: QComboBox, value: object) -> int:

@@ -33,3 +33,20 @@ QListWidget::item:selected {
     color: #ffffff;
     background: #356ae6;
 }
+
+#propertyModeTabs::pane {
+    border: 1px solid #d9dde5;
+    background: #ffffff;
+}
+
+#propertyModeTabs QTabBar::tab {
+    background: #eef1f5;
+    border: 1px solid #d9dde5;
+    padding: 7px 12px;
+}
+
+#propertyModeTabs QTabBar::tab:selected {
+    color: #ffffff;
+    background: #356ae6;
+    border-color: #2d5bc5;
+}
