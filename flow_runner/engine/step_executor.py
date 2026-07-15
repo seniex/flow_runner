@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel
@@ -26,6 +26,22 @@ from flow_runner.engine.resources import ResourceCoordinator
 SleepCallable = Callable[[float], Awaitable[None]]
 ClockCallable = Callable[[], float]
 ActionObserver = Callable[[str, UUID, UUID, dict[str, object]], None]
+T = TypeVar("T")
+
+
+async def _await_cancellable(awaitable: Awaitable[T], cancellation: CancellationToken) -> T:
+    operation = asyncio.ensure_future(awaitable)
+    cancelled = asyncio.create_task(cancellation.wait_cancelled())
+    try:
+        done, _ = await asyncio.wait({operation, cancelled}, return_when=asyncio.FIRST_COMPLETED)
+        if cancelled in done:
+            cancellation.raise_if_cancelled()
+        return operation.result()
+    finally:
+        for task in (operation, cancelled):
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(operation, cancelled, return_exceptions=True)
 
 
 @dataclass(slots=True)
@@ -270,8 +286,12 @@ class StepExecutor:
                     self.runtime.cancellation.raise_if_cancelled()
                     result = cast(
                         ConditionResult,
-                        await provider.evaluate(config, self.runtime.context),
+                        await _await_cancellable(
+                            provider.evaluate(config, self.runtime.context),
+                            self.runtime.cancellation,
+                        ),
                     )
+                    await self.runtime.wait_until_active()
             except Cancelled:
                 raise
             except Exception as error:
@@ -426,16 +446,14 @@ class StepExecutor:
                 "action_index": action_index,
             }
             self._notify_action("action.wait.started", wait_details)
-        action_task = asyncio.create_task(provider.execute(config, self.runtime.context))
-        cancel_task = asyncio.create_task(self.runtime.cancellation.wait_cancelled())
         try:
-            done, _ = await asyncio.wait(
-                {action_task, cancel_task},
-                return_when=asyncio.FIRST_COMPLETED,
+            result = cast(
+                ActionResult,
+                await _await_cancellable(
+                    provider.execute(config, self.runtime.context),
+                    self.runtime.cancellation,
+                ),
             )
-            if cancel_task in done:
-                self.runtime.cancellation.raise_if_cancelled()
-            result = cast(ActionResult, action_task.result())
         except Cancelled:
             if wait_details is not None:
                 self._notify_action("action.wait.cancelled", wait_details)
@@ -444,11 +462,6 @@ class StepExecutor:
             if wait_details is not None:
                 self._notify_action("action.wait.finished", wait_details)
             return result
-        finally:
-            for task in (action_task, cancel_task):
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(action_task, cancel_task, return_exceptions=True)
 
     def _notify_action(self, kind: str, details: dict[str, object]) -> None:
         if (

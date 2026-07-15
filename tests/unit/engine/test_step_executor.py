@@ -880,6 +880,53 @@ async def test_cancelled_before_first_condition_evaluation_reports_zero_attempts
     assert condition.call_count == 0
 
 
+@pytest.mark.asyncio
+async def test_cancellation_interrupts_condition_evaluation():
+    entered = asyncio.Event()
+    cleaned_up = asyncio.Event()
+
+    class BlockingCondition:
+        name = "test.blocking-condition"
+        config_model = EmptyConfig
+
+        async def evaluate(self, config, context):
+            del config, context
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cleaned_up.set()
+
+        def required_resources(self, config):
+            del config
+            return frozenset()
+
+    registry = CapabilityRegistry()
+    registry.register_condition(BlockingCondition())
+    token = CancellationToken()
+    executor = StepExecutor(
+        StepRuntime(registry=registry, context=StepContext(), cancellation=token)
+    )
+    step = AutomationStep.model_validate(
+        {
+            "name": "blocking detection",
+            "condition": {
+                "id": "blocking",
+                "capability": BlockingCondition.name,
+                "config": {},
+            },
+        }
+    )
+    task = asyncio.create_task(executor.execute(step))
+    await entered.wait()
+    token.cancel()
+
+    result = await asyncio.wait_for(task, timeout=0.2)
+
+    assert result.outcome is StepOutcome.CANCELLED
+    assert cleaned_up.is_set()
+
+
 async def _wait_until(predicate):
     while not predicate():
         await asyncio.sleep(0)
