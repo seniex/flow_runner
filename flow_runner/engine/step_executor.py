@@ -6,7 +6,6 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from io import BytesIO
-from time import monotonic
 from typing import Any, cast
 from uuid import UUID, uuid4
 
@@ -35,7 +34,7 @@ class StepRuntime:
     context: StepContext
     cancellation: CancellationToken
     sleep: SleepCallable | None = None
-    clock: ClockCallable = monotonic
+    clock: ClockCallable | None = None
     resources: ResourceCoordinator | None = None
     activation_gate: Callable[[], Awaitable[None]] | None = None
 
@@ -54,6 +53,9 @@ class StepRuntime:
         if self.activation_gate is not None:
             await self.activation_gate()
         self.cancellation.raise_if_cancelled()
+
+    def now(self) -> float:
+        return (self.clock or self.cancellation.active_time)()
 
 
 class StepExecutor:
@@ -129,7 +131,7 @@ class StepExecutor:
         condition: ConditionNode,
     ) -> StepResult:
         policy = step.condition_policy
-        started_at = self.runtime.clock()
+        started_at = self.runtime.now()
         attempt = 0
         last_result: ConditionResult | None = None
 
@@ -218,7 +220,7 @@ class StepExecutor:
 
     def _timeout_reached(self, step: AutomationStep, started_at: float) -> bool:
         timeout = step.condition_policy.timeout_seconds
-        return timeout is not None and self.runtime.clock() - started_at >= timeout
+        return timeout is not None and self.runtime.now() - started_at >= timeout
 
     async def _evaluate_condition(
         self,

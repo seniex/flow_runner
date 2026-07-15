@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from time import monotonic
 from typing import cast
@@ -40,8 +39,6 @@ class Runner:
         self.state = RunnerState.IDLE
         self.task_id: UUID | None = None
         self.cancellation = CancellationToken()
-        self._pause_gate = asyncio.Event()
-        self._pause_gate.set()
 
     async def start(self, project: Project, entry_workflow_id: UUID) -> WorkflowTrace:
         if self.state in {RunnerState.RUNNING, RunnerState.PAUSED}:
@@ -49,8 +46,6 @@ class Runner:
 
         self.task_id = uuid4()
         self.cancellation = CancellationToken()
-        self._pause_gate = asyncio.Event()
-        self._pause_gate.set()
         self._set_state(RunnerState.RUNNING, workflow_id=entry_workflow_id)
         delegate = self._build_step_delegate()
         if delegate is None:
@@ -97,8 +92,6 @@ class Runner:
 
         self.task_id = uuid4()
         self.cancellation = CancellationToken()
-        self._pause_gate = asyncio.Event()
-        self._pause_gate.set()
         self._set_state(RunnerState.RUNNING)
         group = ParallelMonitorGroup(TaskContext())
         children = []
@@ -239,8 +232,6 @@ class Runner:
             raise FlowRunnerError("runner is already running")
         self.task_id = uuid4()
         self.cancellation = CancellationToken()
-        self._pause_gate = asyncio.Event()
-        self._pause_gate.set()
         self._set_state(RunnerState.RUNNING, workflow_id=workflow_id)
 
     @staticmethod
@@ -285,20 +276,19 @@ class Runner:
     def pause(self) -> None:
         if self.state is not RunnerState.RUNNING:
             return
-        self._pause_gate.clear()
+        self.cancellation.pause()
         self._set_state(RunnerState.PAUSED)
 
     def resume(self) -> None:
         if self.state is not RunnerState.PAUSED:
             return
-        self._pause_gate.set()
+        self.cancellation.resume()
         self._set_state(RunnerState.RUNNING)
 
     def stop(self) -> None:
         if self.state not in {RunnerState.RUNNING, RunnerState.PAUSED}:
             return
         self.cancellation.cancel()
-        self._pause_gate.set()
 
     def report_resource_event(self, event: ResourceEvent) -> None:
         if self.task_id is None:
@@ -365,20 +355,7 @@ class Runner:
         )
 
     async def wait_until_active(self) -> None:
-        self.cancellation.raise_if_cancelled()
-        if self._pause_gate.is_set():
-            return
-        gate_task = asyncio.create_task(self._pause_gate.wait())
-        cancel_task = asyncio.create_task(self.cancellation.wait_cancelled())
-        done, pending = await asyncio.wait(
-            {gate_task, cancel_task},
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        if cancel_task in done:
-            self.cancellation.raise_if_cancelled()
+        await self.cancellation.wait_until_active()
 
     def _set_state(
         self,

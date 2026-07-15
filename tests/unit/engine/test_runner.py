@@ -204,6 +204,23 @@ async def test_stop_cancels_a_step_wait_and_finishes_cancelled():
 
 
 @pytest.mark.asyncio
+async def test_stop_cancels_while_runner_is_paused():
+    project, workflow = project_with_steps()
+    runner = Runner(ImmediateExecutor())
+    executor = CancellableExecutor(runner)
+    runner.step_executor = executor
+    task = asyncio.create_task(runner.start(project, workflow.id))
+    await executor.entered.wait()
+
+    runner.pause()
+    runner.stop()
+    trace = await asyncio.wait_for(task, timeout=0.2)
+
+    assert trace.terminal_outcome is StepOutcome.CANCELLED
+    assert runner.state is RunnerState.CANCELLED
+
+
+@pytest.mark.asyncio
 async def test_json_lines_sink_writes_valid_event_objects(tmp_path):
     project, workflow = project_with_steps()
     path = tmp_path / "events.jsonl"
