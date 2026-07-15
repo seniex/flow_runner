@@ -75,6 +75,14 @@ After installation, the console entry point is also available:
 flow-runner
 ```
 
+Windows double-click launcher:
+
+- Double-click `start_flow_runner.pyw` in the project root.
+- This uses the global `pythonw.exe` associated with `.pyw` files, so install the project with the
+  global Python method first.
+- It loads `data/project.json` without opening a console window.
+- Startup failures show an error dialog and write details to `data/launcher_error.log`.
+
 All three commands load `data/project.json` by default. Backups, generated templates, recordings,
 and logs are written under `data/` in their corresponding subdirectories. An explicitly supplied
 `project_path` keeps those auxiliary directories beside that project file. Visual styling is loaded
