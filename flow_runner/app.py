@@ -58,7 +58,13 @@ from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 from flow_runner.infrastructure.processes.query import WindowsProcessQuery
 from flow_runner.infrastructure.windowing.dpi import enable_per_monitor_dpi_awareness
+from flow_runner.infrastructure.windowing.geometry import (
+    Win32WindowGeometry,
+    WindowOriginProvider,
+)
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController, Win32WindowQuery
+from flow_runner.ui.capture_preferences import CapturePreferences
+from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.region_capture import RegionCaptureService
@@ -140,7 +146,15 @@ def create_application(
     ocr_provider, ocr_client = _build_ocr_provider(project, paths.application_root)
     mouse = mouse_device or PyAutoGuiMouseDevice()
     keyboard = keyboard_device or PyAutoGuiKeyboardDevice()
-    registry = _build_registry(perception, asyncio.sleep, ocr_provider, mouse, keyboard)
+    window_geometry = Win32WindowGeometry()
+    registry = _build_registry(
+        perception,
+        asyncio.sleep,
+        ocr_provider,
+        mouse,
+        keyboard,
+        window_geometry,
+    )
     registry.validate_project_or_raise(project)
 
     def save_project(candidate: Project) -> None:
@@ -158,6 +172,7 @@ def create_application(
             ocr_provider,
             mouse,
             keyboard,
+            window_geometry,
         )
         return StepExecutor(
             StepRuntime(
@@ -185,6 +200,11 @@ def create_application(
         runner,
         persistent_event_sink=persistent_sink,
     )
+    capture_preferences = CapturePreferences()
+    selection_session = CaptureSelectionSession(
+        lambda target: _capture_frame_for_ui(capture, target),
+        capture_preferences,
+    )
     window = MainWindow(
         project,
         runner_bridge=runner_bridge,
@@ -192,7 +212,7 @@ def create_application(
         project_path=path,
         registry=registry,
         region_capture=RegionCaptureService(
-            lambda target: _capture_frame_for_ui(capture, target),
+            selection_session,
             template_directory=paths.template_directory,
         ),
         runtime_formatter=runtime_formatter,
@@ -240,6 +260,7 @@ def _build_registry(
     ocr_provider: OcrProvider,
     mouse_device: MouseDevice,
     keyboard_device: KeyboardDevice,
+    window_geometry: WindowOriginProvider,
 ) -> CapabilityRegistry:
     registry = CapabilityRegistry()
     for condition in (
@@ -254,7 +275,7 @@ def _build_registry(
         ProcessCondition(WindowsProcessQuery()),
     ):
         registry.register_condition(condition)
-    registry.register_action(MouseAction(mouse_device))
+    registry.register_action(MouseAction(mouse_device, window_origin=window_geometry.origin))
     registry.register_action(KeyboardAction(keyboard_device))
     registry.register_action(WaitAction(sleep))
     registry.register_action(SetVariableAction())

@@ -7,7 +7,8 @@ from typing import Literal, cast
 from PySide6.QtWidgets import QWidget
 
 from flow_runner.ui.capture_selection import CaptureSelectionSession
-from flow_runner.ui.native_capture_overlay import Region, SelectionMode
+from flow_runner.ui.native_capture_overlay import Region as Region
+from flow_runner.ui.native_capture_overlay import SelectionMode
 
 
 @dataclass(frozen=True, slots=True)

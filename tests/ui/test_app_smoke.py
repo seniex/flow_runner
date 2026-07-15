@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from PySide6.QtGui import QKeySequence
 
 from flow_runner.app import create_application
+from flow_runner.capabilities.actions.mouse import MouseAction
 from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import ConditionOutcome, StepOutcome
 from flow_runner.domain.errors import ConfigurationError
@@ -16,10 +17,13 @@ from flow_runner.domain.routing import (
     RouteTarget,
     RouteTargetKind,
 )
+from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCaptureMode
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
+from flow_runner.infrastructure.windowing.geometry import Win32WindowGeometry
+from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
 from flow_runner.ui.region_capture import RegionCaptureService
@@ -62,6 +66,14 @@ def test_application_wires_region_capture_service_to_detailed_condition_editor(q
     window.step_list.select_step(step.id)
 
     assert isinstance(window.region_capture, RegionCaptureService)
+    assert isinstance(window.region_capture._session, CaptureSelectionSession)
+    configured_mouse = composition.registry.action("input.mouse")
+    assert isinstance(configured_mouse, MouseAction)
+    assert isinstance(configured_mouse.window_origin.__self__, Win32WindowGeometry)
+    assert composition.runner.step_executor_factory is not None
+    executor = composition.runner.step_executor_factory(CancellationToken())
+    execution_mouse = executor.runtime.registry.action("input.mouse")
+    assert execution_mouse.window_origin.__self__ is configured_mouse.window_origin.__self__
     assert not window.property_panel.condition_editor.config_form.editor(
         "region"
     ).pick_button.isHidden()

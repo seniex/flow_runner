@@ -9,6 +9,7 @@ from flow_runner.capabilities.actions.script import PlaybackScriptAction, Playba
 from flow_runner.capabilities.actions.variables import SetVariableAction, SetVariableConfig
 from flow_runner.capabilities.actions.wait import WaitAction, WaitActionConfig
 from flow_runner.domain.enums import StepOutcome
+from flow_runner.domain.errors import ActionError
 from flow_runner.engine.context import StepContext
 from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
@@ -99,6 +100,103 @@ class FakeKeyboard:
 
     async def key_up(self, key):
         self.calls.append(("key_up", key))
+
+
+def test_old_mouse_config_defaults_to_absolute_desktop_coordinates():
+    config = MouseActionConfig.model_validate({"operation": "click", "position": [10, 20]})
+    assert config.target == "desktop"
+    assert config.coordinate_space == "screen"
+
+
+@pytest.mark.asyncio
+async def test_window_target_coordinate_uses_current_window_origin():
+    mouse = FakeMouse()
+    origins = []
+
+    async def window_origin(target):
+        origins.append(target)
+        return (300, 200)
+
+    action = MouseAction(mouse, window_origin=window_origin)
+    result = await action.execute(
+        MouseActionConfig(
+            operation="click",
+            target="window:Game",
+            coordinate_space="target",
+            position=(25, 40),
+        ),
+        None,
+    )
+
+    assert result.outcome is StepOutcome.SUCCESS
+    assert origins == ["window:Game"]
+    assert mouse.calls == [
+        (
+            "click",
+            {
+                "position": (325, 240),
+                "button": "left",
+                "clicks": 1,
+                "interval": 0.0,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_screen_coordinate_on_window_target_is_not_offset_again():
+    mouse = FakeMouse()
+    action = MouseAction(
+        mouse,
+        window_origin=lambda target: pytest.fail("absolute binding was offset"),
+    )
+    await action.execute(
+        MouseActionConfig(
+            operation="click",
+            target="window:Game",
+            coordinate_space="screen",
+            position=(325, 240),
+        ),
+        None,
+    )
+    assert mouse.calls[0][1]["position"] == (325, 240)
+
+
+@pytest.mark.asyncio
+async def test_target_coordinates_require_window_origin_provider():
+    action = MouseAction(FakeMouse())
+    with pytest.raises(ActionError, match="窗口相对坐标解析器未配置"):
+        await action.execute(
+            MouseActionConfig(
+                operation="click",
+                target="window:Game",
+                coordinate_space="target",
+                position=(25, 40),
+            ),
+            None,
+        )
+
+
+def test_window_mouse_action_locks_mouse_and_canonical_window_resource():
+    action = MouseAction(FakeMouse())
+    config = MouseActionConfig(
+        operation="click",
+        target="window:background:Game",
+        position=(1, 2),
+    )
+    assert action.required_resources(config) == frozenset({"mouse", "window:Game"})
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"operation": "click", "position": [1, 2], "coordinate_space": "target"},
+        {"operation": "click", "position": [1, 2], "target": "process:game"},
+    ],
+)
+def test_mouse_config_rejects_invalid_target_coordinate_combinations(config):
+    with pytest.raises(ValueError):
+        MouseActionConfig.model_validate(config)
 
 
 @pytest.mark.asyncio
