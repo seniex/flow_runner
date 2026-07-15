@@ -21,7 +21,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flow_runner.capabilities.actions.process import LaunchProcessConfig
 from flow_runner.capabilities.actions.window import WindowActionConfig
+from flow_runner.ui.launch_file_selection import (
+    default_comspec,
+    default_python_executable,
+    infer_automatic_prefix,
+    launch_file_selection,
+    replace_automatic_prefix,
+)
 from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import choice_label, field_label
 from flow_runner.ui.region_capture import Region, TemplateCapture
@@ -118,10 +126,18 @@ class TupleFieldEditor(QWidget):
 
 class PathFieldEditor(QWidget):
     changed = Signal()
+    fileSelected = Signal(str)
 
-    def __init__(self, default: Any = None, *, allow_capture: bool = False) -> None:
+    def __init__(
+        self,
+        default: Any = None,
+        *,
+        allow_capture: bool = False,
+        file_filter: str = "所有文件 (*)",
+    ) -> None:
         super().__init__()
         self.setProperty("fieldKind", "path")
+        self._file_filter = file_filter
         self.line_edit = QLineEdit()
         self.browse_button = QPushButton("选择…")
         self.browse_button.setProperty("role", "browse")
@@ -151,9 +167,15 @@ class PathFieldEditor(QWidget):
         self.line_edit.clear()
 
     def _browse(self) -> None:
-        path, _filter = QFileDialog.getOpenFileName(self, "选择文件", self.text())
+        path, _filter = QFileDialog.getOpenFileName(
+            self,
+            "选择文件",
+            self.text(),
+            self._file_filter,
+        )
         if path:
             self.setText(path)
+            self.fileSelected.emit(path)
 
 
 class ModelForm(QWidget):
@@ -185,6 +207,9 @@ class ModelForm(QWidget):
         )
         self.editors: dict[str, QWidget] = {}
         self.annotations: dict[str, Any] = {}
+        self._launch_action_form = model_type is LaunchProcessConfig
+        self._launch_automatic_arguments: tuple[str, ...] = ()
+        self._launch_automatic_working_directory: Path | None = None
         self._window_action_form = model_type is WindowActionConfig
         self.form_layout = CompactFlowLayout(self, wrap=not self._window_action_form)
         for name, field in model_type.model_fields.items():
@@ -197,6 +222,11 @@ class ModelForm(QWidget):
                 optional,
                 allow_pick=pick_region is not None,
                 allow_capture=capture_template is not None,
+                file_filter=(
+                    "程序和脚本 (*.exe *.com *.py *.pyw *.bat);;所有文件 (*)"
+                    if self._launch_action_form and name == "path"
+                    else "所有文件 (*)"
+                ),
             )
             editor.setObjectName(f"configField_{name}")
             self.editors[name] = editor
@@ -219,6 +249,9 @@ class ModelForm(QWidget):
         template_editor = self.editors.get("template_path")
         if isinstance(template_editor, PathFieldEditor):
             template_editor.capture_button.clicked.connect(self._capture_template)
+        launch_path_editor = self.editors.get("path")
+        if self._launch_action_form and isinstance(launch_path_editor, PathFieldEditor):
+            launch_path_editor.fileSelected.connect(self._launch_file_selected)
         self.set_advanced_visible(show_advanced)
 
     def _connect_editor(self, editor: QWidget) -> None:
@@ -284,6 +317,73 @@ class ModelForm(QWidget):
             value = editor.currentData()
             return str(value) if value else "desktop"
         return "desktop"
+
+    def _launch_file_selected(self, selected: str) -> None:
+        selection = launch_file_selection(
+            Path(selected),
+            python_executable=default_python_executable(),
+            comspec=default_comspec(),
+        )
+        path_editor = self.editors.get("path")
+        arguments_editor = self.editors.get("arguments")
+        working_directory_editor = self.editors.get("working_directory")
+        if not (
+            isinstance(path_editor, PathFieldEditor)
+            and isinstance(arguments_editor, QLineEdit)
+            and isinstance(working_directory_editor, PathFieldEditor)
+        ):
+            return
+        current_arguments = json.loads(arguments_editor.text() or "[]")
+        arguments = replace_automatic_prefix(
+            current_arguments,
+            self._launch_automatic_arguments,
+            selection.arguments,
+        )
+        current_working_directory = working_directory_editor.text().strip()
+        previous_auto_directory = (
+            str(self._launch_automatic_working_directory)
+            if self._launch_automatic_working_directory is not None
+            else ""
+        )
+        editors = (path_editor, arguments_editor, working_directory_editor)
+        previous_signal_states = [editor.blockSignals(True) for editor in editors]
+        try:
+            path_editor.setText(str(selection.path))
+            arguments_editor.setText(json.dumps(arguments, ensure_ascii=False))
+            if (
+                not current_working_directory
+                or current_working_directory == previous_auto_directory
+            ):
+                working_directory_editor.setText(str(selection.working_directory))
+        finally:
+            for editor, previous_state in zip(editors, previous_signal_states, strict=True):
+                editor.blockSignals(previous_state)
+        self._launch_automatic_arguments = selection.arguments
+        self._launch_automatic_working_directory = selection.working_directory
+        self.changed.emit()
+
+    def _infer_launch_automatic_values(self) -> None:
+        if not self._launch_action_form:
+            return
+        path_editor = self.editors.get("path")
+        arguments_editor = self.editors.get("arguments")
+        working_directory_editor = self.editors.get("working_directory")
+        if not (
+            isinstance(path_editor, PathFieldEditor)
+            and isinstance(arguments_editor, QLineEdit)
+            and isinstance(working_directory_editor, PathFieldEditor)
+        ):
+            return
+        arguments = json.loads(arguments_editor.text() or "[]")
+        prefix = infer_automatic_prefix(Path(path_editor.text()), arguments)
+        self._launch_automatic_arguments = prefix
+        self._launch_automatic_working_directory = None
+        if not prefix:
+            return
+        automatic_directory = Path(prefix[-1]).resolve().parent
+        current_directory = working_directory_editor.text().strip()
+        if current_directory and Path(current_directory).resolve() == automatic_directory:
+            self._launch_automatic_working_directory = automatic_directory
 
     def editor(self, name: str) -> QWidget:
         return self.editors[name]
@@ -363,6 +463,7 @@ class ModelForm(QWidget):
                     editor.setText(str(value))
                 else:
                     editor.setText(json.dumps(value, ensure_ascii=False))
+        self._infer_launch_automatic_values()
 
 
 def _create_editor(
@@ -373,6 +474,7 @@ def _create_editor(
     *,
     allow_pick: bool,
     allow_capture: bool,
+    file_filter: str,
 ) -> QWidget:
     if get_origin(annotation) is tuple:
         return TupleFieldEditor(
@@ -385,6 +487,7 @@ def _create_editor(
         return PathFieldEditor(
             default,
             allow_capture=allow_capture and name == "template_path",
+            file_filter=file_filter,
         )
     if optional:
         line = QLineEdit()

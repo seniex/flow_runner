@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 from flow_runner.domain.actions import ActionSpec
@@ -200,9 +201,11 @@ def action_summary(action: ActionSpec) -> str:
     if action.capability == "system.wait":
         return f"等待：{config.get('seconds', 0)} 秒"
     if action.capability == "recording.playback":
-        return f"播放录制：{config.get('path', '')}"
+        name = Path(str(config.get("path", ""))).name
+        return f"播放录制：{name}" if name else capability_label(action.capability)
     if action.capability == "system.launch":
-        return f"启动程序：{config.get('path', '')}"
+        name = _launch_target_name(config)
+        return f"启动程序：{name}" if name else capability_label(action.capability)
     if action.capability == "system.window_action":
         return (
             f"窗口：{choice_label(config.get('operation', ''))} {config.get('title', '')}".strip()
@@ -210,6 +213,23 @@ def action_summary(action: ActionSpec) -> str:
     if action.capability == "variables.set":
         return f"设置变量：{config.get('name', '')}"
     return capability_label(action.capability)
+
+
+def _launch_target_name(config: dict[str, Any]) -> str:
+    raw_path = str(config.get("path", "")).strip()
+    arguments = config.get("arguments", [])
+    values = [str(value) for value in arguments] if isinstance(arguments, list) else []
+    executable = Path(raw_path)
+    executable_name = executable.name.casefold()
+    if executable_name in {"python.exe", "pythonw.exe", "python", "pythonw"} and values:
+        return Path(values[0]).name
+    if (
+        executable_name in {"cmd.exe", "cmd"}
+        and len(values) >= 2
+        and values[0].casefold() == "/c"
+    ):
+        return Path(values[1]).name
+    return executable.name
 
 
 def _format_position(value: Any) -> str:

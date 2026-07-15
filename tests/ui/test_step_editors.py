@@ -1,9 +1,12 @@
+import sys
 from pathlib import Path
 
 import pytest
+from PySide6.QtTest import QSignalSpy
 
 from flow_runner.capabilities.actions.keyboard import KeyboardActionConfig
 from flow_runner.capabilities.actions.mouse import MouseActionConfig
+from flow_runner.capabilities.actions.process import LaunchProcessConfig
 from flow_runner.capabilities.actions.wait import WaitActionConfig
 from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.capabilities.conditions.ocr import OcrConditionConfig
@@ -26,6 +29,7 @@ from flow_runner.ui.editors.condition_editor import ConditionEditor, switch_cond
 from flow_runner.ui.editors.model_form import ModelForm, PathFieldEditor, TupleFieldEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
+from flow_runner.ui.localization import action_summary
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.region_capture import TemplateCapture
 
@@ -288,6 +292,99 @@ def test_model_form_uses_focused_region_coordinate_and_path_editors(qtbot):
     assert ocr_form.values()["region"] == (1, 2, 30, 40)
     assert image_form.values()["template_path"] == "button.png"
     assert mouse_form.values()["position"] == "$result.primary.position"
+
+
+def test_path_field_editor_emits_selected_file_and_uses_configured_filter(qtbot, monkeypatch):
+    selected = Path("C:/tools/task.py")
+    calls = []
+    monkeypatch.setattr(
+        "flow_runner.ui.editors.model_form.QFileDialog.getOpenFileName",
+        lambda parent, title, current, file_filter: (
+            calls.append((parent, title, current, file_filter)) or (str(selected), file_filter)
+        ),
+    )
+    editor = PathFieldEditor(file_filter="程序和脚本 (*.exe *.py)")
+    qtbot.addWidget(editor)
+    selected_spy = QSignalSpy(editor.fileSelected)
+
+    editor.browse_button.click()
+
+    assert editor.text() == str(selected)
+    assert selected_spy.count() == 1
+    assert selected_spy.at(0) == [str(selected)]
+    assert calls[0][1:] == ("选择文件", "", "程序和脚本 (*.exe *.py)")
+
+
+def test_launch_form_replaces_inferred_script_prefix_and_automatic_directory(qtbot, tmp_path):
+    old_script = tmp_path / "old" / "old.py"
+    new_script = tmp_path / "new" / "任务.py"
+    old_script.parent.mkdir()
+    new_script.parent.mkdir()
+    form = ModelForm(LaunchProcessConfig)
+    qtbot.addWidget(form)
+    form.set_values(
+        {
+            "path": Path(sys.executable),
+            "arguments": [str(old_script), "--profile", "daily"],
+            "working_directory": old_script.parent,
+        }
+    )
+    changed_spy = QSignalSpy(form.changed)
+
+    path_editor = form.editor("path")
+    assert isinstance(path_editor, PathFieldEditor)
+    path_editor.fileSelected.emit(str(new_script))
+
+    values = form.values()
+    assert values["path"] == str(Path(sys.executable).resolve())
+    assert values["arguments"] == [str(new_script.resolve()), "--profile", "daily"]
+    assert values["working_directory"] == str(new_script.parent.resolve())
+    assert changed_spy.count() == 1
+
+
+def test_launch_form_preserves_custom_working_directory(qtbot, tmp_path):
+    old_script = tmp_path / "old.py"
+    new_script = tmp_path / "new.py"
+    custom_directory = tmp_path / "custom"
+    form = ModelForm(LaunchProcessConfig)
+    qtbot.addWidget(form)
+    form.set_values(
+        {
+            "path": Path(sys.executable),
+            "arguments": [str(old_script), "--safe"],
+            "working_directory": custom_directory,
+        }
+    )
+
+    path_editor = form.editor("path")
+    assert isinstance(path_editor, PathFieldEditor)
+    path_editor.fileSelected.emit(str(new_script))
+
+    assert form.values()["working_directory"] == str(custom_directory)
+
+
+def test_action_summaries_show_target_file_names():
+    python_action = ActionSpec(
+        capability="system.launch",
+        config={"path": Path(sys.executable), "arguments": ["C:/jobs/任务.py"]},
+    )
+    batch_action = ActionSpec(
+        capability="system.launch",
+        config={"path": "C:/Windows/System32/cmd.exe", "arguments": ["/c", "C:/jobs/启动.bat"]},
+    )
+    executable_action = ActionSpec(
+        capability="system.launch",
+        config={"path": "C:/tools/程序.exe", "arguments": []},
+    )
+    playback_action = ActionSpec(
+        capability="recording.playback",
+        config={"path": "C:/recordings/latest.json"},
+    )
+
+    assert action_summary(python_action) == "启动程序：任务.py"
+    assert action_summary(batch_action) == "启动程序：启动.bat"
+    assert action_summary(executable_action) == "启动程序：程序.exe"
+    assert action_summary(playback_action) == "播放录制：latest.json"
 
 
 def test_property_panel_routes_region_and_template_capture_to_condition_form(qtbot, tmp_path):
