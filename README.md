@@ -14,7 +14,7 @@ Current version: `0.2.0`.
   project documents are archived separately.
 - Normal/debug logging, the wait-action countdown, and preserved condition-attempt counts on
   cancellation passed the six-item real-GUI acceptance.
-- Latest verification: 369 tests passed; Ruff, formatting, mypy, compileall, and pip check
+- Latest verification: 412 tests passed; Ruff, formatting, mypy, compileall, and pip check
   succeeded.
 - Multi-monitor and Tesseract real-environment acceptance remain `DEFERRED`; see
   [`REAL_ENVIRONMENT_CHECKLIST.md`](REAL_ENVIRONMENT_CHECKLIST.md).
@@ -180,7 +180,12 @@ sequences, and advanced policy hooks retain dedicated editing areas.
 
 Visual condition forms can capture a region directly from a frozen desktop/window frame. Region
 fields expose `框选区域`; image-template forms additionally expose `框选并截图`, which fills the
-selected region and writes a PNG below `data/templates/` for recognition.
+selected region and writes a PNG below `data/templates/` for recognition. Selection uses a
+native-resolution overlay over the complete captured desktop or window: releasing the mouse
+immediately completes a region, a single click completes a point, and Esc cancels. The local
+`框选时隐藏程序界面` preference can hide Flow Runner before capture and is restored after success,
+cancellation, or failure. This preference is remembered outside the project JSON and does not mark
+the project as modified.
 
 The column controls support group/workflow/step editing, undo, validated save, settings, and explicit
 parallel blocks. Parallel execution is never inferred from routes: create a parallel block and select
@@ -229,7 +234,12 @@ Recordings are stored by default at `data/recordings/latest.json`. The playback 
 recording with configurable speed and maximum gap.
 
 Mouse actions support fixed or result-bound coordinates, an additional coordinate offset, click,
-move, scroll, button-down, button-up, and drag operations. Keyboard actions support press, hotkey,
+move, scroll, button-down, button-up, and drag operations. The guided mouse form exposes
+`点选坐标` and an independent operation target. A fixed desktop point is stored as an absolute
+screen coordinate; a fixed window point is stored relative to that target and is resolved from the
+window's current origin each time the action runs. Dynamic `$result...position` bindings remain
+absolute screen coordinates and never receive a second window-origin offset. Existing mouse JSON
+without a target retains its absolute-desktop behavior. Keyboard actions support press, hotkey,
 text entry, key-down, and key-up. Text entry has three per-action modes: `keys` sends physical key
 events and remains the default for game compatibility, `unicode` sends Windows Unicode input for
 layout-independent Chinese or other text, and `clipboard` pastes text before restoring the previous

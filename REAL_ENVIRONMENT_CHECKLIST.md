@@ -7,7 +7,7 @@
 - `BLOCKED`：计划在当前执行，但因缺少前置条件无法继续。
 - `DEFERRED`：用户有意延期，不是当前完成阻塞项。
 
-自动化基线（2026-07-16）：`369 passed`，Ruff、格式检查、严格 mypy（120 个源文件）、`compileall`、`pip check` 和 `git diff --check` 均通过。此结果不替代下列真实桌面/游戏环境验收。
+自动化基线（2026-07-16）：`412 passed`，Ruff、格式检查、严格 mypy（127 个源文件）、`compileall`、`pip check` 和 `git diff --check` 均通过。此结果不替代下列真实桌面/游戏环境验收。
 
 当前实机环境记录（2026-07-14 复核）：Windows 10 专业版 `10.0.19045`，单显示器 `27E1Q`，虚拟桌面原点 `(0, 0)`、尺寸 `2560×1440`，Qt `devicePixelRatio=1.0`。独立进程调用 DPI 初始化返回 `per_monitor_v2`。PaddleOCR-json 可执行文件存在；Tesseract 命令与虚拟环境中的 `pytesseract` 均不存在。
 
@@ -48,5 +48,17 @@
 - [ ] 分别选择一个 `.py`、`.pyw`、`.bat` 和 `.exe` 启动目标；确认自动生成的路径、参数、工作目录正确并实际运行。
 - [ ] 将窗口调整为非默认宽高后关闭并重新启动；确认宽度和高度都被恢复。
 - [ ] 确认普通绑定选择器用中文显示检测条件名称，并且保存后的 JSON 绑定表达式保持不变。
+
+## 原生区域与坐标选择验收
+
+以下项目针对本次新增的原生覆盖层，不能由上方旧版 DPI/鼠标验收记录替代：
+
+- [ ] At 100%, 125%, and 150% DPI, select a desktop region and point; verify native image detail and exact coordinates.
+- [ ] On a negative-origin secondary monitor, verify complete virtual-desktop coverage and cross-screen selection.
+- [ ] Select a full window region and point; verify mouse release/click completes immediately and Esc cancels.
+- [ ] Toggle hide-application off and on, restart, and verify both behavior and local preference persistence.
+- [ ] Pick a window-relative point, move the window, execute the action, and verify the same in-window location is clicked.
+- [ ] Execute a `$result...position` mouse action and verify no window-origin offset is added twice.
+- [ ] Capture a template and verify the PNG dimensions and pixels exactly match the selected native region.
 
 全部当前必需项为 `PASS` 后，才能宣告当前真实环境验收完成；`DEFERRED` 项需在恢复条件具备后另行验收，不阻塞 Plan B。

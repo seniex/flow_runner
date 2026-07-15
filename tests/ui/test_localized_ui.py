@@ -91,6 +91,12 @@ def test_every_ui_choice_has_a_localized_label():
     assert missing == set()
 
 
+def test_mouse_coordinate_fields_and_choices_are_localized():
+    assert field_label("coordinate_space") == "坐标空间"
+    assert choice_label("screen") == "绝对屏幕坐标"
+    assert choice_label("target") == "目标相对坐标"
+
+
 def test_normal_binding_controls_do_not_expose_internal_result_syntax(qtbot):
     capabilities = CapabilityRegistry()
     capabilities.register_condition(Capability("vision.ocr", OcrConditionConfig))

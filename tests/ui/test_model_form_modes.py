@@ -17,7 +17,7 @@ def test_common_field_metadata_covers_initial_capabilities():
 
     assert metadata.COMMON_FIELDS == {
         "vision.ocr": frozenset({"target", "region", "keywords"}),
-        "input.mouse": frozenset({"operation", "position", "button", "clicks"}),
+        "input.mouse": frozenset({"target", "operation", "position", "button", "clicks"}),
         "input.keyboard": frozenset({"operation", "key", "keys", "text", "count"}),
         "system.wait": frozenset({"seconds"}),
         "system.launch": frozenset({"path", "arguments", "run_as_admin"}),
@@ -49,7 +49,7 @@ def test_editor_preferences_persist_only_advanced_visibility(tmp_path):
         (OcrConditionConfig, frozenset({"target", "region", "keywords"}), "keywords", "language"),
         (
             MouseActionConfig,
-            frozenset({"operation", "position", "button", "clicks"}),
+            frozenset({"target", "operation", "position", "button", "clicks"}),
             "position",
             "settle_delay",
         ),

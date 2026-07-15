@@ -1,6 +1,7 @@
 import pytest
 from pydantic import BaseModel, Field
 
+from flow_runner.capabilities.actions.mouse import MouseActionConfig
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.conditions import ConditionGroup, LeafCondition
@@ -40,6 +41,11 @@ class RequiredCondition(FakeCondition):
 class RequiredAction:
     name = "required.action"
     config_model = RequiredConfig
+
+
+class MouseActionCapability:
+    name = "input.mouse"
+    config_model = MouseActionConfig
 
 
 def test_registry_rejects_duplicate_names():
@@ -135,3 +141,40 @@ def test_registry_accepts_runtime_bindings_while_validating_other_fields():
     )
 
     assert registry.validate_project(valid) == []
+
+
+def test_legacy_mouse_action_without_target_round_trips_as_absolute_desktop():
+    registry = CapabilityRegistry()
+    registry.register_action(MouseActionCapability())
+    project = Project.model_validate(
+        {
+            "name": "legacy",
+            "groups": [
+                {
+                    "name": "g",
+                    "workflows": [
+                        {
+                            "name": "w",
+                            "steps": [
+                                {
+                                    "name": "click",
+                                    "actions": [
+                                        {
+                                            "capability": "input.mouse",
+                                            "config": {
+                                                "operation": "click",
+                                                "position": [10, 20],
+                                            },
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    registry.validate_project_or_raise(project)
+    action = project.groups[0].workflows[0].steps[0].actions[0]
+    assert action.config == {"operation": "click", "position": [10, 20]}

@@ -13,9 +13,7 @@ def temporarily_hidden_application(enabled: bool) -> Iterator[None]:
     if not isinstance(app, QApplication):
         yield
         return
-    visible: list[QWidget] = [
-        widget for widget in app.topLevelWidgets() if widget.isVisible()
-    ]
+    visible: list[QWidget] = [widget for widget in app.topLevelWidgets() if widget.isVisible()]
     active = app.activeWindow()
     for widget in visible:
         widget.hide()
