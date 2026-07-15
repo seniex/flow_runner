@@ -82,15 +82,16 @@ class PropertyPanel(QScrollArea):
         self.show_advanced_check = QCheckBox("显示高级参数")
         self.show_advanced_check.setObjectName("showAdvancedFields")
         self.show_advanced_check.setChecked(show_advanced)
+        pick_point_callback = (
+            (lambda target: point_capture.pick_point(target, self))
+            if point_capture is not None
+            else None
+        )
         self.action_editor = (
             ActionEditor(
                 registry,
                 show_advanced=show_advanced,
-                pick_point=(
-                    (lambda target: point_capture.pick_point(target, self))
-                    if point_capture is not None
-                    else None
-                ),
+                pick_point=pick_point_callback,
             )
             if registry is not None
             else None
@@ -105,7 +106,11 @@ class PropertyPanel(QScrollArea):
             else None
         )
         self.route_editor = RouteEditor(project) if registry is not None else None
-        self.policy_editor = PolicyEditor(registry, show_advanced=show_advanced)
+        self.policy_editor = PolicyEditor(
+            registry,
+            show_advanced=show_advanced,
+            pick_point=pick_point_callback,
+        )
         self.apply_button = QPushButton("应用")
         self.apply_button.setObjectName("applyStepButton")
         self.setWidgetResizable(True)

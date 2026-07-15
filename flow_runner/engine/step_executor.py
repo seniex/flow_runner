@@ -10,6 +10,8 @@ from time import monotonic
 from typing import Any, cast
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
+
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.conditions import ConditionGroup, ConditionNode, LeafCondition
@@ -336,7 +338,15 @@ class StepExecutor:
     ) -> ActionResult:
         try:
             provider = self.runtime.registry.action(action.capability)
-            resolved_config = _resolve_config(action.config, self.runtime.context)
+            resolved_config = cast(
+                dict[str, Any],
+                _resolve_config(action.config, self.runtime.context),
+            )
+            resolved_config = _prepare_resolved_action_config(
+                provider.config_model,
+                action.config,
+                resolved_config,
+            )
             config = provider.config_model.model_validate(resolved_config)
             required = provider.required_resources(config)
             if self.runtime.resources is None or not required:
@@ -372,7 +382,15 @@ class StepExecutor:
                         outcome=StepOutcome.FAILURE,
                         error="screen result no longer matches after stale revalidation",
                     )
-                resolved_config = _resolve_config(action.config, self.runtime.context)
+                resolved_config = cast(
+                    dict[str, Any],
+                    _resolve_config(action.config, self.runtime.context),
+                )
+                resolved_config = _prepare_resolved_action_config(
+                    provider.config_model,
+                    action.config,
+                    resolved_config,
+                )
                 config = provider.config_model.model_validate(resolved_config)
                 try:
                     return await self._execute_provider_action(
@@ -467,6 +485,17 @@ def _resolve_config(value: Any, context: StepContext) -> Any:
     if isinstance(value, tuple):
         return tuple(_resolve_config(item, context) for item in value)
     return value
+
+
+def _prepare_resolved_action_config(
+    model_type: type[BaseModel],
+    raw_config: dict[str, Any],
+    resolved_config: dict[str, Any],
+) -> dict[str, Any]:
+    prepare = getattr(model_type, "prepare_resolved_config", None)
+    if not callable(prepare):
+        return resolved_config
+    return cast(dict[str, Any], prepare(raw_config, resolved_config))
 
 
 def _uses_result_binding(value: Any) -> bool:

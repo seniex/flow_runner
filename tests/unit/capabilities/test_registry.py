@@ -178,3 +178,42 @@ def test_legacy_mouse_action_without_target_round_trips_as_absolute_desktop():
     registry.validate_project_or_raise(project)
     action = project.groups[0].workflows[0].steps[0].actions[0]
     assert action.config == {"operation": "click", "position": [10, 20]}
+
+
+def test_registry_rejects_target_relative_dynamic_mouse_position():
+    registry = CapabilityRegistry()
+    registry.register_action(MouseActionCapability())
+    project = Project.model_validate(
+        {
+            "name": "invalid binding",
+            "groups": [
+                {
+                    "name": "g",
+                    "workflows": [
+                        {
+                            "name": "w",
+                            "steps": [
+                                {
+                                    "name": "click",
+                                    "actions": [
+                                        {
+                                            "capability": "input.mouse",
+                                            "config": {
+                                                "operation": "click",
+                                                "position": "$result.primary.position",
+                                                "target": "window:Game",
+                                                "coordinate_space": "target",
+                                            },
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(ConfigurationError, match="dynamic mouse positions require screen"):
+        registry.validate_project_or_raise(project)

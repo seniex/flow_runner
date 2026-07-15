@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QFormLayout, QLabel, QVBoxLayout, QWidget
 
@@ -6,6 +8,7 @@ from flow_runner.domain.enums import ConditionMode
 from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.layouts import CompactFlowLayout
+from flow_runner.ui.region_capture import PointCapture
 from flow_runner.ui.widgets import (
     FocusWheelComboBox,
     FocusWheelDoubleSpinBox,
@@ -21,6 +24,7 @@ class PolicyEditor(QWidget):
         registry: CapabilityRegistry | None = None,
         *,
         show_advanced: bool = False,
+        pick_point: Callable[[str], PointCapture | None] | None = None,
     ) -> None:
         super().__init__()
         self._loading = False
@@ -49,10 +53,22 @@ class PolicyEditor(QWidget):
         self._condition_policy = ConditionPolicy()
         self._action_policy = ActionPolicy()
         self.before_actions_editor = (
-            ActionEditor(registry, show_advanced=show_advanced) if registry is not None else None
+            ActionEditor(
+                registry,
+                show_advanced=show_advanced,
+                pick_point=pick_point,
+            )
+            if registry is not None
+            else None
         )
         self.after_no_match_actions_editor = (
-            ActionEditor(registry, show_advanced=show_advanced) if registry is not None else None
+            ActionEditor(
+                registry,
+                show_advanced=show_advanced,
+                pick_point=pick_point,
+            )
+            if registry is not None
+            else None
         )
         layout = QVBoxLayout(self)
         layout.addWidget(self.summary_label)

@@ -144,6 +144,9 @@ def _validate_action_config(model_type: type[BaseModel], config: dict[str, Any])
     if not _contains_binding(config):
         model_type.model_validate(config)
         return
+    binding_validator = getattr(model_type, "validate_binding_config", None)
+    if callable(binding_validator):
+        binding_validator(config)
     for name, field in model_type.model_fields.items():
         if field.is_required() and name not in config:
             raise ValueError(f"required field '{name}' is missing")

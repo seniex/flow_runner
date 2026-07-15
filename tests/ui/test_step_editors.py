@@ -690,6 +690,55 @@ def test_action_editor_serializes_picked_window_point(qtbot):
     }
 
 
+def test_policy_action_editors_support_mouse_point_picker(qtbot):
+    capabilities = CapabilityRegistry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    calls = []
+
+    def pick_point(target):
+        calls.append(target)
+        return PointCapture((15, 30), "target")
+
+    editor = PolicyEditor(
+        capabilities,
+        show_advanced=True,
+        pick_point=pick_point,
+    )
+    qtbot.addWidget(editor)
+
+    for actions in (
+        editor.before_actions_editor,
+        editor.after_no_match_actions_editor,
+    ):
+        actions.config_form.editor("target").setText("window:Game")
+        actions.config_form.editor("position").point_button.click()
+        assert actions.config_form.values()["position"] == (15, 30)
+        assert actions.config_form.values()["coordinate_space"] == "target"
+
+    assert calls == ["window:Game", "window:Game"]
+
+
+def test_guided_add_mouse_form_uses_point_capture_service(qtbot):
+    capabilities = CapabilityRegistry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    calls = []
+
+    class PointService:
+        def pick_point(self, target, parent):
+            calls.append((target, parent))
+            return PointCapture((25, 40), "target")
+
+    dialog = GuidedAddDialog(capabilities, point_capture=PointService())
+    qtbot.addWidget(dialog)
+    dialog.category_combo.setCurrentText("执行")
+    dialog.config_form.editor("target").setText("window:Game")
+    dialog.config_form.editor("position").point_button.click()
+
+    assert calls == [("window:Game", dialog)]
+    assert dialog.config_form.values()["position"] == (25, 40)
+    assert dialog.config_form.values()["coordinate_space"] == "target"
+
+
 def test_action_editor_loads_and_updates_an_existing_action(qtbot):
     editor = ActionEditor(registry())
     qtbot.addWidget(editor)

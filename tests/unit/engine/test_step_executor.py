@@ -8,6 +8,7 @@ import pytest
 from PIL import Image
 from pydantic import BaseModel
 
+from flow_runner.capabilities.actions.mouse import MouseAction
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import ConditionMode, ConditionOutcome, StepOutcome
 from flow_runner.domain.project import AutomationStep
@@ -427,6 +428,55 @@ async def test_stale_visual_result_is_revalidated_before_bound_mouse_action():
     assert result.condition_result.position == (20, 30)
     assert condition.calls == 2
     assert action.positions == [(20, 30)]
+
+
+@pytest.mark.asyncio
+async def test_dynamic_mouse_position_is_always_executed_in_screen_space():
+    condition = QueuedCondition(
+        [
+            ConditionResult(
+                node_id="provider",
+                outcome=ConditionOutcome.MATCH,
+                position=(325, 240),
+            )
+        ]
+    )
+
+    class MouseDevice:
+        def __init__(self):
+            self.positions = []
+
+        async def click(self, **kwargs):
+            self.positions.append(kwargs["position"])
+
+    async def unexpected_window_origin(target):
+        pytest.fail(f"dynamic position was offset for {target}")
+
+    device = MouseDevice()
+    action = MouseAction(device, window_origin=unexpected_window_origin)
+    runtime, _delays = build_runtime(condition, action)
+    step = AutomationStep.model_validate(
+        {
+            "name": "absolute result click",
+            "condition": {"id": "screen", "capability": condition.name, "config": {}},
+            "actions": [
+                {
+                    "capability": "input.mouse",
+                    "config": {
+                        "operation": "click",
+                        "position": "$result.primary.position",
+                        "target": "window:Game",
+                        "coordinate_space": "target",
+                    },
+                }
+            ],
+        }
+    )
+
+    result = await StepExecutor(runtime).execute(step)
+
+    assert result.outcome is StepOutcome.SUCCESS
+    assert device.positions == [(325, 240)]
 
 
 @pytest.mark.asyncio

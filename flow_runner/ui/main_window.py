@@ -730,6 +730,7 @@ class MainWindow(QMainWindow):
             self.view_model.project,
             current_workflow_id=self._workflow_id,
             region_capture=self.region_capture,
+            point_capture=self.point_capture,
         )
         if dialog.exec() != GuidedAddDialog.DialogCode.Accepted:
             return None

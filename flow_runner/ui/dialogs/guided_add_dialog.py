@@ -21,7 +21,7 @@ from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import capability_label, choice_label
-from flow_runner.ui.region_capture import RegionCaptureService
+from flow_runner.ui.region_capture import PointCaptureService, RegionCaptureService
 from flow_runner.ui.widgets import FocusWheelComboBox
 
 CONTROL_CAPABILITIES = (
@@ -41,12 +41,14 @@ class GuidedAddDialog(QDialog):
         *,
         current_workflow_id: UUID | None = None,
         region_capture: RegionCaptureService | None = None,
+        point_capture: PointCaptureService | None = None,
     ) -> None:
         super().__init__()
         self.registry = registry
         self.project = project
         self.current_workflow_id = current_workflow_id
         self.region_capture = region_capture
+        self.point_capture = point_capture
         self._step: AutomationStep | None = None
         self.category_combo = FocusWheelComboBox()
         self.category_combo.addItems(["检测", "执行", "控制"])
@@ -210,6 +212,13 @@ class GuidedAddDialog(QDialog):
                 lambda target: (
                     self.region_capture.capture_template(target, self)
                     if self.region_capture is not None
+                    else None
+                )
+            ),
+            pick_point=(
+                lambda target: (
+                    self.point_capture.pick_point(target, self)
+                    if self.point_capture is not None
                     else None
                 )
             ),

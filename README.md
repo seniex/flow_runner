@@ -14,7 +14,7 @@ Current version: `0.2.0`.
   project documents are archived separately.
 - Normal/debug logging, the wait-action countdown, and preserved condition-attempt counts on
   cancellation passed the six-item real-GUI acceptance.
-- Latest verification: 412 tests passed; Ruff, formatting, mypy, compileall, and pip check
+- Latest verification: 416 tests passed; Ruff, formatting, mypy, compileall, and pip check
   succeeded.
 - Multi-monitor and Tesseract real-environment acceptance remain `DEFERRED`; see
   [`REAL_ENVIRONMENT_CHECKLIST.md`](REAL_ENVIRONMENT_CHECKLIST.md).

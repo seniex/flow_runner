@@ -39,11 +39,29 @@ class MouseActionConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_target_coordinate_space(self) -> "MouseActionConfig":
-        if self.target != "desktop" and not self.target.startswith("window:"):
-            raise ValueError("mouse target must be desktop or window:<title>")
-        if self.coordinate_space == "target" and not self.target.startswith("window:"):
-            raise ValueError("target coordinates require a window target")
+        _validate_target_coordinate_space(self.target, self.coordinate_space)
         return self
+
+    @classmethod
+    def validate_binding_config(cls, config: dict[str, Any]) -> None:
+        target = str(config.get("target", "desktop"))
+        coordinate_space = str(config.get("coordinate_space", "screen"))
+        _validate_target_coordinate_space(target, coordinate_space)
+        position = config.get("position")
+        if isinstance(position, str) and position.startswith("$") and coordinate_space != "screen":
+            raise ValueError("dynamic mouse positions require screen coordinate space")
+
+    @classmethod
+    def prepare_resolved_config(
+        cls,
+        raw_config: dict[str, Any],
+        resolved_config: dict[str, Any],
+    ) -> dict[str, Any]:
+        prepared = dict(resolved_config)
+        position = raw_config.get("position")
+        if isinstance(position, str) and position.startswith("$"):
+            prepared["coordinate_space"] = "screen"
+        return prepared
 
 
 class MouseAction:
@@ -110,3 +128,10 @@ class MouseAction:
         if config.target.startswith("window:"):
             resources.add(canonical_capture_target(config.target))
         return frozenset(resources)
+
+
+def _validate_target_coordinate_space(target: str, coordinate_space: str) -> None:
+    if target != "desktop" and not target.startswith("window:"):
+        raise ValueError("mouse target must be desktop or window:<title>")
+    if coordinate_space == "target" and not target.startswith("window:"):
+        raise ValueError("target coordinates require a window target")
