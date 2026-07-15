@@ -14,6 +14,7 @@ from flow_runner.domain.actions import ActionSpec
 from flow_runner.ui.editor_metadata import common_fields_for
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import action_summary, capability_label
+from flow_runner.ui.result_bindings import ResultBindingOption
 from flow_runner.ui.widgets import FocusWheelComboBox
 
 
@@ -24,6 +25,7 @@ class ActionEditor(QWidget):
         super().__init__()
         self.registry = registry
         self._show_advanced = show_advanced
+        self._binding_options: tuple[ResultBindingOption, ...] = ()
         self._loading = False
         self._current_pending = False
         self.capability_combo = FocusWheelComboBox()
@@ -66,6 +68,11 @@ class ActionEditor(QWidget):
         self.up_button.clicked.connect(lambda: self._move_current(-1))
         self.down_button.clicked.connect(lambda: self._move_current(1))
         self._rebuild_form()
+
+    def set_binding_options(self, options: tuple[ResultBindingOption, ...]) -> None:
+        self._binding_options = options
+        if self.config_form is not None:
+            self.config_form.set_binding_options(options)
 
     def set_actions(self, actions: list[ActionSpec]) -> None:
         self._loading = True
@@ -125,6 +132,7 @@ class ActionEditor(QWidget):
             common_fields=common_fields_for(capability),
             show_advanced=self._show_advanced,
         )
+        self.config_form.set_binding_options(self._binding_options)
         self.config_form.changed.connect(self._form_changed)
         self.config_layout.addWidget(self.config_form)
 

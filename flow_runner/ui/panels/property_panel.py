@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.domain.conditions import ConditionNode
 from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.ui.editor_preferences import EditorPreferences
@@ -26,6 +27,7 @@ from flow_runner.ui.editors.condition_editor import ConditionEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 from flow_runner.ui.region_capture import RegionCaptureService
+from flow_runner.ui.result_bindings import result_binding_options
 
 
 class PropertyPanel(QScrollArea):
@@ -146,7 +148,7 @@ class PropertyPanel(QScrollArea):
         if self.action_editor is not None:
             self.action_editor.changed.connect(self._mark_pending)
         if self.condition_editor is not None:
-            self.condition_editor.changed.connect(self._mark_pending)
+            self.condition_editor.changed.connect(self._condition_changed)
         if self.route_editor is not None:
             self.route_editor.changed.connect(self._mark_pending)
 
@@ -157,6 +159,18 @@ class PropertyPanel(QScrollArea):
         if self.action_editor is not None:
             self.action_editor.set_advanced_visible(visible)
         self.policy_editor.set_advanced_visible(visible)
+
+    def _condition_changed(self) -> None:
+        self._mark_pending()
+        if self.condition_editor is not None:
+            self._refresh_binding_options(self.condition_editor.condition_for_bindings())
+
+    def _refresh_binding_options(self, condition: ConditionNode | None) -> None:
+        options = result_binding_options(condition)
+        if self.action_editor is not None:
+            self.action_editor.set_binding_options(options)
+        if self.route_editor is not None:
+            self.route_editor.set_binding_options(options)
 
     def _mode_changed(self, _index: int) -> None:
         if self._loading or self._switching_mode or self._step is None:
@@ -180,6 +194,7 @@ class PropertyPanel(QScrollArea):
             self._set_validation_error(error)
             return False
         self._set_json_editors(step)
+        self._refresh_binding_options(step.condition)
         self._validation_error = ""
         return True
 
@@ -192,6 +207,7 @@ class PropertyPanel(QScrollArea):
         self._loading = True
         if self.condition_editor is not None:
             self.condition_editor.set_condition(step.condition)
+        self._refresh_binding_options(step.condition)
         if self.action_editor is not None:
             self.action_editor.set_actions(step.actions)
         self.policy_editor.set_policies(step.condition_policy, step.action_policy)
@@ -303,6 +319,7 @@ class PropertyPanel(QScrollArea):
         self.condition_edit.setPlainText(self._condition_json_baseline)
         if self.condition_editor is not None:
             self.condition_editor.set_condition(step.condition)
+        self._refresh_binding_options(step.condition)
         self._actions_json_baseline = _json(step.actions)
         self.actions_edit.setPlainText(self._actions_json_baseline)
         if self.action_editor is not None:
@@ -327,6 +344,7 @@ class PropertyPanel(QScrollArea):
         self._step = None
         if self.route_editor is not None:
             self.route_editor.set_step_context(None)
+        self._refresh_binding_options(None)
         self.title.clear()
         self.name_edit.clear()
         self.enabled_check.setChecked(False)

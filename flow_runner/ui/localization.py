@@ -78,6 +78,13 @@ FIELD_LABELS = {
     "geometry": "窗口位置和尺寸",
 }
 
+RESULT_FIELD_LABELS = {
+    "position": "坐标",
+    "bounds": "边界区域",
+    "text": "识别文字",
+    "confidence": "置信度",
+}
+
 
 CHOICE_LABELS = {
     "and": "并且（AND）",
@@ -169,6 +176,10 @@ def capability_label(name: str) -> str:
 
 def field_label(name: str) -> str:
     return FIELD_LABELS.get(name, name)
+
+
+def result_field_label(name: str) -> str:
+    return RESULT_FIELD_LABELS.get(name, name)
 
 
 def choice_label(value: Any) -> str:

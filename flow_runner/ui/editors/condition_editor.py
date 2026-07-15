@@ -141,6 +141,18 @@ class ConditionEditor(QWidget):
         self._root = self._validate_node(self._root)
         return self._root
 
+    def condition_for_bindings(self) -> ConditionNode | None:
+        if not self.enabled_check.isChecked():
+            return None
+        previous = self._root
+        try:
+            self._commit_selected()
+            if self._root is not None:
+                self._root = self._validate_node(self._root)
+        except ValueError:
+            self._root = previous
+        return self._root
+
     def _selection_changed(
         self,
         current: QTreeWidgetItem | None,

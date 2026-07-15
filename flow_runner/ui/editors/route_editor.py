@@ -24,8 +24,10 @@ from flow_runner.domain.routing import (
     RouteTarget,
     RouteTargetKind,
 )
+from flow_runner.ui.editors.model_form import BindingFieldEditor
 from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import choice_label, comparison_symbol
+from flow_runner.ui.result_bindings import ResultBindingOption
 from flow_runner.ui.widgets import FocusWheelComboBox
 
 
@@ -40,6 +42,7 @@ class RouteEditor(QWidget):
         self._labels: ProjectDisplayIndex | None = None
         self._current_step_id: UUID | None = None
         self._routes: list[RouteRule] = []
+        self._binding_options: tuple[ResultBindingOption, ...] = ()
         self.outcome_combo = FocusWheelComboBox()
         for outcome in StepOutcome:
             self.outcome_combo.addItem(choice_label(outcome), outcome)
@@ -59,6 +62,7 @@ class RouteEditor(QWidget):
         ):
             self.predicate_source_combo.addItem(choice_label(source), source)
         self.predicate_key_edit = QLineEdit()
+        self.predicate_binding_editor = BindingFieldEditor()
         self.predicate_workflow_combo = FocusWheelComboBox()
         self.predicate_step_combo = FocusWheelComboBox()
         self.predicate_operator_combo = FocusWheelComboBox()
@@ -88,6 +92,9 @@ class RouteEditor(QWidget):
             "附加条件来源", self.predicate_source_combo, "predicate_source"
         )
         self.predicate_layout.addField("变量名称", self.predicate_key_edit, "predicate_key")
+        self.predicate_layout.addField(
+            "检测结果", self.predicate_binding_editor, "predicate_binding"
+        )
         self.predicate_layout.addField(
             "计数流程", self.predicate_workflow_combo, "predicate_workflow"
         )
@@ -130,9 +137,14 @@ class RouteEditor(QWidget):
             combo.currentIndexChanged.connect(self._mark_changed)
         for line_edit in (self.predicate_key_edit, self.predicate_expected_edit):
             line_edit.textChanged.connect(self._mark_changed)
+        self.predicate_binding_editor.changed.connect(self._mark_changed)
         if project is not None:
             self.set_project(project)
         self._update_controls()
+
+    def set_binding_options(self, options: tuple[ResultBindingOption, ...]) -> None:
+        self._binding_options = options
+        self.predicate_binding_editor.set_options(options)
 
     def set_project(self, project: Project) -> None:
         self._loading = True
@@ -321,6 +333,7 @@ class RouteEditor(QWidget):
         source = "" if predicate is None else predicate.source
         self.predicate_source_combo.setCurrentIndex(self.predicate_source_combo.findData(source))
         self.predicate_key_edit.clear()
+        self.predicate_binding_editor.setValue("")
         self.predicate_expected_edit.clear()
         if predicate is None:
             self.error_label.clear()
@@ -334,6 +347,8 @@ class RouteEditor(QWidget):
             self.predicate_step_combo.setCurrentIndex(
                 _find_uuid_data(self.predicate_step_combo, predicate.key)
             )
+        elif predicate.source == "binding":
+            self.predicate_binding_editor.setValue(predicate.key)
         else:
             self.predicate_key_edit.setText(predicate.key)
         self.predicate_operator_combo.setCurrentIndex(
@@ -375,7 +390,7 @@ class RouteEditor(QWidget):
         elif source == "step_count":
             key = str(_uuid_from_combo(self.predicate_step_combo, "请选择计数步骤"))
         elif source == "binding":
-            key = self.predicate_key_edit.text().strip()
+            key = self.predicate_binding_editor.value()
             if not key:
                 raise ValueError("绑定表达式不能为空")
         else:
@@ -407,10 +422,11 @@ class RouteEditor(QWidget):
         self._populate_predicate_operators(source)
         self.predicate_layout.setFieldVisible(
             self.predicate_key_edit,
-            source in {"task_variable", "workflow_variable", "binding"},
+            source in {"task_variable", "workflow_variable"},
         )
-        self.predicate_key_edit.setPlaceholderText(
-            "$result.primary.text" if source == "binding" else ""
+        self.predicate_layout.setFieldVisible(
+            self.predicate_binding_editor,
+            source == "binding",
         )
         self.predicate_layout.setFieldVisible(
             self.predicate_workflow_combo, source == "workflow_count"
@@ -505,6 +521,15 @@ class RouteEditor(QWidget):
             subject = f"{self._workflow_name(predicate.key)}执行次数"
         elif predicate.source == "step_count":
             subject = f"{self._step_name(predicate.key)}执行次数"
+        elif predicate.source == "binding":
+            subject = next(
+                (
+                    option.label
+                    for option in self._binding_options
+                    if option.expression == predicate.key
+                ),
+                predicate.key,
+            )
         else:
             subject = predicate.key
         expected = json.dumps(predicate.expected, ensure_ascii=False)

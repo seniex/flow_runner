@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QStackedWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -33,11 +34,60 @@ from flow_runner.ui.launch_file_selection import (
 from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import choice_label, field_label
 from flow_runner.ui.region_capture import Region, TemplateCapture
+from flow_runner.ui.result_bindings import ResultBindingOption
 from flow_runner.ui.widgets import (
     FocusWheelComboBox,
     FocusWheelDoubleSpinBox,
     FocusWheelSpinBox,
 )
+
+
+class BindingFieldEditor(QWidget):
+    changed = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.combo = FocusWheelComboBox()
+        self.custom_edit = QLineEdit()
+        self.custom_edit.setPlaceholderText("输入自定义绑定表达式")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.combo)
+        layout.addWidget(self.custom_edit)
+        self.combo.currentIndexChanged.connect(self._mode_changed)
+        self.custom_edit.textChanged.connect(lambda _text: self.changed.emit())
+        self.set_options(())
+
+    @property
+    def is_custom(self) -> bool:
+        return self.combo.currentData() is None
+
+    def set_options(self, options: tuple[ResultBindingOption, ...]) -> None:
+        current = self.value() if self.combo.count() else ""
+        blocked = self.combo.blockSignals(True)
+        self.combo.clear()
+        for option in options:
+            self.combo.addItem(option.label, option.expression)
+        self.combo.addItem("自定义表达式", None)
+        self.combo.blockSignals(blocked)
+        self.setValue(current)
+
+    def value(self) -> str:
+        value = self.combo.currentData()
+        return value if isinstance(value, str) else self.custom_edit.text().strip()
+
+    def setValue(self, expression: str) -> None:  # noqa: N802 - Qt-compatible API
+        index = self.combo.findData(expression)
+        if index >= 0:
+            self.combo.setCurrentIndex(index)
+        else:
+            self.combo.setCurrentIndex(self.combo.count() - 1)
+            self.custom_edit.setText(expression)
+        self._mode_changed()
+
+    def _mode_changed(self, _index: int = -1) -> None:
+        self.custom_edit.setVisible(self.is_custom)
+        self.changed.emit()
 
 
 class TupleFieldEditor(QWidget):
@@ -69,14 +119,14 @@ class TupleFieldEditor(QWidget):
             editor.setProperty("fieldKind", "tuplePart")
             self.value_editors.append(editor)
             value_layout.addWidget(editor)
-        self.binding_edit = QLineEdit()
-        self.binding_edit.setPlaceholderText("$result.primary.position")
+        self.binding_selector = BindingFieldEditor()
+        self.binding_edit = self.binding_selector.custom_edit
         self.binding_edit.setProperty("fieldKind", "binding")
         self.pages = QStackedWidget()
         if optional:
             self.pages.addWidget(QWidget())
         self.pages.addWidget(self.value_container)
-        self.pages.addWidget(self.binding_edit)
+        self.pages.addWidget(self.binding_selector)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.mode_combo)
@@ -87,7 +137,7 @@ class TupleFieldEditor(QWidget):
         layout.addWidget(self.pick_button)
         self.mode_combo.currentIndexChanged.connect(self.pages.setCurrentIndex)
         self.mode_combo.currentIndexChanged.connect(self._emit_changed)
-        self.binding_edit.textChanged.connect(self._emit_changed)
+        self.binding_selector.changed.connect(self._emit_changed)
         for editor in self.value_editors:
             editor.valueChanged.connect(self._emit_changed)
         if default is None and optional:
@@ -103,7 +153,7 @@ class TupleFieldEditor(QWidget):
         if mode == "none":
             return None
         if mode == "binding":
-            return self.binding_edit.text().strip()
+            return self.binding_selector.value()
         return tuple(editor.value() for editor in self.value_editors)
 
     def setValue(self, value: Any) -> None:  # noqa: N802 - Qt-compatible API
@@ -120,7 +170,7 @@ class TupleFieldEditor(QWidget):
         self.mode_combo.setCurrentIndex(self.mode_combo.findData("fixed"))
 
     def setBinding(self, expression: str) -> None:  # noqa: N802 - Qt-compatible API
-        self.binding_edit.setText(expression)
+        self.binding_selector.setValue(expression)
         self.mode_combo.setCurrentIndex(self.mode_combo.findData("binding"))
 
 
@@ -207,6 +257,7 @@ class ModelForm(QWidget):
         )
         self.editors: dict[str, QWidget] = {}
         self.annotations: dict[str, Any] = {}
+        self._binding_options: tuple[ResultBindingOption, ...] = ()
         self._launch_action_form = model_type is LaunchProcessConfig
         self._launch_automatic_arguments: tuple[str, ...] = ()
         self._launch_automatic_working_directory: Path | None = None
@@ -388,6 +439,16 @@ class ModelForm(QWidget):
     def editor(self, name: str) -> QWidget:
         return self.editors[name]
 
+    def set_binding_options(self, options: tuple[ResultBindingOption, ...]) -> None:
+        self._binding_options = options
+        for name, editor in self.editors.items():
+            if not isinstance(editor, TupleFieldEditor):
+                continue
+            field = _binding_field_for_tuple(name, len(editor.value_editors))
+            editor.binding_selector.set_options(
+                tuple(option for option in options if option.field == field)
+            )
+
     def set_advanced_visible(self, visible: bool) -> None:
         self._show_advanced = visible
         for name in self._advanced_fields:
@@ -536,6 +597,12 @@ def _create_editor(
     elif not optional and not _is_plain_text(annotation):
         text_editor.setPlaceholderText("JSON")
     return text_editor
+
+
+def _binding_field_for_tuple(name: str, length: int) -> str:
+    if name in {"position", "offset"} or length == 2:
+        return "position"
+    return "bounds"
 
 
 def _tuple_arguments(annotation: Any) -> tuple[Any, ...]:

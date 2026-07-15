@@ -1023,7 +1023,7 @@ def test_route_editor_adds_result_binding_predicate(qtbot):
     qtbot.addWidget(editor)
     editor.target_combo.setCurrentIndex(editor.target_combo.findData(RouteTargetKind.END))
     editor.predicate_source_combo.setCurrentIndex(editor.predicate_source_combo.findData("binding"))
-    editor.predicate_key_edit.setText('$result.children["ocr_a"].text')
+    editor.predicate_binding_editor.setValue('$result.children["ocr_a"].text')
     editor.predicate_expected_edit.setText('"ready"')
 
     editor.add_button.click()
