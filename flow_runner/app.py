@@ -67,7 +67,7 @@ from flow_runner.ui.capture_preferences import CapturePreferences
 from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
 from flow_runner.ui.main_window import MainWindow
-from flow_runner.ui.region_capture import RegionCaptureService
+from flow_runner.ui.region_capture import PointCaptureService, RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.theme_manager import ThemeManager
 
@@ -205,16 +205,20 @@ def create_application(
         lambda target: _capture_frame_for_ui(capture, target),
         capture_preferences,
     )
+    region_capture = RegionCaptureService(
+        selection_session,
+        template_directory=paths.template_directory,
+    )
+    point_capture = PointCaptureService(selection_session)
     window = MainWindow(
         project,
         runner_bridge=runner_bridge,
         save_project=save_project,
         project_path=path,
         registry=registry,
-        region_capture=RegionCaptureService(
-            selection_session,
-            template_directory=paths.template_directory,
-        ),
+        region_capture=region_capture,
+        point_capture=point_capture,
+        capture_preferences=capture_preferences,
         runtime_formatter=runtime_formatter,
     )
     recorder = RecordingRecorder(listener_factory=recording_listener_factory)

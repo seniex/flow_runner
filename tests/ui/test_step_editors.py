@@ -31,7 +31,7 @@ from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 from flow_runner.ui.localization import action_summary
 from flow_runner.ui.panels.property_panel import PropertyPanel
-from flow_runner.ui.region_capture import TemplateCapture
+from flow_runner.ui.region_capture import PointCapture, TemplateCapture
 
 
 class Capability:
@@ -600,6 +600,94 @@ def test_action_editor_preserves_runtime_coordinate_binding(qtbot):
 
     assert editor.error_label.text() == ""
     assert editor.action_specs()[0].config["position"] == "$result.primary.position"
+
+
+def test_mouse_form_point_picker_uses_its_target_and_sets_coordinate_space(qtbot):
+    calls = []
+
+    def pick_point(target):
+        calls.append(target)
+        return PointCapture(position=(25, 40), coordinate_space="target")
+
+    form = ModelForm(MouseActionConfig, pick_point=pick_point)
+    qtbot.addWidget(form)
+    form.editor("target").setText("window:Game")
+    position = form.editor("position")
+    position.point_button.click()
+
+    assert calls == ["window:Game"]
+    assert form.values()["position"] == (25, 40)
+    assert form.values()["coordinate_space"] == "target"
+
+
+def test_mouse_point_cancel_preserves_existing_values(qtbot):
+    form = ModelForm(MouseActionConfig, pick_point=lambda target: None)
+    qtbot.addWidget(form)
+    form.set_values(
+        {
+            "target": "window:Game",
+            "coordinate_space": "target",
+            "position": (8, 9),
+        }
+    )
+    form.editor("position").point_button.click()
+    assert form.values()["position"] == (8, 9)
+    assert form.values()["coordinate_space"] == "target"
+
+
+def test_switching_mouse_position_to_binding_forces_screen_space(qtbot):
+    form = ModelForm(MouseActionConfig)
+    qtbot.addWidget(form)
+    form.set_values(
+        {
+            "target": "window:Game",
+            "coordinate_space": "target",
+            "position": (8, 9),
+        }
+    )
+    form.editor("position").setBinding("$result.primary.position")
+    assert form.values()["coordinate_space"] == "screen"
+
+
+def test_point_button_is_visible_only_for_mouse_position(qtbot):
+    mouse_form = ModelForm(MouseActionConfig, pick_point=lambda target: None)
+    region_form = ModelForm(ImageConditionConfig, pick_region=lambda target: (1, 2, 3, 4))
+    qtbot.addWidget(mouse_form)
+    qtbot.addWidget(region_form)
+
+    assert not mouse_form.editor("position").point_button.isHidden()
+    assert mouse_form.editor("offset").point_button.isHidden()
+    assert not region_form.editor("region").pick_button.isHidden()
+    assert region_form.editor("region").point_button.isHidden()
+
+
+def test_action_editor_serializes_picked_window_point(qtbot):
+    capabilities = CapabilityRegistry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    editor = ActionEditor(
+        capabilities,
+        pick_point=lambda target: PointCapture((25, 40), "target"),
+    )
+    qtbot.addWidget(editor)
+    target = editor.config_form.editor("target")
+    target.setText("window:Game")
+    editor.config_form.editor("position").point_button.click()
+    editor.add_button.click()
+
+    assert editor.action_specs()[0].config == {
+        "operation": "click",
+        "position": (25, 40),
+        "offset": (0, 0),
+        "button": "left",
+        "clicks": 1,
+        "interval": 0.0,
+        "duration": 0.0,
+        "scroll_units": 1,
+        "jitter_pixels": 0,
+        "settle_delay": 0.0,
+        "target": "window:Game",
+        "coordinate_space": "target",
+    }
 
 
 def test_action_editor_loads_and_updates_an_existing_action(qtbot):

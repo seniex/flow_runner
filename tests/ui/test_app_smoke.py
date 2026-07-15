@@ -26,7 +26,7 @@ from flow_runner.infrastructure.windowing.geometry import Win32WindowGeometry
 from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
-from flow_runner.ui.region_capture import RegionCaptureService
+from flow_runner.ui.region_capture import PointCaptureService, RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
 
 
@@ -67,6 +67,12 @@ def test_application_wires_region_capture_service_to_detailed_condition_editor(q
 
     assert isinstance(window.region_capture, RegionCaptureService)
     assert isinstance(window.region_capture._session, CaptureSelectionSession)
+    assert isinstance(window.point_capture, PointCaptureService)
+    assert window.point_capture._session is window.region_capture._session
+    assert window.property_panel.capture_preferences is window.capture_preferences
+    assert window.property_panel.hide_during_capture_check.text() == "框选时隐藏程序界面"
+    assert not window.property_panel.has_pending_edits
+    assert not window.isWindowModified()
     configured_mouse = composition.registry.action("input.mouse")
     assert isinstance(configured_mouse, MouseAction)
     assert isinstance(configured_mouse.window_origin.__self__, Win32WindowGeometry)

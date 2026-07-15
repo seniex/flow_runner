@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -14,6 +16,7 @@ from flow_runner.domain.actions import ActionSpec
 from flow_runner.ui.editor_metadata import common_fields_for
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import action_summary, capability_label
+from flow_runner.ui.region_capture import PointCapture
 from flow_runner.ui.result_bindings import ResultBindingOption
 from flow_runner.ui.widgets import FocusWheelComboBox
 
@@ -21,10 +24,17 @@ from flow_runner.ui.widgets import FocusWheelComboBox
 class ActionEditor(QWidget):
     changed = Signal()
 
-    def __init__(self, registry: CapabilityRegistry, *, show_advanced: bool = False) -> None:
+    def __init__(
+        self,
+        registry: CapabilityRegistry,
+        *,
+        show_advanced: bool = False,
+        pick_point: Callable[[str], PointCapture | None] | None = None,
+    ) -> None:
         super().__init__()
         self.registry = registry
         self._show_advanced = show_advanced
+        self._pick_point = pick_point
         self._binding_options: tuple[ResultBindingOption, ...] = ()
         self._loading = False
         self._current_pending = False
@@ -135,6 +145,7 @@ class ActionEditor(QWidget):
             self.registry.action(capability).config_model,
             common_fields=common_fields_for(capability),
             show_advanced=self._show_advanced,
+            pick_point=self._pick_point,
         )
         self.config_form.set_binding_options(self._binding_options)
         self.config_form.changed.connect(self._form_changed)

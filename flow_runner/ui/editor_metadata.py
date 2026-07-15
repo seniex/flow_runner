@@ -1,6 +1,6 @@
 COMMON_FIELDS: dict[str, frozenset[str]] = {
     "vision.ocr": frozenset({"target", "region", "keywords"}),
-    "input.mouse": frozenset({"operation", "position", "button", "clicks"}),
+    "input.mouse": frozenset({"target", "operation", "position", "button", "clicks"}),
     "input.keyboard": frozenset({"operation", "key", "keys", "text", "count"}),
     "system.wait": frozenset({"seconds"}),
     "system.launch": frozenset({"path", "arguments", "run_as_admin"}),

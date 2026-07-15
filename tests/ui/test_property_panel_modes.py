@@ -11,6 +11,7 @@ from flow_runner.domain.enums import ConditionMode, StepOutcome
 from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.domain.routing import RouteRule, RouteTarget
+from flow_runner.ui.capture_preferences import CapturePreferences
 from flow_runner.ui.editor_preferences import EditorPreferences
 from flow_runner.ui.panels.property_panel import PropertyPanel
 
@@ -54,6 +55,17 @@ def _panel(qtbot, **kwargs):
     panel.resize(700, 600)
     panel.show()
     return panel
+
+
+def test_capture_hide_checkbox_persists_without_marking_project_pending(qtbot, tmp_path):
+    settings = QSettings(str(tmp_path / "capture.ini"), QSettings.Format.IniFormat)
+    preferences = CapturePreferences(settings)
+    panel = _panel(qtbot, capture_preferences=preferences)
+
+    panel.hide_during_capture_check.setChecked(True)
+
+    assert preferences.hide_application
+    assert not panel.has_pending_edits
 
 
 def test_property_panel_defaults_to_common_tab_and_hides_raw_json(qtbot):

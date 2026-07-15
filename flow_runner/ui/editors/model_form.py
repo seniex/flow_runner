@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flow_runner.capabilities.actions.mouse import MouseActionConfig
 from flow_runner.capabilities.actions.process import LaunchProcessConfig
 from flow_runner.capabilities.actions.window import WindowActionConfig
 from flow_runner.ui.launch_file_selection import (
@@ -33,7 +34,7 @@ from flow_runner.ui.launch_file_selection import (
 )
 from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import choice_label, field_label
-from flow_runner.ui.region_capture import Region, TemplateCapture
+from flow_runner.ui.region_capture import PointCapture, Region, TemplateCapture
 from flow_runner.ui.result_bindings import ResultBindingOption
 from flow_runner.ui.widgets import (
     FocusWheelComboBox,
@@ -102,6 +103,7 @@ class TupleFieldEditor(QWidget):
         *,
         optional: bool = False,
         allow_pick: bool = False,
+        allow_point_pick: bool = False,
     ) -> None:
         super().__init__()
         self.setProperty("fieldKind", "tuple")
@@ -137,6 +139,10 @@ class TupleFieldEditor(QWidget):
         self.pick_button.setObjectName("pickRegionButton")
         self.pick_button.setVisible(allow_pick)
         layout.addWidget(self.pick_button)
+        self.point_button = QPushButton("点选坐标")
+        self.point_button.setObjectName("pickMousePointButton")
+        self.point_button.setVisible(allow_point_pick)
+        layout.addWidget(self.point_button)
         self.mode_combo.currentIndexChanged.connect(self.pages.setCurrentIndex)
         self.mode_combo.currentIndexChanged.connect(self._emit_changed)
         self.binding_selector.changed.connect(self._emit_changed)
@@ -241,6 +247,7 @@ class ModelForm(QWidget):
         show_advanced: bool = False,
         pick_region: Callable[[str], Region | None] | None = None,
         capture_template: Callable[[str], TemplateCapture | None] | None = None,
+        pick_point: Callable[[str], PointCapture | None] | None = None,
         report_error: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__()
@@ -254,6 +261,7 @@ class ModelForm(QWidget):
         self._show_advanced = show_advanced
         self._pick_region_callback = pick_region
         self._capture_template_callback = capture_template
+        self._pick_point_callback = pick_point
         self._report_error = report_error or (
             lambda message: QMessageBox.warning(self, "配置操作失败", message)
         )
@@ -274,6 +282,11 @@ class ModelForm(QWidget):
                 default,
                 optional,
                 allow_pick=pick_region is not None,
+                allow_point_pick=(
+                    pick_point is not None
+                    and model_type is MouseActionConfig
+                    and name == "position"
+                ),
                 allow_capture=capture_template is not None,
                 file_filter=(
                     "程序和脚本 (*.exe *.com *.py *.pyw *.bat);;所有文件 (*)"
@@ -284,7 +297,12 @@ class ModelForm(QWidget):
             editor.setObjectName(f"configField_{name}")
             self.editors[name] = editor
             self.annotations[name] = annotation
-            self.form_layout.addField(field_label(name), editor, name)
+            label = (
+                "操作目标"
+                if model_type is MouseActionConfig and name == "target"
+                else field_label(name)
+            )
+            self.form_layout.addField(label, editor, name)
             self._connect_editor(editor)
         if self._window_action_form:
             geometry = self.editors.get("geometry")
@@ -302,6 +320,13 @@ class ModelForm(QWidget):
         template_editor = self.editors.get("template_path")
         if isinstance(template_editor, PathFieldEditor):
             template_editor.capture_button.clicked.connect(self._capture_template)
+        position_editor = self.editors.get("position")
+        if self.model_type is MouseActionConfig and isinstance(position_editor, TupleFieldEditor):
+            position_editor.point_button.clicked.connect(self._pick_point)
+            position_editor.mode_combo.currentIndexChanged.connect(
+                self._update_mouse_coordinate_space
+            )
+            self._update_mouse_coordinate_space()
         launch_path_editor = self.editors.get("path")
         if self._launch_action_form and isinstance(launch_path_editor, PathFieldEditor):
             launch_path_editor.fileSelected.connect(self._launch_file_selected)
@@ -337,7 +362,7 @@ class ModelForm(QWidget):
         try:
             region = self._pick_region_callback(self._capture_target())
         except Exception as error:
-            self._report_error(str(error))
+            self._report_error(f"框选区域失败：{error}")
             return
         if region is None:
             return
@@ -351,7 +376,7 @@ class ModelForm(QWidget):
         try:
             captured = self._capture_template_callback(self._capture_target())
         except Exception as error:
-            self._report_error(str(error))
+            self._report_error(f"框选并截图失败：{error}")
             return
         if captured is None:
             return
@@ -361,6 +386,42 @@ class ModelForm(QWidget):
         path_editor = self.editors.get("template_path")
         if isinstance(path_editor, PathFieldEditor):
             path_editor.setText(str(captured.path))
+
+    def _pick_point(self) -> None:
+        if self._pick_point_callback is None:
+            return
+        try:
+            captured = self._pick_point_callback(self._capture_target())
+        except Exception as error:
+            self._report_error(f"点选坐标失败：{error}")
+            return
+        if captured is None:
+            return
+        position = self.editors.get("position")
+        coordinate_space = self.editors.get("coordinate_space")
+        if isinstance(position, TupleFieldEditor) and isinstance(coordinate_space, QComboBox):
+            blocked = self.blockSignals(True)
+            try:
+                position.setValue(captured.position)
+                coordinate_space.setCurrentIndex(
+                    coordinate_space.findData(captured.coordinate_space)
+                )
+            finally:
+                self.blockSignals(blocked)
+            self.changed.emit()
+
+    def _update_mouse_coordinate_space(self) -> None:
+        position = self.editors.get("position")
+        coordinate_space = self.editors.get("coordinate_space")
+        if not (
+            isinstance(position, TupleFieldEditor)
+            and isinstance(coordinate_space, QComboBox)
+            and position.mode_combo.currentData() == "binding"
+        ):
+            return
+        index = coordinate_space.findData("screen")
+        if index >= 0:
+            coordinate_space.setCurrentIndex(index)
 
     def _capture_target(self) -> str:
         editor = self.editors.get("target")
@@ -527,6 +588,7 @@ class ModelForm(QWidget):
                 else:
                     editor.setText(json.dumps(value, ensure_ascii=False))
         self._infer_launch_automatic_values()
+        self._update_mouse_coordinate_space()
 
 
 def _create_editor(
@@ -536,6 +598,7 @@ def _create_editor(
     optional: bool,
     *,
     allow_pick: bool,
+    allow_point_pick: bool,
     allow_capture: bool,
     file_filter: str,
 ) -> QWidget:
@@ -545,6 +608,7 @@ def _create_editor(
             default,
             optional=optional,
             allow_pick=allow_pick and name == "region",
+            allow_point_pick=allow_point_pick,
         )
     if annotation is Path:
         return PathFieldEditor(

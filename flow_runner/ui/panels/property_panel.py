@@ -21,12 +21,13 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.conditions import ConditionNode
 from flow_runner.domain.errors import FlowRunnerError
 from flow_runner.domain.project import AutomationStep, Project
+from flow_runner.ui.capture_preferences import CapturePreferences
 from flow_runner.ui.editor_preferences import EditorPreferences
 from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
-from flow_runner.ui.region_capture import RegionCaptureService
+from flow_runner.ui.region_capture import PointCaptureService, RegionCaptureService
 from flow_runner.ui.result_bindings import result_binding_options
 
 
@@ -43,6 +44,8 @@ class PropertyPanel(QScrollArea):
         apply_step: Callable[[AutomationStep], None] | None = None,
         editor_preferences: EditorPreferences | None = None,
         region_capture: RegionCaptureService | None = None,
+        point_capture: PointCaptureService | None = None,
+        capture_preferences: CapturePreferences | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("propertyPanel")
@@ -54,6 +57,7 @@ class PropertyPanel(QScrollArea):
         self._switching_mode = False
         self.apply_step = apply_step
         self.editor_preferences = editor_preferences or EditorPreferences()
+        self.capture_preferences = capture_preferences or CapturePreferences()
         show_advanced = self.editor_preferences.show_advanced
         self._condition_json_baseline = ""
         self._actions_json_baseline = ""
@@ -79,7 +83,17 @@ class PropertyPanel(QScrollArea):
         self.show_advanced_check.setObjectName("showAdvancedFields")
         self.show_advanced_check.setChecked(show_advanced)
         self.action_editor = (
-            ActionEditor(registry, show_advanced=show_advanced) if registry is not None else None
+            ActionEditor(
+                registry,
+                show_advanced=show_advanced,
+                pick_point=(
+                    (lambda target: point_capture.pick_point(target, self))
+                    if point_capture is not None
+                    else None
+                ),
+            )
+            if registry is not None
+            else None
         )
         self.condition_editor = (
             ConditionEditor(
@@ -105,6 +119,10 @@ class PropertyPanel(QScrollArea):
         self.common_tab = QWidget()
         self.common_tab.setObjectName("commonPropertyTab")
         common_layout = QVBoxLayout(self.common_tab)
+        self.hide_during_capture_check = QCheckBox("框选时隐藏程序界面")
+        self.hide_during_capture_check.setObjectName("hideDuringCapture")
+        self.hide_during_capture_check.setChecked(self.capture_preferences.hide_application)
+        common_layout.addWidget(self.hide_during_capture_check)
         common_layout.addWidget(self.show_advanced_check)
         common_form = QFormLayout()
         common_form.addRow("名称", self.name_edit)
@@ -134,6 +152,7 @@ class PropertyPanel(QScrollArea):
         self.apply_button.clicked.connect(self._apply)
         self.mode_tabs.currentChanged.connect(self._mode_changed)
         self.show_advanced_check.toggled.connect(self._advanced_visibility_changed)
+        self.hide_during_capture_check.toggled.connect(self._capture_visibility_changed)
         self.name_edit.textChanged.connect(self._mark_pending)
         self.enabled_check.toggled.connect(self._mark_pending)
         for editor in (
@@ -159,6 +178,9 @@ class PropertyPanel(QScrollArea):
         if self.action_editor is not None:
             self.action_editor.set_advanced_visible(visible)
         self.policy_editor.set_advanced_visible(visible)
+
+    def _capture_visibility_changed(self, hidden: bool) -> None:
+        self.capture_preferences.hide_application = hidden
 
     def _condition_changed(self) -> None:
         self._mark_pending()

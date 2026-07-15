@@ -22,6 +22,7 @@ from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.enums import RunnerState
 from flow_runner.domain.project import AutomationStep, FlowGroup, ParallelBlock, Project, Workflow
 from flow_runner.infrastructure.logging.formatters import RuntimeEventFormatter
+from flow_runner.ui.capture_preferences import CapturePreferences
 from flow_runner.ui.dialogs.close_confirmation_dialog import (
     CloseConfirmationDialog,
     CloseDecision,
@@ -35,7 +36,7 @@ from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.panels.step_list_panel import StepListPanel
-from flow_runner.ui.region_capture import RegionCaptureService
+from flow_runner.ui.region_capture import PointCaptureService, RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.runtime_log import RuntimeLogController
 from flow_runner.ui.view_models.project_view_model import ProjectViewModel
@@ -68,6 +69,8 @@ class MainWindow(QMainWindow):
         edit_parallel_block: Callable[[ParallelBlock], ParallelBlock | None] | None = None,
         select_group_target: Callable[[Project, UUID], UUID | None] | None = None,
         region_capture: RegionCaptureService | None = None,
+        point_capture: PointCaptureService | None = None,
+        capture_preferences: CapturePreferences | None = None,
         runtime_formatter: RuntimeEventFormatter | None = None,
         window_preferences: WindowPreferences | None = None,
     ) -> None:
@@ -84,6 +87,8 @@ class MainWindow(QMainWindow):
         self._confirm_close_accepts_state = _accepts_close_state(self.confirm_close)
         self.registry = registry
         self.region_capture = region_capture
+        self.point_capture = point_capture
+        self.capture_preferences = capture_preferences or CapturePreferences()
         self.window_preferences = window_preferences or WindowPreferences()
         self._saved_column_widths = _column_widths_from_settings(project.settings)
         self._pending_column_widths: tuple[int, int, int] | None = None
@@ -103,6 +108,8 @@ class MainWindow(QMainWindow):
             project,
             apply_step=self._apply_step_edit,
             region_capture=region_capture,
+            point_capture=point_capture,
+            capture_preferences=self.capture_preferences,
         )
         self.diagnostics_dialog = DiagnosticsDialog(self)
         self.runtime_log = QPlainTextEdit()
