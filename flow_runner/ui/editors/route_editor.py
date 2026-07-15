@@ -4,7 +4,6 @@ from uuid import UUID
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
-    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -15,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.project import Project
 from flow_runner.domain.routing import (
@@ -24,6 +24,7 @@ from flow_runner.domain.routing import (
     RouteTarget,
     RouteTargetKind,
 )
+from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import choice_label, comparison_symbol
 from flow_runner.ui.widgets import FocusWheelComboBox
 
@@ -36,6 +37,7 @@ class RouteEditor(QWidget):
         self._loading = False
         self._current_pending = False
         self._project: Project | None = None
+        self._labels: ProjectDisplayIndex | None = None
         self._current_step_id: UUID | None = None
         self._routes: list[RouteRule] = []
         self.outcome_combo = FocusWheelComboBox()
@@ -71,18 +73,30 @@ class RouteEditor(QWidget):
         self.down_button = QPushButton("下移")
         self.error_label = QLabel("")
         layout = QVBoxLayout(self)
-        form = QFormLayout()
-        form.addRow("结果", self.outcome_combo)
-        form.addRow("目标类型", self.target_combo)
-        form.addRow("目标流程", self.workflow_combo)
-        form.addRow("目标步骤", self.step_combo)
-        form.addRow("附加条件来源", self.predicate_source_combo)
-        form.addRow("变量名称", self.predicate_key_edit)
-        form.addRow("计数流程", self.predicate_workflow_combo)
-        form.addRow("计数步骤", self.predicate_step_combo)
-        form.addRow("比较", self.predicate_operator_combo)
-        form.addRow("期望值（JSON）", self.predicate_expected_edit)
-        layout.addLayout(form)
+        primary_controls = QWidget()
+        primary_controls.setObjectName("routePrimaryControls")
+        self.primary_layout = CompactFlowLayout(primary_controls)
+        self.primary_layout.addField("结果", self.outcome_combo, "outcome")
+        self.primary_layout.addField("目标类型", self.target_combo, "target")
+        self.primary_layout.addField("目标流程", self.workflow_combo, "workflow")
+        self.primary_layout.addField("目标步骤", self.step_combo, "step")
+        layout.addWidget(primary_controls)
+        predicate_controls = QWidget()
+        predicate_controls.setObjectName("routePredicateControls")
+        self.predicate_layout = CompactFlowLayout(predicate_controls)
+        self.predicate_layout.addField(
+            "附加条件来源", self.predicate_source_combo, "predicate_source"
+        )
+        self.predicate_layout.addField("变量名称", self.predicate_key_edit, "predicate_key")
+        self.predicate_layout.addField(
+            "计数流程", self.predicate_workflow_combo, "predicate_workflow"
+        )
+        self.predicate_layout.addField("计数步骤", self.predicate_step_combo, "predicate_step")
+        self.predicate_layout.addField("比较", self.predicate_operator_combo, "predicate_operator")
+        self.predicate_layout.addField(
+            "期望值（JSON）", self.predicate_expected_edit, "predicate_expected"
+        )
+        layout.addWidget(predicate_controls)
         layout.addWidget(self.route_list)
         buttons = QHBoxLayout()
         for button in (
@@ -123,6 +137,7 @@ class RouteEditor(QWidget):
     def set_project(self, project: Project) -> None:
         self._loading = True
         self._project = project
+        self._labels = ProjectDisplayIndex(project)
         current = self.workflow_combo.currentData()
         predicate_workflow = self.predicate_workflow_combo.currentData()
         predicate_step = self.predicate_step_combo.currentData()
@@ -131,12 +146,12 @@ class RouteEditor(QWidget):
         self.predicate_step_combo.clear()
         for group in project.groups:
             for workflow in group.workflows:
-                label = f"{group.name} / {workflow.name}"
+                label = self._labels.workflow_path(workflow.id)
                 self.workflow_combo.addItem(label, str(workflow.id))
                 self.predicate_workflow_combo.addItem(label, str(workflow.id))
                 for step in workflow.steps:
                     self.predicate_step_combo.addItem(
-                        f"{label} / {step.name}",
+                        self._labels.step_path(step.id),
                         str(step.id),
                     )
         if current is not None:
@@ -177,7 +192,10 @@ class RouteEditor(QWidget):
                 if current_index is None:
                     continue
                 for step in workflow.steps:
-                    self.step_combo.addItem(step.name, str(step.id))
+                    label = (
+                        self._labels.step_label(step.id) if self._labels is not None else step.name
+                    )
+                    self.step_combo.addItem(label, str(step.id))
                 if preserve_current_target:
                     self.step_combo.setCurrentIndex(
                         _find_uuid_data(self.step_combo, current_target)
@@ -380,20 +398,27 @@ class RouteEditor(QWidget):
 
     def _update_controls(self) -> None:
         target = self.target_combo.currentData()
-        self.workflow_combo.setVisible(
-            target in {RouteTargetKind.JUMP_WORKFLOW, RouteTargetKind.CALL_WORKFLOW}
+        self.primary_layout.setFieldVisible(
+            self.workflow_combo,
+            target in {RouteTargetKind.JUMP_WORKFLOW, RouteTargetKind.CALL_WORKFLOW},
         )
-        self.step_combo.setVisible(target == RouteTargetKind.NEXT_STEP)
+        self.primary_layout.setFieldVisible(self.step_combo, target == RouteTargetKind.NEXT_STEP)
         source = self.predicate_source_combo.currentData()
         self._populate_predicate_operators(source)
-        self.predicate_key_edit.setVisible(
-            source in {"task_variable", "workflow_variable", "binding"}
+        self.predicate_layout.setFieldVisible(
+            self.predicate_key_edit,
+            source in {"task_variable", "workflow_variable", "binding"},
         )
         self.predicate_key_edit.setPlaceholderText(
             "$result.primary.text" if source == "binding" else ""
         )
-        self.predicate_workflow_combo.setVisible(source == "workflow_count")
-        self.predicate_step_combo.setVisible(source == "step_count")
+        self.predicate_layout.setFieldVisible(
+            self.predicate_workflow_combo, source == "workflow_count"
+        )
+        self.predicate_layout.setFieldVisible(self.predicate_step_combo, source == "step_count")
+        predicate_enabled = bool(source)
+        self.predicate_layout.setFieldVisible(self.predicate_operator_combo, predicate_enabled)
+        self.predicate_layout.setFieldVisible(self.predicate_expected_edit, predicate_enabled)
 
     def _populate_predicate_operators(self, source: object) -> None:
         current = self.predicate_operator_combo.currentData()
@@ -493,22 +518,19 @@ class RouteEditor(QWidget):
         return choice_label(target.kind)
 
     def _workflow_name(self, workflow_id: object) -> str:
-        if self._project is not None:
-            normalized = str(workflow_id)
-            for group in self._project.groups:
-                for workflow in group.workflows:
-                    if str(workflow.id) == normalized:
-                        return f"{group.name} / {workflow.name}"
+        if self._labels is not None:
+            try:
+                return self._labels.workflow_path(UUID(str(workflow_id)))
+            except (ValueError, TypeError, AttributeError):
+                pass
         return str(workflow_id)
 
     def _step_name(self, step_id: object) -> str:
-        if self._project is not None:
-            normalized = str(step_id)
-            for group in self._project.groups:
-                for workflow in group.workflows:
-                    for step in workflow.steps:
-                        if str(step.id) == normalized:
-                            return step.name
+        if self._labels is not None:
+            try:
+                return self._labels.step_path(UUID(str(step_id)))
+            except (ValueError, TypeError, AttributeError):
+                pass
         return str(step_id)
 
     def _validate_route_order(self) -> None:

@@ -151,7 +151,7 @@ def test_legacy_recording_conversion_normalizes_time_and_click_pairs(tmp_path):
 
 
 def test_full_legacy_fixture_converts_all_groups_workflows_and_steps():
-    source = json.loads(Path("config/flow_runner.json").read_text(encoding="utf-8"))
+    source = json.loads(Path("data/legacy/config/flow_runner.json").read_text(encoding="utf-8"))
     project = convert_legacy_config(
         source,
         LegacyConversionPaths(
@@ -159,7 +159,7 @@ def test_full_legacy_fixture_converts_all_groups_workflows_and_steps():
             python_executable=Path.cwd() / ".venv" / "Scripts" / "python.exe",
             pythonw_executable=Path.cwd() / ".venv" / "Scripts" / "pythonw.exe",
             paddle_executable=Path("D:/PaddleOCR-json.exe"),
-            recording_directory=Path.cwd() / "recordings" / "legacy",
+            recording_directory=Path.cwd() / "data" / "recordings" / "legacy",
         ),
     )
 

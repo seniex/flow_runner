@@ -16,6 +16,21 @@ def test_project_store_round_trips_and_keeps_five_backups(tmp_path):
     assert len(list(tmp_path.glob("project.*.bak.json"))) == 5
 
 
+def test_project_store_writes_and_trims_backups_in_dedicated_directory(tmp_path):
+    project_file = tmp_path / "data" / "project.json"
+    backup_directory = tmp_path / "data" / "backups"
+    store = ProjectStore(project_file, backup_limit=2, backup_directory=backup_directory)
+
+    store.save(Project(name="one"))
+    store.save(Project(name="two"))
+    store.save(Project(name="three"))
+    store.save(Project(name="four"))
+
+    backups = sorted(backup_directory.glob("project.*.bak.json"))
+    assert len(backups) == 2
+    assert not list(project_file.parent.glob("project.*.bak.json"))
+
+
 def test_project_store_rejects_invalid_json(tmp_path):
     path = tmp_path / "project.json"
     path.write_text("{bad", encoding="utf-8")

@@ -9,15 +9,21 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
+    QLabel,
     QMainWindow,
     QMessageBox,
+    QPlainTextEdit,
     QSplitter,
     QToolBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.enums import RunnerState
 from flow_runner.domain.project import AutomationStep, FlowGroup, ParallelBlock, Project, Workflow
+from flow_runner.infrastructure.logging.formatters import RuntimeEventFormatter
 from flow_runner.ui.dialogs.close_confirmation_dialog import (
     CloseConfirmationDialog,
     CloseDecision,
@@ -31,9 +37,12 @@ from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.panels.step_list_panel import StepListPanel
+from flow_runner.ui.region_capture import RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
+from flow_runner.ui.runtime_log import RuntimeLogController
 from flow_runner.ui.view_models.project_view_model import ProjectViewModel
 from flow_runner.ui.view_models.run_view_model import RunViewModel
+from flow_runner.ui.widgets import FocusWheelComboBox
 
 
 class MainWindow(QMainWindow):
@@ -59,6 +68,8 @@ class MainWindow(QMainWindow):
         create_parallel_block: Callable[[], ParallelBlock | None] | None = None,
         edit_parallel_block: Callable[[ParallelBlock], ParallelBlock | None] | None = None,
         select_group_target: Callable[[Project, UUID], UUID | None] | None = None,
+        region_capture: RegionCaptureService | None = None,
+        runtime_formatter: RuntimeEventFormatter | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -72,6 +83,10 @@ class MainWindow(QMainWindow):
         )
         self._confirm_close_accepts_state = _accepts_close_state(self.confirm_close)
         self.registry = registry
+        self.region_capture = region_capture
+        self._saved_column_widths = _column_widths_from_settings(project.settings)
+        self._pending_column_widths: tuple[int, int, int] | None = None
+        self._layout_dirty = False
         self.create_step = create_step or self._prompt_new_step
         self.create_template_step = create_template_step or self._prompt_template_step
         self.request_name = request_name or self._request_name
@@ -82,13 +97,45 @@ class MainWindow(QMainWindow):
         self.select_group_target = select_group_target or self._prompt_workflow_group
         self.flow_tree = FlowTreePanel(project)
         self.step_list = StepListPanel()
-        self.property_panel = PropertyPanel(registry, project, apply_step=self._apply_step_edit)
+        self.property_panel = PropertyPanel(
+            registry,
+            project,
+            apply_step=self._apply_step_edit,
+            region_capture=region_capture,
+        )
         self.diagnostics_dialog = DiagnosticsDialog(self)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.flow_tree)
-        splitter.addWidget(self.step_list)
-        splitter.addWidget(self.property_panel)
-        self.setCentralWidget(splitter)
+        self.runtime_log = QPlainTextEdit()
+        self.runtime_log.setObjectName("runtimeLog")
+        self.runtime_log.setReadOnly(True)
+        self.runtime_log.setPlaceholderText("运行日志将在这里显示")
+        self.runtime_formatter = runtime_formatter or RuntimeEventFormatter(
+            project,
+            debug=bool(project.settings.get("debug_logging", False)),
+        )
+        self.runtime_log_controller = RuntimeLogController(
+            self.runtime_log,
+            self.runtime_formatter,
+        )
+        self.workspace_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.workspace_splitter.setObjectName("workspaceSplitter")
+        self.workspace_splitter.addWidget(self.flow_tree)
+        self.workspace_splitter.addWidget(self.step_list)
+        self.workspace_splitter.addWidget(self.property_panel)
+        self.workspace_splitter.setStretchFactor(0, 1)
+        self.workspace_splitter.setStretchFactor(1, 2)
+        self.workspace_splitter.setStretchFactor(2, 3)
+        self.content_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.content_splitter.setObjectName("contentSplitter")
+        self.content_splitter.addWidget(self.workspace_splitter)
+        self.content_splitter.addWidget(self.runtime_log)
+        self.content_splitter.setStretchFactor(0, 5)
+        self.content_splitter.setStretchFactor(1, 1)
+        workspace = QWidget()
+        workspace.setObjectName("simpleWorkspace")
+        workspace_layout = QVBoxLayout(workspace)
+        workspace_layout.setContentsMargins(8, 8, 8, 8)
+        workspace_layout.addWidget(self.content_splitter)
+        self.setCentralWidget(workspace)
         self.flow_tree.workflowSelected.connect(self._select_workflow)
         self.flow_tree.groupSelected.connect(self._select_group)
         self.flow_tree.parallelBlockSelected.connect(self._select_parallel_block)
@@ -103,6 +150,10 @@ class MainWindow(QMainWindow):
         self.runtime_toolbar = QToolBar("运行", self)
         self.runtime_toolbar.setObjectName("runtimeToolbar")
         self.addToolBar(self.runtime_toolbar)
+        self.startup_group_combo = FocusWheelComboBox()
+        self.startup_group_combo.setObjectName("startupGroupCombo")
+        self.startup_workflow_combo = FocusWheelComboBox()
+        self.startup_workflow_combo.setObjectName("startupWorkflowCombo")
         self.project_toolbar = QToolBar("项目", self)
         self.project_toolbar.setObjectName("projectToolbar")
         self.addToolBar(self.project_toolbar)
@@ -193,6 +244,15 @@ class MainWindow(QMainWindow):
         self.run_step_action.setObjectName("runSelectedStepAction")
         self.preview_action = QAction("预览条件", self)
         self.preview_action.setObjectName("previewConditionAction")
+        startup_group_label = QLabel("启动组")
+        startup_group_label.setObjectName("startupGroupLabel")
+        startup_workflow_label = QLabel("启动流程")
+        startup_workflow_label.setObjectName("startupWorkflowLabel")
+        self.runtime_toolbar.addWidget(startup_group_label)
+        self.runtime_toolbar.addWidget(self.startup_group_combo)
+        self.runtime_toolbar.addWidget(startup_workflow_label)
+        self.runtime_toolbar.addWidget(self.startup_workflow_combo)
+        self.runtime_toolbar.addSeparator()
         self.runtime_toolbar.addActions(
             [
                 self.start_action,
@@ -211,6 +271,8 @@ class MainWindow(QMainWindow):
         self.run_step_action.triggered.connect(self._run_selected_step)
         self.preview_action.triggered.connect(self._preview_selected_condition)
         self.diagnostics_action.triggered.connect(self.diagnostics_dialog.show)
+        self.startup_group_combo.currentIndexChanged.connect(self._startup_group_changed)
+        self.startup_workflow_combo.currentIndexChanged.connect(self._startup_workflow_changed)
         self.save_action.triggered.connect(self._save_project)
         self.undo_action.triggered.connect(self._undo_project_change)
         self.add_step_action.triggered.connect(self._add_step)
@@ -239,13 +301,17 @@ class MainWindow(QMainWindow):
         if self.runner_bridge is not None:
             self.runner_bridge.eventReceived.connect(self.run_view_model.consume)
             self.runner_bridge.eventReceived.connect(self.diagnostics_dialog.update_event)
+            self.runner_bridge.eventReceived.connect(self.runtime_log_controller.consume)
             self.runner_bridge.failed.connect(self.statusBar().showMessage)
+        self._refresh_startup_selectors()
         self._update_runtime_actions(self.run_view_model.state)
         self.setWindowTitle("Flow Runner[*]")
         self._refresh_save_state()
         self._refresh_undo_state()
         self._refresh_context_actions()
         self._apply_initial_window_geometry()
+        self._restore_column_widths()
+        self.workspace_splitter.splitterMoved.connect(self._column_widths_changed)
 
     def _apply_initial_window_geometry(self) -> None:
         screen = QApplication.primaryScreen()
@@ -257,6 +323,92 @@ class MainWindow(QMainWindow):
         height = min(available.height(), max(650, int(available.height() * 0.8)))
         self.resize(width, height)
         self.move(available.center() - self.rect().center())
+
+    def _restore_column_widths(self) -> None:
+        widths = self._saved_column_widths
+        if widths is not None:
+            self.workspace_splitter.setSizes(list(widths))
+        else:
+            current = self.workspace_splitter.sizes()
+            if len(current) == 3 and all(value > 0 for value in current):
+                self._saved_column_widths = current[0], current[1], current[2]
+
+    def _column_widths_changed(self, _position: int, _index: int) -> None:
+        values = [max(1, value) for value in self.workspace_splitter.sizes()]
+        if len(values) != 3:
+            return
+        widths = values[0], values[1], values[2]
+        self._pending_column_widths = widths
+        self._layout_dirty = widths != self._saved_column_widths
+        self._refresh_save_state()
+        self._refresh_undo_state()
+
+    def _refresh_startup_selectors(self) -> None:
+        project = self.view_model.project
+        labels = ProjectDisplayIndex(project)
+        configured_id = _uuid_setting(project.settings.get("entry_workflow_id"))
+        selected_group_id: UUID | None = None
+        selected_workflow_id: UUID | None = None
+        for group in project.groups:
+            for workflow in group.workflows:
+                if workflow.id == configured_id:
+                    selected_group_id = group.id
+                    selected_workflow_id = workflow.id
+                    break
+            if selected_group_id is not None:
+                break
+        if selected_group_id is None:
+            first_group = next((group for group in project.groups if group.workflows), None)
+            if first_group is not None:
+                selected_group_id = first_group.id
+                selected_workflow_id = first_group.workflows[0].id
+
+        blocked = self.startup_group_combo.blockSignals(True)
+        try:
+            self.startup_group_combo.clear()
+            for group in project.groups:
+                if group.workflows:
+                    self.startup_group_combo.addItem(labels.group_label(group.id), group.id)
+            index = self.startup_group_combo.findData(selected_group_id)
+            self.startup_group_combo.setCurrentIndex(index)
+        finally:
+            self.startup_group_combo.blockSignals(blocked)
+        self._populate_startup_workflows(selected_group_id, selected_workflow_id)
+
+    def _populate_startup_workflows(
+        self,
+        group_id: UUID | None,
+        selected_workflow_id: UUID | None = None,
+    ) -> None:
+        labels = ProjectDisplayIndex(self.view_model.project)
+        blocked = self.startup_workflow_combo.blockSignals(True)
+        try:
+            self.startup_workflow_combo.clear()
+            group = next(
+                (group for group in self.view_model.project.groups if group.id == group_id),
+                None,
+            )
+            if group is None:
+                return
+            for workflow in group.workflows:
+                self.startup_workflow_combo.addItem(labels.workflow_label(workflow.id), workflow.id)
+            index = self.startup_workflow_combo.findData(selected_workflow_id)
+            self.startup_workflow_combo.setCurrentIndex(index if index >= 0 else 0)
+        finally:
+            self.startup_workflow_combo.blockSignals(blocked)
+
+    def _startup_group_changed(self, _index: int) -> None:
+        group_id = self.startup_group_combo.currentData()
+        self._populate_startup_workflows(group_id if isinstance(group_id, UUID) else None)
+        self._startup_workflow_changed(self.startup_workflow_combo.currentIndex())
+
+    def _startup_workflow_changed(self, _index: int) -> None:
+        workflow_id = self.startup_workflow_combo.currentData()
+        if not isinstance(workflow_id, UUID):
+            return
+        settings = dict(self.view_model.project.settings)
+        settings["entry_workflow_id"] = str(workflow_id)
+        self.view_model.update_settings(settings)
 
     def _select_workflow(self, workflow_id: UUID) -> None:
         if not self._commit_pending_editor():
@@ -348,6 +500,17 @@ class MainWindow(QMainWindow):
             self._refresh_save_state()
             self._refresh_undo_state()
             return
+        if self._layout_dirty:
+            self.workspace_splitter.blockSignals(True)
+            try:
+                self._restore_column_widths()
+            finally:
+                self.workspace_splitter.blockSignals(False)
+            self._pending_column_widths = None
+            self._layout_dirty = False
+            self._refresh_save_state()
+            self._refresh_undo_state()
+            return
         self.view_model.undo()
         self._refresh_save_state()
         self._refresh_undo_state()
@@ -365,6 +528,8 @@ class MainWindow(QMainWindow):
         )
 
     def _project_changed(self, _project: Project) -> None:
+        self.runtime_formatter.set_project(_project)
+        self._refresh_startup_selectors()
         self._reload_selection_from_project()
         self._refresh_save_state()
         self._refresh_undo_state()
@@ -435,11 +600,13 @@ class MainWindow(QMainWindow):
 
     def _refresh_undo_state(self) -> None:
         self.undo_action.setEnabled(
-            self.property_panel.has_pending_edits or self.view_model.can_undo
+            self.property_panel.has_pending_edits or self._layout_dirty or self.view_model.can_undo
         )
 
     def _refresh_save_state(self) -> None:
-        modified = self.view_model.dirty or self.property_panel.has_pending_edits
+        modified = (
+            self.view_model.dirty or self.property_panel.has_pending_edits or self._layout_dirty
+        )
         self.save_action.setEnabled(self.save_project is not None and modified)
         self.setWindowModified(modified)
 
@@ -459,12 +626,22 @@ class MainWindow(QMainWindow):
                 detail = self.property_panel.validation_error or "请修正当前步骤中的参数"
                 self.statusBar().showMessage(f"项目保存失败：{detail}")
                 return False
+        if self._layout_dirty and self._pending_column_widths is not None:
+            settings = dict(self.view_model.project.settings)
+            ui_layout = dict(settings.get("ui_layout", {}))
+            ui_layout["column_widths"] = list(self._pending_column_widths)
+            settings["ui_layout"] = ui_layout
+            self.view_model.update_settings(settings)
         try:
             self.save_project(self.view_model.project)
         except Exception as error:
             self.statusBar().showMessage(f"项目保存失败：{error}")
             return False
         self.view_model.mark_saved()
+        if self._pending_column_widths is not None:
+            self._saved_column_widths = self._pending_column_widths
+        self._pending_column_widths = None
+        self._layout_dirty = False
         self._refresh_save_state()
         timestamp = datetime.now().strftime("%H:%M:%S")
         location = f"：{self.project_path}" if self.project_path is not None else ""
@@ -520,6 +697,7 @@ class MainWindow(QMainWindow):
             self.registry,
             self.view_model.project,
             current_workflow_id=self._workflow_id,
+            region_capture=self.region_capture,
         )
         if dialog.exec() != GuidedAddDialog.DialogCode.Accepted:
             return None
@@ -624,7 +802,8 @@ class MainWindow(QMainWindow):
         if not choices:
             self.statusBar().showMessage("没有其它可移动到的流程组")
             return None
-        labels = [group.name for group in choices]
+        display = ProjectDisplayIndex(project)
+        labels = [display.group_label(group.id) for group in choices]
         selected, accepted = QInputDialog.getItem(
             self,
             "移动流程",
@@ -750,10 +929,11 @@ class MainWindow(QMainWindow):
                 self._parallel_block_id,
             )
             return
-        if self._workflow_id is None:
-            self.statusBar().showMessage("请先选择要启动的流程")
+        workflow_id = self.startup_workflow_combo.currentData()
+        if not isinstance(workflow_id, UUID):
+            self.statusBar().showMessage("请先配置要启动的流程")
             return
-        self.runner_bridge.start(self.view_model.project, self._workflow_id)
+        self.runner_bridge.start(self.view_model.project, workflow_id)
 
     def _toggle_pause(self) -> None:
         if self.runner_bridge is None:
@@ -805,7 +985,9 @@ class MainWindow(QMainWindow):
         self.pause_action.setText("继续" if state is RunnerState.PAUSED else "暂停")
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        modified = self.view_model.dirty or self.property_panel.has_pending_edits
+        modified = (
+            self.view_model.dirty or self.property_panel.has_pending_edits or self._layout_dirty
+        )
         running = self.runner_bridge is not None and self.runner_bridge.is_running
         if modified or running:
             decision = (
@@ -856,6 +1038,33 @@ def _accepts_close_state(callback: Callable[..., object]) -> bool:
     except (TypeError, ValueError):
         return False
     return True
+
+
+def _uuid_setting(value: object) -> UUID | None:
+    if isinstance(value, UUID):
+        return value
+    if not isinstance(value, str):
+        return None
+    try:
+        return UUID(value)
+    except ValueError:
+        return None
+
+
+def _column_widths_from_settings(settings: dict[str, object]) -> tuple[int, int, int] | None:
+    ui_layout = settings.get("ui_layout")
+    if not isinstance(ui_layout, dict):
+        return None
+    widths = ui_layout.get("column_widths")
+    if (
+        not isinstance(widths, list)
+        or len(widths) != 3
+        or any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in widths
+        )
+    ):
+        return None
+    return widths[0], widths[1], widths[2]
 
 
 def _normalize_close_decision(

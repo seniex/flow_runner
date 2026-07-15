@@ -320,14 +320,15 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "input.mouse",
+                  "capability": "input.keyboard",
                   "config": {
-                    "operation": "scroll",
-                    "position": [
-                      1023,
-                      833
-                    ],
-                    "scroll_units": -168
+                    "operation": "press",
+                    "key": "",
+                    "keys": [],
+                    "text": "",
+                    "text_mode": "keys",
+                    "count": 1,
+                    "interval": 0.0
                   }
                 }
               ],
@@ -501,7 +502,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\基本卡片.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\基本卡片.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -556,12 +557,24 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "input.keyboard",
+                  "capability": "input.mouse",
                   "config": {
-                    "operation": "press",
-                    "key": "f4",
-                    "count": 1,
-                    "interval": 0.05
+                    "operation": "move",
+                    "position": [
+                      0,
+                      0
+                    ],
+                    "offset": [
+                      0,
+                      0
+                    ],
+                    "button": "left",
+                    "clicks": 1,
+                    "interval": 0.0,
+                    "duration": 0.0,
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.0
                   }
                 }
               ],
@@ -729,7 +742,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 2.0,
                     "jitter_ms": 50
@@ -869,12 +882,12 @@
                 "config": {
                   "target": "desktop",
                   "region": [
-                    659,
-                    872,
-                    1149,
-                    1053
+                    291,
+                    796,
+                    432,
+                    929
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\template_20260715_050949_146.png",
                   "threshold": 0.5
                 }
               },
@@ -927,7 +940,7 @@
               ],
               "condition_policy": {
                 "mode": "until",
-                "interval_seconds": 0.0,
+                "interval_seconds": 1.0,
                 "max_attempts": 1000,
                 "timeout_seconds": null,
                 "before_attempt_actions": [
@@ -1119,7 +1132,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -1453,7 +1466,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -1852,7 +1865,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 2.0,
                     "jitter_ms": 50
@@ -2205,7 +2218,7 @@
                     789,
                     1222
                   ],
-                  "template_path": "scripts\\存档.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\存档.png",
                   "threshold": 0.8
                 }
               },
@@ -2975,7 +2988,7 @@
                     "source": "step_count",
                     "key": "801fdf71-ddf9-5330-b71d-98e719b3b00a",
                     "operator": "gt",
-                    "expected": 0
+                    "expected": 2
                   },
                   "target": {
                     "kind": "jump_workflow",
@@ -3250,7 +3263,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -3319,7 +3332,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\退出游戏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\退出游戏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -3392,7 +3405,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -3990,7 +4003,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\基本卡片.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\基本卡片.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -4547,7 +4560,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 2.0,
                     "jitter_ms": 50
@@ -4692,7 +4705,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -4931,7 +4944,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -5261,7 +5274,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -5660,7 +5673,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 2.0,
                     "jitter_ms": 50
@@ -6391,7 +6404,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -6460,7 +6473,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\退出游戏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\退出游戏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -6533,7 +6546,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -7098,7 +7111,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\基本卡片.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\基本卡片.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -7299,7 +7312,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 2.0,
                     "jitter_ms": 50
@@ -7444,7 +7457,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -7683,7 +7696,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -7970,7 +7983,7 @@
                     1149,
                     1053
                   ],
-                  "template_path": "scripts\\转职挑战.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -8369,7 +8382,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 2.0,
                     "jitter_ms": 50
@@ -8768,7 +8781,7 @@
                     789,
                     1222
                   ],
-                  "template_path": "scripts\\存档.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\存档.png",
                   "threshold": 0.8
                 }
               },
@@ -9196,7 +9209,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -9265,7 +9278,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\退出游戏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\退出游戏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -9338,7 +9351,7 @@
                 {
                   "capability": "recording.playback",
                   "config": {
-                    "path": "recordings\\legacy\\亮屏.json",
+                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
                     "speed": 1.0,
                     "max_gap": 0.0,
                     "jitter_ms": 50
@@ -11071,13 +11084,22 @@
     "hotkeys": {
       "start": "F11",
       "stop": "F12",
-      "pause": "",
+      "pause": "F10",
       "record": "F6"
     },
     "legacy_conversion": {
       "source": "config/flow_runner.json",
       "workflow_count": 99,
       "step_count": 159
-    }
+    },
+    "entry_workflow_id": "df455a93-0f3f-5cd6-b51c-9cc5dcf974c3",
+    "ui_layout": {
+      "column_widths": [
+        246,
+        267,
+        1643
+      ]
+    },
+    "debug_logging": false
   }
 }

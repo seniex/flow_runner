@@ -10,9 +10,15 @@ from flow_runner.domain.project import Project
 
 
 class ProjectStore:
-    def __init__(self, path: Path, backup_limit: int = 5) -> None:
+    def __init__(
+        self,
+        path: Path,
+        backup_limit: int = 5,
+        backup_directory: Path | None = None,
+    ) -> None:
         self.path = path
         self.backup_limit = backup_limit
+        self.backup_directory = backup_directory or path.parent
 
     def load(self) -> Project:
         return self._load_path(self.path)
@@ -28,7 +34,8 @@ class ProjectStore:
                 os.fsync(stream.fileno())
             self._load_path(temporary)
             if self.path.exists():
-                backup = self.path.with_name(
+                self.backup_directory.mkdir(parents=True, exist_ok=True)
+                backup = self.backup_directory / (
                     f"{self.path.stem}.{time.time_ns()}.bak{self.path.suffix}"
                 )
                 shutil.copy2(self.path, backup)
@@ -49,7 +56,7 @@ class ProjectStore:
 
     def _trim_backups(self) -> None:
         backups = sorted(
-            self.path.parent.glob(f"{self.path.stem}.*.bak{self.path.suffix}"),
+            self.backup_directory.glob(f"{self.path.stem}.*.bak{self.path.suffix}"),
             key=lambda path: path.stat().st_mtime_ns,
             reverse=True,
         )

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from time import monotonic
 from typing import Any, cast
+from uuid import UUID, uuid4
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
@@ -23,6 +24,7 @@ from flow_runner.engine.resources import ResourceCoordinator
 
 SleepCallable = Callable[[float], Awaitable[None]]
 ClockCallable = Callable[[], float]
+ActionObserver = Callable[[str, UUID, UUID, dict[str, object]], None]
 
 
 @dataclass(slots=True)
@@ -55,12 +57,22 @@ class StepRuntime:
 class StepExecutor:
     def __init__(self, runtime: StepRuntime) -> None:
         self.runtime = runtime
+        self._action_observer: ActionObserver | None = None
+        self._workflow_id: UUID | None = None
+        self._step_id: UUID | None = None
 
     def bind_workflow_context(self, context: WorkflowContext) -> None:
         self.runtime.context = StepContext.from_workflow(context)
 
     def bind_execution_gate(self, gate: Callable[[], Awaitable[None]]) -> None:
         self.runtime.activation_gate = gate
+
+    def bind_action_observer(self, observer: ActionObserver) -> None:
+        self._action_observer = observer
+
+    def bind_step_identity(self, workflow_id: UUID, step_id: UUID) -> None:
+        self._workflow_id = workflow_id
+        self._step_id = step_id
 
     async def preview_condition(self, step: AutomationStep) -> ConditionResult:
         if step.condition is None:
@@ -119,74 +131,84 @@ class StepExecutor:
         attempt = 0
         last_result: ConditionResult | None = None
 
-        while True:
-            await self.runtime.wait_until_active()
-            self.runtime.context.clear_result()
-            hook_results, hooks_succeeded = await self._execute_actions(
-                policy.before_attempt_actions,
-                step.action_policy.max_attempts,
-                step.action_policy.retry_interval_seconds,
-            )
-            if not hooks_succeeded:
-                return StepResult(
-                    outcome=StepOutcome.FAILURE,
-                    action_results=hook_results,
-                    error="before-attempt action failed",
-                    condition_attempts=attempt,
-                )
-
-            attempt += 1
-            last_result = await self._evaluate_condition(condition)
-            self.runtime.context.result = last_result
-            await self.runtime.wait_until_active()
-
-            if last_result.outcome is ConditionOutcome.MATCH:
-                action_results, succeeded = await self._execute_actions(
-                    step.actions,
-                    step.action_policy.max_attempts,
-                    step.action_policy.retry_interval_seconds,
-                    revalidate_condition=condition,
-                )
-                return StepResult(
-                    outcome=StepOutcome.SUCCESS if succeeded else StepOutcome.FAILURE,
-                    condition_result=self.runtime.context.result or last_result,
-                    action_results=action_results,
-                    condition_attempts=attempt,
-                )
-
-            if last_result.outcome is ConditionOutcome.NO_MATCH:
+        try:
+            while True:
+                await self.runtime.wait_until_active()
+                self.runtime.context.clear_result()
                 hook_results, hooks_succeeded = await self._execute_actions(
-                    policy.after_no_match_actions,
+                    policy.before_attempt_actions,
                     step.action_policy.max_attempts,
                     step.action_policy.retry_interval_seconds,
                 )
                 if not hooks_succeeded:
                     return StepResult(
                         outcome=StepOutcome.FAILURE,
-                        condition_result=last_result,
                         action_results=hook_results,
-                        error="after-no-match action failed",
+                        error="before-attempt action failed",
                         condition_attempts=attempt,
                     )
-                if policy.mode is ConditionMode.ONCE:
+
+                attempt += 1
+                last_result = await self._evaluate_condition(condition)
+                self.runtime.context.result = last_result
+                await self.runtime.wait_until_active()
+
+                if last_result.outcome is ConditionOutcome.MATCH:
+                    action_results, succeeded = await self._execute_actions(
+                        step.actions,
+                        step.action_policy.max_attempts,
+                        step.action_policy.retry_interval_seconds,
+                        revalidate_condition=condition,
+                    )
                     return StepResult(
-                        outcome=StepOutcome.NOT_MATCHED,
-                        condition_result=last_result,
-                        action_results=hook_results,
+                        outcome=StepOutcome.SUCCESS if succeeded else StepOutcome.FAILURE,
+                        condition_result=self.runtime.context.result or last_result,
+                        action_results=action_results,
                         condition_attempts=attempt,
                     )
-                terminal_outcome = StepOutcome.TIMEOUT
-            else:
-                terminal_outcome = StepOutcome.FAILURE
 
-            if self._attempts_exhausted(step, attempt) or self._timeout_reached(step, started_at):
-                return StepResult(
-                    outcome=terminal_outcome,
-                    condition_result=last_result,
-                    condition_attempts=attempt,
-                )
+                if last_result.outcome is ConditionOutcome.NO_MATCH:
+                    hook_results, hooks_succeeded = await self._execute_actions(
+                        policy.after_no_match_actions,
+                        step.action_policy.max_attempts,
+                        step.action_policy.retry_interval_seconds,
+                    )
+                    if not hooks_succeeded:
+                        return StepResult(
+                            outcome=StepOutcome.FAILURE,
+                            condition_result=last_result,
+                            action_results=hook_results,
+                            error="after-no-match action failed",
+                            condition_attempts=attempt,
+                        )
+                    if policy.mode is ConditionMode.ONCE:
+                        return StepResult(
+                            outcome=StepOutcome.NOT_MATCHED,
+                            condition_result=last_result,
+                            action_results=hook_results,
+                            condition_attempts=attempt,
+                        )
+                    terminal_outcome = StepOutcome.TIMEOUT
+                else:
+                    terminal_outcome = StepOutcome.FAILURE
 
-            await self.runtime.wait(policy.interval_seconds)
+                if self._attempts_exhausted(step, attempt) or self._timeout_reached(
+                    step, started_at
+                ):
+                    return StepResult(
+                        outcome=terminal_outcome,
+                        condition_result=last_result,
+                        condition_attempts=attempt,
+                    )
+
+                await self.runtime.wait(policy.interval_seconds)
+        except Cancelled as error:
+            return StepResult(
+                outcome=StepOutcome.CANCELLED,
+                condition_result=last_result,
+                error=str(error),
+                condition_attempts=attempt,
+            )
 
     def _attempts_exhausted(self, step: AutomationStep, attempt: int) -> bool:
         maximum = step.condition_policy.max_attempts
@@ -284,12 +306,13 @@ class StepExecutor:
         revalidate_condition: ConditionNode | None = None,
     ) -> tuple[tuple[ActionResult, ...], bool]:
         completed: list[ActionResult] = []
-        for action in actions:
+        for action_index, action in enumerate(actions):
             final_result: ActionResult | None = None
             for attempt in range(1, max_attempts + 1):
                 await self.runtime.wait_until_active()
                 attempt_result = await self._execute_action(
                     action,
+                    action_index=action_index,
                     revalidate_condition=revalidate_condition,
                 )
                 final_result = attempt_result.model_copy(update={"attempts": attempt})
@@ -308,6 +331,7 @@ class StepExecutor:
         self,
         action: ActionSpec,
         *,
+        action_index: int,
         revalidate_condition: ConditionNode | None = None,
     ) -> ActionResult:
         try:
@@ -319,6 +343,8 @@ class StepExecutor:
                 return await self._execute_provider_action(
                     provider,
                     config,
+                    action=action,
+                    action_index=action_index,
                 )
             window_targets = sorted(
                 resource for resource in required if resource.startswith("window:")
@@ -352,6 +378,8 @@ class StepExecutor:
                     return await self._execute_provider_action(
                         provider,
                         config,
+                        action=action,
+                        action_index=action_index,
                     )
                 finally:
                     perception = self.runtime.resources.perception
@@ -362,7 +390,22 @@ class StepExecutor:
         except Exception as error:
             return ActionResult(outcome=StepOutcome.FAILURE, error=str(error))
 
-    async def _execute_provider_action(self, provider: Any, config: Any) -> ActionResult:
+    async def _execute_provider_action(
+        self,
+        provider: Any,
+        config: Any,
+        *,
+        action: ActionSpec,
+        action_index: int,
+    ) -> ActionResult:
+        wait_details = None
+        if action.capability == "system.wait":
+            wait_details = {
+                "wait_id": str(uuid4()),
+                "seconds": float(config.seconds),
+                "action_index": action_index,
+            }
+            self._notify_action("action.wait.started", wait_details)
         action_task = asyncio.create_task(provider.execute(config, self.runtime.context))
         cancel_task = asyncio.create_task(self.runtime.cancellation.wait_cancelled())
         try:
@@ -372,12 +415,28 @@ class StepExecutor:
             )
             if cancel_task in done:
                 self.runtime.cancellation.raise_if_cancelled()
-            return cast(ActionResult, action_task.result())
+            result = cast(ActionResult, action_task.result())
+        except Cancelled:
+            if wait_details is not None:
+                self._notify_action("action.wait.cancelled", wait_details)
+            raise
+        else:
+            if wait_details is not None:
+                self._notify_action("action.wait.finished", wait_details)
+            return result
         finally:
             for task in (action_task, cancel_task):
                 if not task.done():
                     task.cancel()
             await asyncio.gather(action_task, cancel_task, return_exceptions=True)
+
+    def _notify_action(self, kind: str, details: dict[str, object]) -> None:
+        if (
+            self._action_observer is not None
+            and self._workflow_id is not None
+            and self._step_id is not None
+        ):
+            self._action_observer(kind, self._workflow_id, self._step_id, details)
 
     async def _refresh_stale_condition(
         self,

@@ -87,6 +87,8 @@ def test_template_dialog_uses_project_dropdowns_for_uuid_targets(qtbot):
     assert isinstance(dialog.target_workflow_combo, QComboBox)
     assert isinstance(dialog.success_workflow_combo, QComboBox)
     assert isinstance(dialog.timeout_workflow_combo, QComboBox)
+    assert dialog.target_step_combo.itemText(0) == "01. 后续步骤"
+    assert dialog.target_workflow_combo.itemText(0) == "01. 主组 / 01. 当前流程"
 
     dialog.template_combo.setCurrentIndex(
         dialog.template_combo.findData("success_timeout_branches")

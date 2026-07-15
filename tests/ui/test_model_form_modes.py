@@ -86,7 +86,13 @@ def test_model_form_separates_common_and_advanced_fields(
 
     assert not form.editor(common_field).isHidden()
     if advanced_field is None:
-        assert all(not editor.isHidden() for editor in form.editors.values())
+        if model_type is WindowActionConfig:
+            assert form.editor("geometry").isHidden()
+            assert all(
+                not editor.isHidden() for name, editor in form.editors.items() if name != "geometry"
+            )
+        else:
+            assert all(not editor.isHidden() for editor in form.editors.values())
         return
 
     assert form.editor(advanced_field).isHidden()

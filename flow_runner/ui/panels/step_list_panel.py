@@ -1,9 +1,120 @@
 from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QListWidget, QListWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtGui import QMouseEvent
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
-from flow_runner.domain.project import Workflow
+from flow_runner.domain.conditions import ConditionGroup, LeafCondition
+from flow_runner.domain.project import AutomationStep, Workflow
+from flow_runner.ui.localization import action_summary, capability_label, choice_label
+
+
+class StepCardWidget(QWidget):
+    clicked = Signal()
+
+    def __init__(self, step: AutomationStep, index: int) -> None:
+        super().__init__()
+        self.setObjectName("stepCard")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setAccessibleName(step.name)
+        self.setProperty("selected", False)
+        self.is_expanded = False
+
+        self.number_label = QLabel(f"{index:02d}.")
+        self.number_label.setObjectName("stepCardNumber")
+        self.title_label = QLabel(step.name)
+        self.title_label.setObjectName("stepCardTitle")
+        header = QWidget()
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(6)
+        header_layout.addWidget(self.number_label)
+        header_layout.addWidget(self.title_label, 1)
+        self.body = QWidget()
+        self.body.setObjectName("stepCardBody")
+        body_layout = QVBoxLayout(self.body)
+        body_layout.setContentsMargins(0, 4, 0, 0)
+        body_layout.setSpacing(3)
+        body_layout.addWidget(_summary_label(_condition_summary(step), "conditionSummaryRow"))
+        for action in step.actions:
+            body_layout.addWidget(
+                _summary_label(f"执行：{action_summary(action)}", "actionSummaryRow")
+            )
+        if not step.actions:
+            body_layout.addWidget(_summary_label("执行：无", "actionSummaryRow"))
+        body_layout.addWidget(_summary_label(_policy_summary(step), "policySummaryRow"))
+        body_layout.addWidget(_summary_label(_route_summary(step), "routeSummaryRow"))
+        self.body.hide()
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(0)
+        layout.addWidget(header)
+        layout.addWidget(self.body)
+
+    def set_expanded(self, expanded: bool) -> None:
+        if self.is_expanded == expanded:
+            return
+        self.is_expanded = expanded
+        self.setProperty("selected", expanded)
+        self.title_label.setVisible(not expanded)
+        self.body.setVisible(expanded)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.updateGeometry()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() is Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+
+def _summary_label(text: str, object_name: str) -> QLabel:
+    label = QLabel(text)
+    label.setObjectName(object_name)
+    label.setWordWrap(True)
+    return label
+
+
+def _condition_summary(step: AutomationStep) -> str:
+    condition = step.condition
+    if condition is None:
+        return "检测：无"
+    if isinstance(condition, LeafCondition):
+        detail = condition.config.get("keywords") or condition.config.get("template_path") or ""
+        suffix = f" · {detail}" if detail else ""
+        return f"检测：{capability_label(condition.capability)}{suffix}"
+    if isinstance(condition, ConditionGroup):
+        operator = {"and": "且", "or": "或", "not": "非"}[condition.operator]
+        return f"检测：{operator}组合（{len(condition.children)} 项）"
+    return "检测：已配置"
+
+
+def _policy_summary(step: AutomationStep) -> str:
+    condition = step.condition_policy
+    action = step.action_policy
+    parts = [choice_label(condition.mode)]
+    if condition.max_attempts is not None:
+        parts.append(f"检测 {condition.max_attempts} 次")
+    if action.max_attempts > 1:
+        parts.append(f"执行 {action.max_attempts} 次")
+    return f"策略：{' · '.join(parts)}"
+
+
+def _route_summary(step: AutomationStep) -> str:
+    if not step.routes:
+        return "路由：无"
+    summaries = [
+        f"{choice_label(route.outcome)}→{choice_label(route.target.kind)}" for route in step.routes
+    ]
+    return f"路由：{'；'.join(summaries)}"
 
 
 class StepListPanel(QWidget):
@@ -21,16 +132,26 @@ class StepListPanel(QWidget):
     def set_workflow(self, workflow: Workflow) -> None:
         self.list.clear()
         self._items.clear()
-        for step in workflow.steps:
-            item = QListWidgetItem(step.name)
+        for index, step in enumerate(workflow.steps, start=1):
+            item = QListWidgetItem("")
             item.setData(Qt.ItemDataRole.UserRole, step.id)
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, step.name)
             self.list.addItem(item)
+            card = StepCardWidget(step, index)
+            card.clicked.connect(lambda step_item=item: self.list.setCurrentItem(step_item))
+            self.list.setItemWidget(item, card)
+            item.setSizeHint(card.sizeHint())
             self._items[step.id] = item
 
     def select_step(self, step_id: UUID) -> None:
         self.list.setCurrentItem(self._items[step_id])
 
     def _on_current_item(self, current: QListWidgetItem | None) -> None:
+        for item in self._items.values():
+            card = self.list.itemWidget(item)
+            if isinstance(card, StepCardWidget):
+                card.set_expanded(item is current)
+                item.setSizeHint(card.sizeHint())
         if current is None:
             return
         step_id = current.data(Qt.ItemDataRole.UserRole)

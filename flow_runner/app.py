@@ -4,6 +4,7 @@ import asyncio
 import sys
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
@@ -33,6 +34,7 @@ from flow_runner.engine.perception import OcrProvider, PerceptionService
 from flow_runner.engine.resources import ResourceCoordinator
 from flow_runner.engine.runner import Runner
 from flow_runner.engine.step_executor import StepExecutor, StepRuntime
+from flow_runner.infrastructure.capture.base import CapturedFrame
 from flow_runner.infrastructure.capture.desktop import DesktopCapture
 from flow_runner.infrastructure.capture.targets import (
     TargetCapture,
@@ -46,9 +48,12 @@ from flow_runner.infrastructure.input.recording import (
     RecordingPlayer,
     RecordingRecorder,
 )
-from flow_runner.infrastructure.logging.sinks import JsonLinesEventSink
+from flow_runner.infrastructure.logging.formatters import RuntimeEventFormatter
+from flow_runner.infrastructure.logging.session import session_log_path
+from flow_runner.infrastructure.logging.sinks import JsonEventSink, TextEventSink
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
+from flow_runner.infrastructure.paths import ApplicationPaths
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 from flow_runner.infrastructure.processes.query import WindowsProcessQuery
@@ -56,6 +61,7 @@ from flow_runner.infrastructure.windowing.dpi import enable_per_monitor_dpi_awar
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController, Win32WindowQuery
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
 from flow_runner.ui.main_window import MainWindow
+from flow_runner.ui.region_capture import RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.theme_manager import ThemeManager
 
@@ -118,12 +124,18 @@ def create_application(
     enable_per_monitor_dpi_awareness()
     existing = QApplication.instance()
     app = existing if isinstance(existing, QApplication) else QApplication(list(argv or []))
-    path = project_path or Path.cwd() / "project.json"
-    store = ProjectStore(path)
+    paths = (
+        ApplicationPaths.for_project(project_path)
+        if project_path is not None
+        else ApplicationPaths.default(Path.cwd())
+    )
+    path = paths.project_file
+    store = ProjectStore(path, backup_directory=paths.backup_directory)
     project = store.load() if path.exists() else Project(name="新项目")
-    perception = PerceptionService(_build_capture(project))
+    capture = _build_capture(project)
+    perception = PerceptionService(capture)
     resource_coordinator = ResourceCoordinator(perception)
-    ocr_provider, ocr_client = _build_ocr_provider(project, path.parent)
+    ocr_provider, ocr_client = _build_ocr_provider(project, paths.application_root)
     mouse = mouse_device or PyAutoGuiMouseDevice()
     keyboard = keyboard_device or PyAutoGuiKeyboardDevice()
     registry = _build_registry(perception, asyncio.sleep, ocr_provider, mouse, keyboard)
@@ -156,9 +168,20 @@ def create_application(
 
     runner = Runner(step_executor_factory=step_executor_factory)
     resource_coordinator.event_sink = runner.report_resource_event
+    debug_logging = bool(project.settings.get("debug_logging", False))
+    runtime_formatter = RuntimeEventFormatter(project, debug=debug_logging)
+    log_path = session_log_path(
+        paths.log_directory,
+        paths.session_name,
+        datetime.now(),
+        debug=debug_logging,
+    )
+    persistent_sink = (
+        JsonEventSink(log_path) if debug_logging else TextEventSink(log_path, runtime_formatter)
+    )
     runner_bridge = RunnerBridge(
         runner,
-        persistent_event_sink=JsonLinesEventSink(path.parent / "logs" / "runtime.jsonl"),
+        persistent_event_sink=persistent_sink,
     )
     window = MainWindow(
         project,
@@ -166,6 +189,11 @@ def create_application(
         save_project=save_project,
         project_path=path,
         registry=registry,
+        region_capture=RegionCaptureService(
+            lambda target: _capture_frame_for_ui(capture, target),
+            template_directory=paths.template_directory,
+        ),
+        runtime_formatter=runtime_formatter,
     )
     recorder = RecordingRecorder(listener_factory=recording_listener_factory)
     configured_hotkeys = hotkey_config or HotkeyConfig.model_validate(
@@ -192,7 +220,7 @@ def create_application(
         runner_bridge=runner_bridge,
         hotkey_service=hotkey_service,
         recorder=recorder,
-        recording_path=recording_path or path.parent / "recordings" / "latest.json",
+        recording_path=recording_path or paths.latest_recording_file,
         resource_coordinator=resource_coordinator,
         ocr_client=ocr_client,
         mouse_device=mouse,
@@ -257,6 +285,11 @@ def _build_capture(project: Project) -> TargetCapture:
         default_window_mode=mode,
         fallback_to_foreground=fallback,
     )
+
+
+def _capture_frame_for_ui(capture: TargetCapture, target: str) -> CapturedFrame:
+    frame = asyncio.run(capture.capture(target))
+    return frame if isinstance(frame, CapturedFrame) else CapturedFrame(frame)
 
 
 def _build_ocr_provider(

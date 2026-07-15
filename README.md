@@ -38,9 +38,12 @@ $env:QT_QPA_PLATFORM='offscreen'
 flow-runner
 ```
 
-The default project path is `project.json` in the current directory. Visual styling is loaded
-application-wide from `flow_runner/resources/styles/base.qss`; final visual design will be applied
-from the user-provided `DESIGN.md` in a separate pass.
+The default project path is `data/project.json` in the current directory. Its backups, generated
+templates, recordings, and logs are stored under `data/backups/`, `data/templates/`,
+`data/recordings/`, and `data/logs/`. An explicitly supplied `project_path` keeps those auxiliary
+directories beside that project file. Visual styling is loaded application-wide from
+`flow_runner/resources/styles/base.qss`. The default theme is a dark, QSS-driven workspace; Python
+UI modules do not contain local color styles.
 
 OCR engine selection is stored in the project `settings` object. PaddleOCR-json v1.4.x uses its
 stdin/stdout JSON protocol and is started lazily on the first OCR request:
@@ -98,16 +101,34 @@ The application enables Per-Monitor V2 DPI awareness before constructing Qt.
 
 ## Editor and runtime controls
 
-The main window uses a three-pane layout: groups/workflows on the left, steps in the center, and the
-selected step's condition, actions, policies, and routes on the right. New steps start from only
-three guided categories: `检测`, `执行`, and `控制`. Conditions can later switch capabilities or be
-combined in the guided AND/OR/NOT tree without changing the surrounding policy and routes. Advanced
-JSON remains available for direct schema-level editing.
+The default workspace keeps groups/workflows on the left, expandable step cards and detailed
+properties in the main area, and a persistent runtime log at the bottom. The runtime toolbar has
+independent startup group/workflow selectors; the selected entry is stored as
+`settings.entry_workflow_id`, so editing another workflow does not silently change what Start runs.
+Groups, workflows, and steps display independent two-digit numbers that restart inside their direct
+container. These labels are presentation-only: raw names, UUIDs, JSON data, and route references are
+unchanged.
+New steps start from only three guided categories: `检测`, `执行`, and `控制`. Conditions can later
+switch capabilities or be combined in the guided AND/OR/NOT tree without changing the surrounding
+policy and routes. Advanced JSON remains available for direct schema-level editing.
+
+The three editor columns share one draggable splitter. Their widths are stored in
+`settings.ui_layout.column_widths` only when the project is saved and restored on the next launch.
+Collapsed step cards show only the step name; the selected card replaces the name with its compact
+detection, action, policy, and route summary. Window actions keep operation, title, and geometry on
+one row, showing geometry only for move/resize.
 
 Step properties open on a compact `常用配置` tab. Capability-specific advanced fields can be
 revealed when needed, while the separate `高级 JSON` tab round-trips conditions, actions, policies,
 and routes through the same validation path. Policy and route summaries use readable project names;
 an unconditional route that would hide a later conditional route is rejected before save.
+Common action, detection, policy, and route fields use a wrapping horizontal layout: controls stay
+on one row while space permits and wrap only in narrower windows. Complex condition trees, action
+sequences, and advanced policy hooks retain dedicated editing areas.
+
+Visual condition forms can capture a region directly from a frozen desktop/window frame. Region
+fields expose `框选区域`; image-template forms additionally expose `框选并截图`, which fills the
+selected region and writes a PNG below `data/templates/` for recognition.
 
 The project toolbar supports group/workflow/step editing, undo, validated save, settings, and
 explicit parallel blocks. Parallel execution is never inferred from routes: create a parallel block
@@ -144,11 +165,13 @@ open.
 The runtime toolbar provides start, pause/resume, stop, input recording, selected-step execution,
 condition preview, and structured diagnostics. Visual condition previews attach the recent frame as
 an in-memory PNG without creating temporary screenshot files. Diagnostics include step results,
-selected routes, frame/scene identifiers, retry data, errors, and resource wait events. Default global hotkeys are
+selected routes, frame/scene identifiers, retry data, errors, and resource wait events. A
+`system.wait` action displays a one-second, in-place countdown in the runtime log; pause freezes it
+and cancellation replaces it with a final cancelled entry. Default global hotkeys are
 F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings can change or disable them.
 
-Recordings are stored by default at `recordings/latest.json` beside the project. The playback action
-can reuse a recording with configurable speed and maximum gap.
+Recordings are stored by default at `data/recordings/latest.json`. The playback action can reuse a
+recording with configurable speed and maximum gap.
 
 Mouse actions support fixed or result-bound coordinates, an additional coordinate offset, click,
 move, scroll, button-down, button-up, and drag operations. Keyboard actions support press, hotkey,
@@ -170,13 +193,17 @@ steal visible screen space.
 ## Persistence and safety
 
 Project JSON, UUID references, registered condition/action configs, policy hooks, and runtime binding
-syntax are validated on load and again before save. Saves write and validate a temporary sibling file, flush it,
-rotate the five newest backups, and atomically replace the main file. Desktop/window interactions
+syntax are validated on load and again before save. Saves write and validate a temporary sibling file,
+flush it, rotate the five newest backups under `data/backups/`, and atomically replace the main file.
+Desktop/window interactions
 are coordinated so read-only detection can share frames while conflicting input is serialized.
 Screen-derived coordinates are revalidated under the exclusive interaction lease if another action
 has changed the scene. Fixed absolute coordinates remain serialized but do not re-run the original
-condition between actions. Runtime events are also appended to `logs/runtime.jsonl` beside the
-project while continuing to appear in the diagnostics UI.
+condition between actions. Every application launch creates one new log under `data/logs/`, named
+`flow_runner_<YYYYMMDD_HHMMSS>_normal.log` by default. Normal logs contain concise
+Chinese names, outcomes, routes, errors, and wait boundaries. Enabling `debug_logging` takes effect
+on the next launch and creates a `_debug.log` file containing one complete RuntimeEvent JSON object
+per line. Existing historical logs are never overwritten.
 
 ## Real Windows acceptance
 
@@ -193,11 +220,15 @@ the Tesseract executable, and the requested language data.
 - `flow_runner/infrastructure`: screenshot, OCR, input, persistence, and logging adapters
 - `flow_runner/ui`: PySide6 views, ViewModels, dialogs, and application-wide QSS management
 
-The legacy `flow_runner_p1.py`, `flow_runner_p2.py`, and `flow_runner_p3.py` files remain
-reference-only during the refactor. The new package does not import them. The checked-in
-`project.json` was generated from `config/flow_runner.json` by
-`python -m flow_runner.migration.cli`; converted recordings are stored in `recordings/legacy/`.
-See `LEGACY_CONVERSION_REPORT.md` for the exact mappings and validation evidence.
+The obsolete `flow_runner_p1.py`, `flow_runner_p2.py`, and `flow_runner_p3.py` implementations were
+removed after confirming that the current package, tests, and runtime configuration do not import
+them. The active project was originally generated from the archived legacy configuration by
+`python -m flow_runner.migration.cli`; converted recordings are stored in
+`data/recordings/legacy/`. See
+[`docs/archive/LEGACY_CONVERSION_REPORT.md`](docs/archive/LEGACY_CONVERSION_REPORT.md) for the exact
+mappings and validation evidence.
 
-Applying the future `DESIGN.md` visual design remains a separate follow-up task requested by the
-user.
+The dark workspace follows the
+[`flowUI.png`](docs/assets/ui-references/flowUI.png) and
+[`BGUI.png`](docs/assets/ui-references/BGUI.png) references through the shared QSS and compact
+layout system; those reference files are not runtime dependencies.

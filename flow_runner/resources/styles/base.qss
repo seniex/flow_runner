@@ -1,52 +1,247 @@
 QWidget {
-    color: #202124;
-    background: #f5f6f8;
+    color: #e7eaf4;
+    background: #111424;
+    font-family: "Microsoft YaHei UI";
     font-size: 13px;
 }
 
-QPushButton[role="primary"] {
-    color: #ffffff;
-    background: #356ae6;
-    border: 1px solid #2d5bc5;
-    padding: 6px 12px;
+QMainWindow,
+#simpleWorkspace {
+    background: #0c0f1c;
 }
 
-QWidget[status="running"] {
-    border: 1px solid #2e8b57;
+QToolBar {
+    spacing: 5px;
+    padding: 5px;
+    background: #171b2f;
+    border: 0;
+    border-bottom: 1px solid #2c3354;
+}
+
+QToolBar::separator {
+    width: 1px;
+    margin: 3px 6px;
+    background: #394264;
+}
+
+QToolButton {
+    min-height: 28px;
+    padding: 2px 8px;
+    color: #e7eaf4;
+    background: #202640;
+    border: 1px solid #394264;
+    border-radius: 3px;
+}
+
+QToolButton:hover {
+    color: #ffffff;
+    background: #303858;
+    border-color: #7890e8;
+}
+
+QToolButton:pressed {
+    color: #ffffff;
+    background: #151a2d;
+    border-color: #5577ff;
+}
+
+QToolButton:disabled {
+    color: #68708c;
+    background: #181c2d;
+    border-color: #2a3048;
+}
+
+QToolButton:checked {
+    color: #ffffff;
+    background: #344575;
+    border-color: #6683ff;
+}
+
+QStatusBar {
+    color: #aab3d1;
+    background: #171b2f;
+    border-top: 1px solid #2c3354;
 }
 
 #flowTreePanel,
 #stepListPanel,
 #propertyPanel {
-    background: #ffffff;
-    border: 1px solid #d9dde5;
+    background: #111424;
+    border: 1px solid #2a3150;
 }
 
-QTreeWidget,
-QListWidget {
-    background: #ffffff;
-    border: none;
+QPushButton {
+    min-height: 28px;
+    padding: 0 10px;
+    color: #f4f6ff;
+    background: #252b46;
+    border: 1px solid #394264;
+    border-radius: 3px;
 }
 
-QTreeWidget::item:selected,
-QListWidget::item:selected {
+QPushButton:hover {
+    background: #303858;
+    border-color: #6171a7;
+}
+
+QPushButton:pressed {
+    background: #1d2238;
+}
+
+QPushButton:disabled {
+    color: #68708c;
+    background: #181c2d;
+    border-color: #2a3048;
+}
+
+QPushButton[role="primary"] {
     color: #ffffff;
-    background: #356ae6;
+    background: #4f71ff;
+    border-color: #4f71ff;
+}
+
+QWidget[status="running"] {
+    border: 1px solid #2fc67c;
+}
+
+QLineEdit,
+QComboBox,
+QSpinBox,
+QDoubleSpinBox {
+    min-height: 28px;
+    padding: 0 7px;
+    color: #f4f6ff;
+    background: #0d1020;
+    border: 1px solid #38415f;
+    border-radius: 2px;
+    selection-background-color: #5577ff;
+}
+
+QLineEdit:focus,
+QComboBox:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus {
+    border-color: #6683ff;
+}
+
+QComboBox::drop-down {
+    width: 22px;
+    border-left: 1px solid #38415f;
+}
+
+QListWidget,
+QTreeWidget,
+QTextEdit,
+QPlainTextEdit {
+    color: #dfe4f4;
+    background: #090c16;
+    border: 1px solid #2a3150;
+    outline: 0;
+}
+
+QListWidget::item,
+QTreeWidget::item {
+    min-height: 27px;
+    padding: 3px 6px;
+}
+
+QListWidget::item:selected,
+QTreeWidget::item:selected {
+    color: #ffffff;
+    background: #344575;
+}
+
+#stepListPanel QListWidget::item {
+    margin: 3px;
+    padding: 0;
+    background: transparent;
+}
+
+#stepCard {
+    background: #1a1f36;
+    border: 1px solid #303858;
+    border-radius: 4px;
+}
+
+#stepCard[selected="true"] {
+    background: #202947;
+    border-color: #5577ff;
+}
+
+#stepCardTitle {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+#conditionSummaryRow,
+#actionSummaryRow,
+#policySummaryRow,
+#routeSummaryRow {
+    color: #b8c0db;
+}
+
+QWidget[compactField="true"] {
+    background: #171c31;
+    border: 1px solid #272e4a;
+    border-radius: 3px;
+    padding: 3px 5px;
+}
+
+#compactFieldLabel {
+    color: #9da7c7;
+}
+
+QScrollArea,
+QScrollArea > QWidget > QWidget {
+    background: #111424;
+    border: 0;
 }
 
 #propertyModeTabs::pane {
-    border: 1px solid #d9dde5;
-    background: #ffffff;
+    background: #111424;
+    border: 1px solid #2a3150;
 }
 
 #propertyModeTabs QTabBar::tab {
-    background: #eef1f5;
-    border: 1px solid #d9dde5;
+    min-width: 84px;
     padding: 7px 12px;
+    color: #aab3d1;
+    background: #171c31;
+    border: 1px solid #2a3150;
 }
 
 #propertyModeTabs QTabBar::tab:selected {
     color: #ffffff;
-    background: #356ae6;
-    border-color: #2d5bc5;
+    background: #344575;
+    border-color: #5577ff;
+}
+
+#runtimeLog {
+    color: #c8d0e8;
+    background: #080b14;
+    border: 1px solid #2a3150;
+    font-family: Consolas;
+}
+
+QSplitter::handle {
+    width: 2px;
+    height: 2px;
+    background: #252c48;
+}
+
+QScrollBar:vertical {
+    width: 12px;
+    background: #0d1020;
+}
+
+QScrollBar::handle:vertical {
+    min-height: 30px;
+    background: #424d75;
+    border-radius: 5px;
+}
+
+QToolTip {
+    color: #ffffff;
+    background: #202640;
+    border: 1px solid #52618f;
 }

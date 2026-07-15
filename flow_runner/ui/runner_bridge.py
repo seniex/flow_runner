@@ -23,6 +23,18 @@ class _SignalEventSink(EventSink):
         self.bridge._post("event", event)
 
 
+class _SafeEventSink(EventSink):
+    def __init__(self, bridge: RunnerBridge, delegate: EventSink) -> None:
+        self.bridge = bridge
+        self.delegate = delegate
+
+    def emit(self, event: RuntimeEvent) -> None:
+        try:
+            self.delegate.emit(event)
+        except Exception as error:
+            self.bridge._post("failed", f"日志写入失败：{error}")
+
+
 class RunnerBridge(QObject):
     eventReceived = Signal(object)
     finished = Signal(object)
@@ -34,7 +46,7 @@ class RunnerBridge(QObject):
         self.runner = runner
         signal_sink = _SignalEventSink(self)
         self.runner.event_sink = (
-            CompositeEventSink(signal_sink, persistent_event_sink)
+            CompositeEventSink(signal_sink, _SafeEventSink(self, persistent_event_sink))
             if persistent_event_sink is not None
             else signal_sink
         )

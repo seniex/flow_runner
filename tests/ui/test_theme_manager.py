@@ -24,8 +24,20 @@ def test_base_qss_contains_required_semantic_selectors():
     for selector in (
         '[role="primary"]',
         '[status="running"]',
+        "#simpleWorkspace",
         "#flowTreePanel",
         "#stepListPanel",
+        "#stepCard",
         "#propertyPanel",
+        "#runtimeLog",
+    ):
+        assert selector in qss
+    assert "background: #111424" in qss
+    for selector in (
+        "QToolButton {",
+        "QToolButton:hover",
+        "QToolButton:pressed",
+        "QToolButton:disabled",
+        "QToolButton:checked",
     ):
         assert selector in qss

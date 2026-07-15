@@ -20,6 +20,14 @@ logs/
 *.log
 PaddleOCR-json_v*/
 
+# Flow Runner active runtime data
+data/backups/
+data/logs/
+data/templates/*
+!data/templates/legacy/
+!data/templates/legacy/*.png
+data/recordings/latest.json
+
 # Local visual brainstorming artifacts
 .superpowers/
 .worktrees/

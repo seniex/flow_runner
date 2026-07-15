@@ -2,10 +2,11 @@
 
 **状态：complete**
 **完成日期：2026-07-15**
-**最终验证：298 passed；Ruff、格式、严格 mypy、pip check、git diff --check 均通过。**
+**追加改进状态（2026-07-15）：布局与框选验收基本通过；三列持久化、卡片、工具栏、窗口操作、分级日志和等待倒计时修正进入最终回归。**
+**最新验证：323 passed；Ruff、格式、严格 mypy、compileall、git diff --check 均通过。**
 **仍需外部环境处理：多显示器、Tesseract 和全局热键验收继续按
-`REAL_ENVIRONMENT_CHECKLIST.md` 的既有 BLOCKED 记录处理；最终视觉设计仍等待用户提供
-`DESIGN.md`。**
+`REAL_ENVIRONMENT_CHECKLIST.md` 的既有 BLOCKED 记录处理。深色主题和紧凑卡片已按根目录
+`flowUI.png`、`BGUI.png` 参考通过 QSS/布局系统实现。**
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Do not spawn subagents unless the user explicitly requests delegation. Steps use checkbox (`- [ ]`) syntax for tracking.
 

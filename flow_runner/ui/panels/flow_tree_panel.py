@@ -3,6 +3,7 @@ from uuid import UUID
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.project import Project
 
 
@@ -25,18 +26,19 @@ class FlowTreePanel(QWidget):
         self.set_project(project)
 
     def set_project(self, project: Project) -> None:
+        labels = ProjectDisplayIndex(project)
         self.tree.clear()
         self._items.clear()
         self._group_items.clear()
         self._parallel_items.clear()
         for group in project.groups:
-            group_item = QTreeWidgetItem([group.name])
+            group_item = QTreeWidgetItem([labels.group_label(group.id)])
             group_item.setData(0, Qt.ItemDataRole.UserRole, group.id)
             group_item.setData(0, int(Qt.ItemDataRole.UserRole) + 1, "group")
             self.tree.addTopLevelItem(group_item)
             self._group_items[group.id] = group_item
             for workflow in group.workflows:
-                item = QTreeWidgetItem([workflow.name])
+                item = QTreeWidgetItem([labels.workflow_label(workflow.id)])
                 item.setData(0, Qt.ItemDataRole.UserRole, workflow.id)
                 item.setData(0, int(Qt.ItemDataRole.UserRole) + 1, "workflow")
                 group_item.addChild(item)

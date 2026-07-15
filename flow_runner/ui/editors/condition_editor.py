@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
-    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -23,7 +22,9 @@ from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep
 from flow_runner.ui.editor_metadata import common_fields_for
 from flow_runner.ui.editors.model_form import ModelForm
+from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import capability_label, choice_label, field_label
+from flow_runner.ui.region_capture import RegionCaptureService
 from flow_runner.ui.widgets import FocusWheelComboBox
 
 ConditionOperator = Literal["and", "or", "not"]
@@ -38,10 +39,12 @@ class ConditionEditor(QWidget):
         *,
         confirm_discard: Callable[[tuple[str, ...]], bool] | None = None,
         show_advanced: bool = False,
+        region_capture: RegionCaptureService | None = None,
     ) -> None:
         super().__init__()
         self.registry = registry
         self._show_advanced = show_advanced
+        self._region_capture = region_capture
         self.confirm_discard = confirm_discard or self._confirm_discard
         self._root: ConditionNode | None = None
         self._selected_path: tuple[int, ...] | None = None
@@ -79,11 +82,13 @@ class ConditionEditor(QWidget):
         ):
             buttons.addWidget(button)
         layout.addLayout(buttons)
-        form = QFormLayout()
-        form.addRow("节点名称", self.node_id_edit)
-        form.addRow("组合方式", self.operator_combo)
-        form.addRow("检测能力", self.capability_combo)
-        layout.addLayout(form)
+        controls = QWidget()
+        controls.setObjectName("conditionCompactControls")
+        self.control_layout = CompactFlowLayout(controls)
+        self.control_layout.addField("节点名称", self.node_id_edit, "node_id")
+        self.control_layout.addField("组合方式", self.operator_combo, "operator")
+        self.control_layout.addField("检测能力", self.capability_combo, "capability")
+        layout.addWidget(controls)
         layout.addWidget(self.form_container)
         layout.addWidget(self.message_label)
         self.capability_combo.currentIndexChanged.connect(self._capability_changed)
@@ -519,6 +524,20 @@ class ConditionEditor(QWidget):
             model_type,
             common_fields=common_fields_for(capability),
             show_advanced=self._show_advanced,
+            pick_region=(
+                lambda target: (
+                    self._region_capture.pick_region(target, self)
+                    if self._region_capture is not None
+                    else None
+                )
+            ),
+            capture_template=(
+                lambda target: (
+                    self._region_capture.capture_template(target, self)
+                    if self._region_capture is not None
+                    else None
+                )
+            ),
         )
         self.config_form.changed.connect(self._mark_changed)
         if previous:

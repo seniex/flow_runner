@@ -268,6 +268,9 @@ class Runner:
         workflow: Workflow,
         step: AutomationStep,
     ) -> None:
+        identity_binder = getattr(delegate, "bind_step_identity", None)
+        if identity_binder is not None:
+            identity_binder(workflow.id, step.id)
         binder = getattr(delegate, "bind_workflow_context", None)
         if binder is None:
             return
@@ -312,6 +315,27 @@ class Runner:
                     "resources": list(event.resources),
                     "wait_seconds": event.wait_seconds,
                 },
+            )
+        )
+
+    def report_action_event(
+        self,
+        kind: str,
+        workflow_id: UUID,
+        step_id: UUID,
+        details: dict[str, object],
+    ) -> None:
+        if self.task_id is None:
+            return
+        self.event_sink.emit(
+            RuntimeEvent(
+                task_id=self.task_id,
+                kind=kind,
+                state=self.state,
+                monotonic_timestamp=monotonic(),
+                workflow_id=workflow_id,
+                step_id=step_id,
+                details=details,
             )
         )
 
@@ -424,11 +448,19 @@ class _GatedStepExecutor:
         binder = getattr(delegate, "bind_execution_gate", None)
         if binder is not None:
             binder(runner.wait_until_active)
+        action_binder = getattr(delegate, "bind_action_observer", None)
+        if action_binder is not None:
+            action_binder(runner.report_action_event)
 
     def bind_workflow_context(self, context: WorkflowContext) -> None:
         binder = getattr(self.delegate, "bind_workflow_context", None)
         if binder is not None:
             binder(context)
+
+    def bind_step_identity(self, workflow_id: UUID, step_id: UUID) -> None:
+        binder = getattr(self.delegate, "bind_step_identity", None)
+        if binder is not None:
+            binder(workflow_id, step_id)
 
     async def execute(self, step: AutomationStep) -> StepResult:
         try:

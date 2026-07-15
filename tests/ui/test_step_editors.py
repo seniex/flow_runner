@@ -27,6 +27,7 @@ from flow_runner.ui.editors.model_form import ModelForm, PathFieldEditor, TupleF
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
 from flow_runner.ui.panels.property_panel import PropertyPanel
+from flow_runner.ui.region_capture import TemplateCapture
 
 
 class Capability:
@@ -219,6 +220,8 @@ def test_guided_dialog_selects_control_target_without_uuid_json(qtbot):
     )
     dialog = GuidedAddDialog(registry(), project, current_workflow_id=current.id)
     qtbot.addWidget(dialog)
+    assert dialog.control_workflow_combo.itemText(0) == "01. 组 / 01. 当前流程"
+    assert dialog.control_step_combo.itemText(0) == "01. 目标步骤"
     dialog.category_combo.setCurrentText("控制")
     dialog.capability_combo.setCurrentIndex(dialog.capability_combo.findData("next_step"))
     dialog.control_step_combo.setCurrentIndex(dialog.control_step_combo.findData(target_step.id))
@@ -285,6 +288,63 @@ def test_model_form_uses_focused_region_coordinate_and_path_editors(qtbot):
     assert ocr_form.values()["region"] == (1, 2, 30, 40)
     assert image_form.values()["template_path"] == "button.png"
     assert mouse_form.values()["position"] == "$result.primary.position"
+
+
+def test_property_panel_routes_region_and_template_capture_to_condition_form(qtbot, tmp_path):
+    class CaptureService:
+        def __init__(self):
+            self.pick_targets = []
+            self.template_targets = []
+
+        def pick_region(self, target, parent=None):
+            self.pick_targets.append((target, parent))
+            return (10, 20, 110, 120)
+
+        def capture_template(self, target, parent=None):
+            self.template_targets.append((target, parent))
+            return TemplateCapture(
+                region=(30, 40, 130, 140),
+                path=tmp_path / "templates" / "target.png",
+            )
+
+    service = CaptureService()
+    panel = PropertyPanel(
+        registry(),
+        Project(name="p"),
+        region_capture=service,
+    )
+    qtbot.addWidget(panel)
+    panel.set_step(
+        AutomationStep(
+            name="OCR",
+            condition=LeafCondition(
+                id="ocr",
+                capability="vision.ocr",
+                config={"target": "window:Game", "keywords": "开始"},
+            ),
+        )
+    )
+
+    panel.condition_editor.config_form.editor("region").pick_button.click()
+    assert panel.condition_editor.config_form.values()["region"] == (10, 20, 110, 120)
+    assert service.pick_targets[0][0] == "window:Game"
+
+    panel.set_step(
+        AutomationStep(
+            name="图片",
+            condition=LeafCondition(
+                id="image",
+                capability="vision.image",
+                config={"target": "desktop", "template_path": "old.png"},
+            ),
+        )
+    )
+    panel.condition_editor.config_form.editor("template_path").capture_button.click()
+
+    values = panel.condition_editor.config_form.values()
+    assert values["region"] == (30, 40, 130, 140)
+    assert values["template_path"] == str(tmp_path / "templates" / "target.png")
+    assert service.template_targets[0][0] == "desktop"
 
 
 def test_guided_dialog_builds_step_from_generated_form(qtbot):
@@ -1013,6 +1073,8 @@ def test_route_editor_summaries_use_predicates_and_project_names(qtbot):
     )
     editor = RouteEditor(project)
     qtbot.addWidget(editor)
+    assert editor.workflow_combo.itemText(0) == "01. 不思议挂机 / 01. 开始游戏"
+    assert editor.predicate_step_combo.itemText(1).endswith("/ 02. 键盘命令")
     editor.set_step_context(current.id)
     editor.set_routes(
         [
@@ -1037,9 +1099,10 @@ def test_route_editor_summaries_use_predicates_and_project_names(qtbot):
     )
 
     assert [editor.route_list.item(index).text() for index in range(3)] == [
-        "超时 → 键盘命令",
-        "成功 且 键盘命令执行次数 > 1 → 不思议挂机B / 开始游戏",
-        "成功（否则） → 不思议挂机 / 开始游戏",
+        "超时 → 01. 不思议挂机 / 01. 开始游戏 / 02. 键盘命令",
+        "成功 且 01. 不思议挂机 / 01. 开始游戏 / 02. 键盘命令执行次数 > 1 → "
+        "02. 不思议挂机B / 01. 开始游戏",
+        "成功（否则） → 01. 不思议挂机 / 01. 开始游戏",
     ]
 
 

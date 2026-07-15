@@ -50,6 +50,9 @@ class SettingsDialog(QDialog):
         layout.addRow("窗口截图模式", self.window_capture_mode_combo)
         layout.addRow("截图回退", self.window_capture_fallback_check)
         layout.addRow("后台截图超时（秒）", self.window_capture_timeout_spin)
+        self.debug_logging_check = QCheckBox("启用调试日志（下次启动生效）")
+        self.debug_logging_check.setChecked(bool(self.settings.get("debug_logging", False)))
+        layout.addRow("运行日志", self.debug_logging_check)
         for action, value in hotkeys.model_dump().items():
             entry = QLineEdit(value)
             self.entries[action] = entry
@@ -96,6 +99,7 @@ class SettingsDialog(QDialog):
                 "window_capture_mode": str(self.window_capture_mode_combo.currentData()),
                 "window_capture_fallback": self.window_capture_fallback_check.isChecked(),
                 "window_capture_timeout_seconds": self.window_capture_timeout_spin.value(),
+                "debug_logging": self.debug_logging_check.isChecked(),
                 "hotkeys": self.hotkey_config().model_dump(),
             }
         )

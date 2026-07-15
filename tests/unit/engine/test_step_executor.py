@@ -804,7 +804,30 @@ async def test_cancelled_step_returns_cancelled_without_another_attempt():
     result = await StepExecutor(runtime).execute(step)
 
     assert result.outcome is StepOutcome.CANCELLED
+    assert result.condition_attempts == 1
+    assert result.condition_result is not None
+    assert result.condition_result.outcome is ConditionOutcome.NO_MATCH
     assert condition.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cancelled_before_first_condition_evaluation_reports_zero_attempts():
+    condition = QueuedCondition(
+        [ConditionResult(node_id="provider", outcome=ConditionOutcome.NO_MATCH)]
+    )
+    runtime, _ = build_runtime(condition)
+    runtime.cancellation.cancel()
+    step = AutomationStep(
+        name="cancel before evaluation",
+        condition={"id": "ocr", "capability": condition.name, "config": {}},
+    )
+
+    result = await StepExecutor(runtime).execute(step)
+
+    assert result.outcome is StepOutcome.CANCELLED
+    assert result.condition_attempts == 0
+    assert result.condition_result is None
+    assert condition.call_count == 0
 
 
 async def _wait_until(predicate):

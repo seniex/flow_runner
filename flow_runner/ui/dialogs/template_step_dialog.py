@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
 )
 
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.ui.step_templates import STEP_TEMPLATES, build_template_step
 from flow_runner.ui.widgets import FocusWheelComboBox, FocusWheelDoubleSpinBox
@@ -115,9 +116,10 @@ class TemplateStepDialog(QDialog):
         self.error_label.clear()
 
     def _populate_targets(self) -> None:
+        labels = ProjectDisplayIndex(self.project)
         for group in self.project.groups:
             for workflow in group.workflows:
-                label = f"{group.name} / {workflow.name}"
+                label = labels.workflow_path(workflow.id)
                 for combo in (
                     self.target_workflow_combo,
                     self.success_workflow_combo,
@@ -126,7 +128,7 @@ class TemplateStepDialog(QDialog):
                     combo.addItem(label, workflow.id)
                 if workflow.id == self.current_workflow_id:
                     for step in workflow.steps:
-                        self.target_step_combo.addItem(step.name, step.id)
+                        self.target_step_combo.addItem(labels.step_label(step.id), step.id)
 
     def _parameters(self) -> dict[str, object]:
         return {

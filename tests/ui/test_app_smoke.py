@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from PySide6.QtGui import QKeySequence
 
 from flow_runner.app import create_application
+from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import ConditionOutcome, StepOutcome
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
@@ -21,17 +22,48 @@ from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService
+from flow_runner.ui.region_capture import RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
 
 
 def test_application_starts_offscreen_with_injected_project_path(qtbot, tmp_path):
-    path = tmp_path / "project.json"
+    path = tmp_path / "custom" / "project.json"
     ProjectStore(path).save(Project(name="测试项目"))
 
     composition = create_application([], project_path=path)
     qtbot.addWidget(composition.window)
 
     assert composition.window.view_model.project.name == "测试项目"
+    assert composition.store.path == path
+    assert composition.store.backup_directory == path.parent / "backups"
+    assert composition.recording_path == path.parent / "recordings" / "latest.json"
+    assert len(list((path.parent / "logs").glob("custom_*_normal.log"))) == 1
+
+
+def test_application_wires_region_capture_service_to_detailed_condition_editor(qtbot, tmp_path):
+    step = AutomationStep(
+        name="OCR",
+        condition=LeafCondition(
+            id="ocr",
+            capability="vision.ocr",
+            config={"keywords": "开始"},
+        ),
+    )
+    workflow = Workflow(name="流程", steps=[step])
+    path = tmp_path / "project.json"
+    ProjectStore(path).save(Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])]))
+
+    composition = create_application([], project_path=path)
+    window = composition.window
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(step.id)
+
+    assert isinstance(window.region_capture, RegionCaptureService)
+    assert not window.property_panel.condition_editor.config_form.editor(
+        "region"
+    ).pick_button.isHidden()
+    assert window.region_capture.template_directory == tmp_path / "templates"
     assert composition.window.styleSheet() == ""
     assert composition.app.styleSheet()
     assert {item.name for item in composition.registry.condition_metadata()} >= {
@@ -555,6 +587,31 @@ def test_settings_dialog_round_trips_window_capture_options(qtbot):
     assert settings["window_capture_mode"] == "background"
     assert settings["window_capture_fallback"] is False
     assert settings["window_capture_timeout_seconds"] == 2.25
+
+
+def test_settings_dialog_round_trips_debug_logging(qtbot):
+    dialog = SettingsDialog(HotkeyConfig(), {"debug_logging": True})
+    qtbot.addWidget(dialog)
+
+    assert dialog.debug_logging_check.isChecked()
+    assert dialog.project_settings()["debug_logging"] is True
+
+
+def test_application_creates_one_mode_log_file_per_startup(qtbot, tmp_path):
+    normal_path = tmp_path / "normal" / "project.json"
+    debug_path = tmp_path / "debug" / "project.json"
+    ProjectStore(normal_path).save(Project(name="普通:项目"))
+    ProjectStore(debug_path).save(Project(name="调试项目", settings={"debug_logging": True}))
+
+    normal = create_application([], project_path=normal_path)
+    debug = create_application([], project_path=debug_path)
+    qtbot.addWidget(normal.window)
+    qtbot.addWidget(debug.window)
+
+    assert len(list((normal_path.parent / "logs").glob("normal_*_normal.log"))) == 1
+    assert not list((normal_path.parent / "logs").glob("*_debug.log"))
+    assert len(list((debug_path.parent / "logs").glob("debug_*_debug.log"))) == 1
+    assert not list((debug_path.parent / "logs").glob("*_normal.log"))
 
 
 def test_application_loads_hotkeys_from_project_settings(qtbot, tmp_path):

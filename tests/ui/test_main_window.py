@@ -183,6 +183,32 @@ def test_moving_workflow_across_groups_preserves_uuid_routes(qtbot):
     assert relocated.steps[0].routes[0].target.workflow_id == target.id
 
 
+def test_move_workflow_group_selector_uses_numbered_group_labels(qtbot, monkeypatch):
+    workflow = Workflow(name="待移动")
+    project = Project(
+        name="p",
+        groups=[
+            FlowGroup(name="A", workflows=[workflow]),
+            FlowGroup(name="B"),
+            FlowGroup(name="C"),
+        ],
+    )
+    window = MainWindow(project)
+    qtbot.addWidget(window)
+    captured: list[str] = []
+
+    def select_first(_parent, _title, _label, labels, _current, _editable):
+        captured.extend(labels)
+        return labels[0], True
+
+    monkeypatch.setattr("flow_runner.ui.main_window.QInputDialog.getItem", select_first)
+
+    selected = window._prompt_workflow_group(project, workflow.id)
+
+    assert captured == ["02. B", "03. C"]
+    assert selected == project.groups[1].id
+
+
 def test_runtime_toolbar_starts_selected_workflow_and_tracks_completion(qtbot):
     class ImmediateExecutor:
         async def execute(self, step):
@@ -205,14 +231,26 @@ def test_runtime_toolbar_starts_selected_workflow_and_tracks_completion(qtbot):
     assert window.run_view_model.state.value == "completed"
 
 
-def test_runtime_start_without_selection_reports_a_status_message(qtbot):
+def test_runtime_start_without_editor_selection_uses_startup_workflow(qtbot):
+    class CapturingBridge:
+        eventReceived = _FakeSignal()
+        failed = _FakeSignal()
+        is_running = False
+
+        def __init__(self):
+            self.started = []
+
+        def start(self, _project, workflow_id):
+            self.started.append(workflow_id)
+
     project = sample_project()
-    window = MainWindow(project, runner_bridge=RunnerBridge(Runner(lambda step: None)))
+    bridge = CapturingBridge()
+    window = MainWindow(project, runner_bridge=bridge)
     qtbot.addWidget(window)
 
     window.start_action.trigger()
 
-    assert "选择" in window.statusBar().currentMessage()
+    assert bridge.started == [project.groups[0].workflows[0].id]
 
 
 def test_project_view_model_edits_steps_with_undo_boundary(qtbot):
@@ -382,7 +420,10 @@ def test_property_panel_applies_validated_step_edits_to_project(qtbot):
     updated = window.view_model.project.groups[0].workflows[0].steps[0]
     assert updated.name == "新检测"
     assert not updated.enabled
-    assert window.step_list.list.item(0).text() == "新检测"
+    item = window.step_list.list.item(0)
+    card = window.step_list.list.itemWidget(item)
+    assert item.text() == ""
+    assert card.accessibleName() == "新检测"
 
 
 def test_dirty_window_can_cancel_close_through_injected_confirmation(qtbot):
@@ -721,6 +762,7 @@ def test_parallel_block_dialog_edits_existing_block_and_preserves_id(qtbot):
     dialog = ParallelBlockDialog(project, block)
     qtbot.addWidget(dialog)
 
+    assert dialog.workflow_list.item(0).text() == "01. g / 01. A"
     checked = {
         dialog.workflow_list.item(index).data(Qt.ItemDataRole.UserRole)
         for index in range(dialog.workflow_list.count())

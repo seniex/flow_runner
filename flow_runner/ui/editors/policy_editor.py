@@ -1,10 +1,11 @@
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QFormLayout, QLabel, QWidget
+from PySide6.QtWidgets import QComboBox, QFormLayout, QLabel, QVBoxLayout, QWidget
 
 from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.enums import ConditionMode
 from flow_runner.domain.policies import ActionPolicy, ConditionPolicy
 from flow_runner.ui.editors.action_editor import ActionEditor
+from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.widgets import (
     FocusWheelComboBox,
     FocusWheelDoubleSpinBox,
@@ -53,18 +54,25 @@ class PolicyEditor(QWidget):
         self.after_no_match_actions_editor = (
             ActionEditor(registry, show_advanced=show_advanced) if registry is not None else None
         )
-        self.form_layout = QFormLayout(self)
-        self.form_layout.addRow("策略摘要", self.summary_label)
-        self.form_layout.addRow("检测模式", self.mode_combo)
-        self.form_layout.addRow("轮询间隔（秒）", self.interval_spin)
-        self.form_layout.addRow("最大检测次数", self.max_attempts_spin)
-        self.form_layout.addRow("检测超时（秒）", self.timeout_spin)
-        self.form_layout.addRow("动作最大尝试", self.action_attempts_spin)
-        self.form_layout.addRow("动作重试间隔", self.action_retry_spin)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.summary_label)
+        controls = QWidget()
+        controls.setObjectName("policyCompactControls")
+        self.compact_layout = CompactFlowLayout(controls)
+        self.form_layout = self.compact_layout
+        self.compact_layout.addField("检测模式", self.mode_combo, "condition_mode")
+        self.compact_layout.addField("轮询间隔（秒）", self.interval_spin, "interval")
+        self.compact_layout.addField("最大检测次数", self.max_attempts_spin, "max_attempts")
+        self.compact_layout.addField("检测超时（秒）", self.timeout_spin, "timeout")
+        self.compact_layout.addField("动作最大尝试", self.action_attempts_spin, "action_attempts")
+        self.compact_layout.addField("动作重试间隔", self.action_retry_spin, "action_retry")
+        layout.addWidget(controls)
+        self.advanced_layout = QFormLayout()
+        layout.addLayout(self.advanced_layout)
         if self.before_actions_editor is not None:
-            self.form_layout.addRow("每轮检测前动作", self.before_actions_editor)
+            self.advanced_layout.addRow("每轮检测前动作", self.before_actions_editor)
         if self.after_no_match_actions_editor is not None:
-            self.form_layout.addRow("每轮未命中后动作", self.after_no_match_actions_editor)
+            self.advanced_layout.addRow("每轮未命中后动作", self.after_no_match_actions_editor)
         self.mode_combo.currentIndexChanged.connect(self._mode_changed)
         for editor in (
             self.mode_combo,
@@ -136,8 +144,11 @@ class PolicyEditor(QWidget):
             self.after_no_match_actions_editor.set_advanced_visible(visible)
 
     def _set_row_visible(self, editor: QWidget, visible: bool) -> None:
+        if self.compact_layout.containerForField(editor) is not None:
+            self.compact_layout.setFieldVisible(editor, visible)
+            return
         editor.setVisible(visible)
-        label = self.form_layout.labelForField(editor)
+        label = self.advanced_layout.labelForField(editor)
         if label is not None:
             label.setVisible(visible)
 

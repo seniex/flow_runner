@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from flow_runner.capabilities.registry import CapabilityRegistry
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.conditions import LeafCondition
 from flow_runner.domain.enums import StepOutcome
@@ -20,6 +21,7 @@ from flow_runner.domain.project import AutomationStep, Project
 from flow_runner.domain.routing import RouteRule, RouteTarget
 from flow_runner.ui.editors.model_form import ModelForm
 from flow_runner.ui.localization import capability_label, choice_label
+from flow_runner.ui.region_capture import RegionCaptureService
 from flow_runner.ui.widgets import FocusWheelComboBox
 
 CONTROL_CAPABILITIES = (
@@ -38,11 +40,13 @@ class GuidedAddDialog(QDialog):
         project: Project | None = None,
         *,
         current_workflow_id: UUID | None = None,
+        region_capture: RegionCaptureService | None = None,
     ) -> None:
         super().__init__()
         self.registry = registry
         self.project = project
         self.current_workflow_id = current_workflow_id
+        self.region_capture = region_capture
         self._step: AutomationStep | None = None
         self.category_combo = FocusWheelComboBox()
         self.category_combo.addItems(["检测", "执行", "控制"])
@@ -193,21 +197,38 @@ class GuidedAddDialog(QDialog):
             if category == "检测"
             else self.registry.action(capability)
         )
-        self.config_form = ModelForm(provider.config_model)
+        self.config_form = ModelForm(
+            provider.config_model,
+            pick_region=(
+                lambda target: (
+                    self.region_capture.pick_region(target, self)
+                    if self.region_capture is not None
+                    else None
+                )
+            ),
+            capture_template=(
+                lambda target: (
+                    self.region_capture.capture_template(target, self)
+                    if self.region_capture is not None
+                    else None
+                )
+            ),
+        )
         self.form_layout.addWidget(self.config_form)
 
     def _populate_control_targets(self) -> None:
         if self.project is None:
             return
+        labels = ProjectDisplayIndex(self.project)
         for group in self.project.groups:
             for workflow in group.workflows:
                 self.control_workflow_combo.addItem(
-                    f"{group.name} / {workflow.name}",
+                    labels.workflow_path(workflow.id),
                     workflow.id,
                 )
                 if workflow.id == self.current_workflow_id:
                     for step in workflow.steps:
-                        self.control_step_combo.addItem(step.name, step.id)
+                        self.control_step_combo.addItem(labels.step_label(step.id), step.id)
 
     def _control_config(self) -> dict[str, Any]:
         capability = self.capability_combo.currentData()

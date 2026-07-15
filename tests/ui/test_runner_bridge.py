@@ -64,6 +64,23 @@ def test_runner_bridge_fans_out_events_to_persistent_log(qtbot, tmp_path):
     assert '"kind":"step.finished"' in lines[2]
 
 
+def test_runner_bridge_reports_persistent_sink_failure_without_stopping_run(qtbot):
+    class BrokenSink:
+        def emit(self, _event):
+            raise OSError("disk full")
+
+    workflow = Workflow(name="main", steps=[AutomationStep(name="step")])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    bridge = RunnerBridge(Runner(ImmediateExecutor()), persistent_event_sink=BrokenSink())
+    failures = []
+    bridge.failed.connect(failures.append)
+
+    with qtbot.waitSignal(bridge.finished, timeout=3000):
+        bridge.start(project, workflow.id)
+
+    assert any("日志写入失败" in message and "disk full" in message for message in failures)
+
+
 def test_runner_bridge_rejects_parallel_start(qtbot):
     workflow = Workflow(name="main", steps=[])
     project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])

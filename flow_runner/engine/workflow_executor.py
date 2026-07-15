@@ -88,6 +88,9 @@ class WorkflowExecutor:
                         step_counts=self._step_counts,
                     )
                 )
+            identity_binder = getattr(self.step_executor, "bind_step_identity", None)
+            if identity_binder is not None:
+                identity_binder(workflow.id, step.id)
             if self.observer is not None:
                 self.observer("step.started", workflow, step, None, None)
             result = await self.step_executor.execute(step)

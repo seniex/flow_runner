@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
 )
 
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.project import ParallelBlock, Project
 
 
@@ -23,9 +24,10 @@ class ParallelBlockDialog(QDialog):
         if block is not None:
             self.name_edit.setText(block.name)
         self.workflow_list = QListWidget()
+        labels = ProjectDisplayIndex(project)
         for group in project.groups:
             for workflow in group.workflows:
-                item = QListWidgetItem(f"{group.name} / {workflow.name}")
+                item = QListWidgetItem(labels.workflow_path(workflow.id))
                 item.setData(Qt.ItemDataRole.UserRole, workflow.id)
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 item.setCheckState(

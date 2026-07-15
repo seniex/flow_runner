@@ -25,6 +25,7 @@ from flow_runner.ui.editors.action_editor import ActionEditor
 from flow_runner.ui.editors.condition_editor import ConditionEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
+from flow_runner.ui.region_capture import RegionCaptureService
 
 
 class PropertyPanel(QScrollArea):
@@ -39,6 +40,7 @@ class PropertyPanel(QScrollArea):
         *,
         apply_step: Callable[[AutomationStep], None] | None = None,
         editor_preferences: EditorPreferences | None = None,
+        region_capture: RegionCaptureService | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("propertyPanel")
@@ -78,7 +80,13 @@ class PropertyPanel(QScrollArea):
             ActionEditor(registry, show_advanced=show_advanced) if registry is not None else None
         )
         self.condition_editor = (
-            ConditionEditor(registry, show_advanced=show_advanced) if registry is not None else None
+            ConditionEditor(
+                registry,
+                show_advanced=show_advanced,
+                region_capture=region_capture,
+            )
+            if registry is not None
+            else None
         )
         self.route_editor = RouteEditor(project) if registry is not None else None
         self.policy_editor = PolicyEditor(registry, show_advanced=show_advanced)

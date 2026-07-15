@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from types import UnionType
@@ -11,16 +12,19 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
-    QFormLayout,
     QHBoxLayout,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QSpinBox,
     QStackedWidget,
     QWidget,
 )
 
+from flow_runner.capabilities.actions.window import WindowActionConfig
+from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import choice_label, field_label
+from flow_runner.ui.region_capture import Region, TemplateCapture
 from flow_runner.ui.widgets import (
     FocusWheelComboBox,
     FocusWheelDoubleSpinBox,
@@ -37,6 +41,7 @@ class TupleFieldEditor(QWidget):
         default: Any = None,
         *,
         optional: bool = False,
+        allow_pick: bool = False,
     ) -> None:
         super().__init__()
         self.setProperty("fieldKind", "tuple")
@@ -68,6 +73,10 @@ class TupleFieldEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.mode_combo)
         layout.addWidget(self.pages, 1)
+        self.pick_button = QPushButton("框选区域")
+        self.pick_button.setObjectName("pickRegionButton")
+        self.pick_button.setVisible(allow_pick)
+        layout.addWidget(self.pick_button)
         self.mode_combo.currentIndexChanged.connect(self.pages.setCurrentIndex)
         self.mode_combo.currentIndexChanged.connect(self._emit_changed)
         self.binding_edit.textChanged.connect(self._emit_changed)
@@ -110,15 +119,19 @@ class TupleFieldEditor(QWidget):
 class PathFieldEditor(QWidget):
     changed = Signal()
 
-    def __init__(self, default: Any = None) -> None:
+    def __init__(self, default: Any = None, *, allow_capture: bool = False) -> None:
         super().__init__()
         self.setProperty("fieldKind", "path")
         self.line_edit = QLineEdit()
         self.browse_button = QPushButton("选择…")
         self.browse_button.setProperty("role", "browse")
+        self.capture_button = QPushButton("框选并截图")
+        self.capture_button.setObjectName("captureTemplateButton")
+        self.capture_button.setVisible(allow_capture)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.line_edit, 1)
+        layout.addWidget(self.capture_button)
         layout.addWidget(self.browse_button)
         self.browse_button.clicked.connect(self._browse)
         self.line_edit.textChanged.connect(self._emit_changed)
@@ -152,6 +165,9 @@ class ModelForm(QWidget):
         *,
         common_fields: frozenset[str] | None = None,
         show_advanced: bool = False,
+        pick_region: Callable[[str], Region | None] | None = None,
+        capture_template: Callable[[str], TemplateCapture | None] | None = None,
+        report_error: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__()
         self.model_type = model_type
@@ -162,18 +178,47 @@ class ModelForm(QWidget):
             else frozenset()
         )
         self._show_advanced = show_advanced
+        self._pick_region_callback = pick_region
+        self._capture_template_callback = capture_template
+        self._report_error = report_error or (
+            lambda message: QMessageBox.warning(self, "配置操作失败", message)
+        )
         self.editors: dict[str, QWidget] = {}
         self.annotations: dict[str, Any] = {}
-        self.form_layout = QFormLayout(self)
+        self._window_action_form = model_type is WindowActionConfig
+        self.form_layout = CompactFlowLayout(self, wrap=not self._window_action_form)
         for name, field in model_type.model_fields.items():
             annotation, optional = _unwrap_optional(field.annotation)
             default = None if field.is_required() else field.get_default(call_default_factory=True)
-            editor = _create_editor(annotation, default, optional)
+            editor = _create_editor(
+                name,
+                annotation,
+                default,
+                optional,
+                allow_pick=pick_region is not None,
+                allow_capture=capture_template is not None,
+            )
             editor.setObjectName(f"configField_{name}")
             self.editors[name] = editor
             self.annotations[name] = annotation
-            self.form_layout.addRow(field_label(name), editor)
+            self.form_layout.addField(field_label(name), editor, name)
             self._connect_editor(editor)
+        if self._window_action_form:
+            geometry = self.editors.get("geometry")
+            if isinstance(geometry, TupleFieldEditor):
+                geometry.mode_combo.setMaximumWidth(88)
+                for part in geometry.value_editors:
+                    part.setMaximumWidth(62)
+            operation = self.editors.get("operation")
+            if isinstance(operation, QComboBox):
+                operation.currentIndexChanged.connect(self._update_window_action_fields)
+            self._update_window_action_fields()
+        region_editor = self.editors.get("region")
+        if isinstance(region_editor, TupleFieldEditor):
+            region_editor.pick_button.clicked.connect(self._pick_region)
+        template_editor = self.editors.get("template_path")
+        if isinstance(template_editor, PathFieldEditor):
+            template_editor.capture_button.clicked.connect(self._capture_template)
         self.set_advanced_visible(show_advanced)
 
     def _connect_editor(self, editor: QWidget) -> None:
@@ -191,6 +236,55 @@ class ModelForm(QWidget):
     def _emit_changed(self) -> None:
         self.changed.emit()
 
+    def _update_window_action_fields(self) -> None:
+        operation = self.editors.get("operation")
+        geometry = self.editors.get("geometry")
+        if isinstance(operation, QComboBox) and geometry is not None:
+            self.form_layout.setFieldVisible(
+                geometry,
+                operation.currentData() == "move_resize",
+            )
+
+    def _pick_region(self) -> None:
+        if self._pick_region_callback is None:
+            return
+        try:
+            region = self._pick_region_callback(self._capture_target())
+        except Exception as error:
+            self._report_error(str(error))
+            return
+        if region is None:
+            return
+        editor = self.editors.get("region")
+        if isinstance(editor, TupleFieldEditor):
+            editor.setValue(region)
+
+    def _capture_template(self) -> None:
+        if self._capture_template_callback is None:
+            return
+        try:
+            captured = self._capture_template_callback(self._capture_target())
+        except Exception as error:
+            self._report_error(str(error))
+            return
+        if captured is None:
+            return
+        region_editor = self.editors.get("region")
+        if isinstance(region_editor, TupleFieldEditor):
+            region_editor.setValue(captured.region)
+        path_editor = self.editors.get("template_path")
+        if isinstance(path_editor, PathFieldEditor):
+            path_editor.setText(str(captured.path))
+
+    def _capture_target(self) -> str:
+        editor = self.editors.get("target")
+        if isinstance(editor, QLineEdit):
+            return editor.text().strip() or "desktop"
+        if isinstance(editor, QComboBox):
+            value = editor.currentData()
+            return str(value) if value else "desktop"
+        return "desktop"
+
     def editor(self, name: str) -> QWidget:
         return self.editors[name]
 
@@ -198,10 +292,7 @@ class ModelForm(QWidget):
         self._show_advanced = visible
         for name in self._advanced_fields:
             editor = self.editors[name]
-            label = self.form_layout.labelForField(editor)
-            editor.setVisible(visible)
-            if label is not None:
-                label.setVisible(visible)
+            self.form_layout.setFieldVisible(editor, visible)
 
     def advanced_non_default_count(self) -> int:
         values = self.values()
@@ -274,11 +365,27 @@ class ModelForm(QWidget):
                     editor.setText(json.dumps(value, ensure_ascii=False))
 
 
-def _create_editor(annotation: Any, default: Any, optional: bool) -> QWidget:
+def _create_editor(
+    name: str,
+    annotation: Any,
+    default: Any,
+    optional: bool,
+    *,
+    allow_pick: bool,
+    allow_capture: bool,
+) -> QWidget:
     if get_origin(annotation) is tuple:
-        return TupleFieldEditor(annotation, default, optional=optional)
+        return TupleFieldEditor(
+            annotation,
+            default,
+            optional=optional,
+            allow_pick=allow_pick and name == "region",
+        )
     if annotation is Path:
-        return PathFieldEditor(default)
+        return PathFieldEditor(
+            default,
+            allow_capture=allow_capture and name == "template_path",
+        )
     if optional:
         line = QLineEdit()
         if default is not None:
