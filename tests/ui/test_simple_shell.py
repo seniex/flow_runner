@@ -70,28 +70,30 @@ def test_main_window_startup_selector_persists_and_controls_start(qtbot):
     assert bridge.started == [first.id]
 
 
-def test_step_list_uses_expandable_cards_with_compact_category_rows(qtbot):
+def test_step_list_keeps_all_cards_expanded_and_titles_visible(qtbot):
     _project_value, first, _second, step = _project()
+    second_step = AutomationStep(name="第二步")
+    first = first.model_copy(update={"steps": [step, second_step]})
     panel = StepListPanel()
     qtbot.addWidget(panel)
 
     panel.set_workflow(first)
-    item = panel.list.item(0)
-    card = panel.list.itemWidget(item)
+    cards = [panel.list.itemWidget(panel.list.item(index)) for index in range(2)]
+    card = cards[0]
 
     assert isinstance(card, StepCardWidget)
-    assert item.text() == ""
+    assert panel.list.item(0).text() == ""
     assert card.number_label.text() == "01."
     assert not card.number_label.isHidden()
     assert card.title_label.text() == step.name
-    assert not card.title_label.isHidden()
-    assert card.body.isHidden()
-    assert not card.is_expanded
-    panel.select_step(step.id)
-    assert card.is_expanded
-    assert not card.number_label.isHidden()
-    assert card.title_label.isHidden()
-    assert not card.body.isHidden()
+    assert all(item.is_expanded for item in cards)
+    assert all(not item.title_label.isHidden() for item in cards)
+    assert all(not item.body.isHidden() for item in cards)
+    panel.select_step(second_step.id)
+    assert all(item.is_expanded for item in cards)
+    assert all(not item.title_label.isHidden() for item in cards)
+    assert cards[1].property("selected") is True
+    assert cards[0].property("selected") is False
     assert card.accessibleName() == step.name
     assert card.findChild(QLabel, "conditionSummaryRow").text().startswith("检测")
     assert len(card.findChildren(QLabel, "actionSummaryRow")) == 2
@@ -120,9 +122,9 @@ def test_main_window_restores_three_column_widths_from_project_settings(qtbot):
     qtbot.wait(1)
 
     assert window.workspace_splitter.count() == 3
-    assert window.workspace_splitter.widget(0) is window.flow_tree
-    assert window.workspace_splitter.widget(1) is window.step_list
-    assert window.workspace_splitter.widget(2) is window.property_panel
+    assert window.workspace_splitter.widget(0) is window.flow_column
+    assert window.workspace_splitter.widget(1) is window.step_column
+    assert window.workspace_splitter.widget(2) is window.property_column
     actual = window.workspace_splitter.sizes()
     assert [round(value / sum(actual), 2) for value in actual] == [0.15, 0.27, 0.58]
 

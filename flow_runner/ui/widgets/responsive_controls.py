@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QLabel, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
 from flow_runner.ui.layouts import CompactFlowLayout
 
@@ -8,10 +8,12 @@ from flow_runner.ui.layouts import CompactFlowLayout
 class ResponsiveControlGroup(QWidget):
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.setProperty("controlGroup", True)
         self.title = QLabel(title)
         self.title.setObjectName("responsiveControlGroupTitle")
         self.body = QWidget()
+        self.body.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.flow = CompactFlowLayout(self.body, spacing=6)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -33,6 +35,7 @@ class ResponsiveControlGroup(QWidget):
 class ResponsiveControlArea(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.setObjectName("responsiveControlArea")
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(6, 6, 6, 6)

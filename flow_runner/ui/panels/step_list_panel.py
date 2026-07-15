@@ -25,7 +25,7 @@ class StepCardWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAccessibleName(step.name)
         self.setProperty("selected", False)
-        self.is_expanded = False
+        self.is_expanded = True
 
         self.number_label = QLabel(f"{index:02d}.")
         self.number_label.setObjectName("stepCardNumber")
@@ -51,24 +51,16 @@ class StepCardWidget(QWidget):
             body_layout.addWidget(_summary_label("执行：无", "actionSummaryRow"))
         body_layout.addWidget(_summary_label(_policy_summary(step), "policySummaryRow"))
         body_layout.addWidget(_summary_label(_route_summary(step), "routeSummaryRow"))
-        self.body.hide()
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(0)
         layout.addWidget(header)
         layout.addWidget(self.body)
 
-    def set_expanded(self, expanded: bool) -> None:
-        if self.is_expanded == expanded:
-            return
-        self.is_expanded = expanded
-        self.setProperty("selected", expanded)
-        self.title_label.setVisible(not expanded)
-        self.body.setVisible(expanded)
+    def set_selected(self, selected: bool) -> None:
+        self.setProperty("selected", selected)
         self.style().unpolish(self)
         self.style().polish(self)
-        self.updateGeometry()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() is Qt.MouseButton.LeftButton:
@@ -150,7 +142,7 @@ class StepListPanel(QWidget):
         for item in self._items.values():
             card = self.list.itemWidget(item)
             if isinstance(card, StepCardWidget):
-                card.set_expanded(item is current)
+                card.set_selected(item is current)
                 item.setSizeHint(card.sizeHint())
         if current is None:
             return
