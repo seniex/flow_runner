@@ -4,6 +4,21 @@ Flow Runner Qt is a composable desktop-automation workflow editor and runtime fo
 automation. The new implementation uses typed conditions, actions, policies, and routes instead
 of fixed OCR/image step combinations.
 
+## Current release
+
+Current version: `0.2.0`.
+
+- Groups, workflows, and steps use independent two-digit display numbers without changing raw
+  names, UUIDs, JSON data, or route references.
+- Active configuration and runtime data live under `data/`; legacy conversion inputs and historical
+  project documents are archived separately.
+- Normal/debug logging, the wait-action countdown, and preserved condition-attempt counts on
+  cancellation passed the six-item real-GUI acceptance.
+- Latest verification: 337 tests passed; Ruff, formatting, mypy, compileall, and pip check
+  succeeded.
+- Multi-monitor and Tesseract real-environment acceptance remain `DEFERRED`; see
+  [`REAL_ENVIRONMENT_CHECKLIST.md`](REAL_ENVIRONMENT_CHECKLIST.md).
+
 ## Requirements
 
 - Python 3.11 or newer
@@ -12,9 +27,19 @@ of fixed OCR/image step combinations.
 
 ## Installation
 
+### Recommended: project virtual environment
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[test]"
+```
+
+### Alternative: global Python
+
+This modifies the shared Python environment and can affect other installed applications.
+
+```powershell
+python -m pip install -e ".[test]"
 ```
 
 ## Tests
@@ -32,18 +57,29 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 ## Running
 
+Recommended project virtual environment:
+
 ```powershell
 .\.venv\Scripts\python.exe -m flow_runner.app
-# or, after installation
+```
+
+Global Python alternative:
+
+```powershell
+python -m flow_runner.app
+```
+
+After installation, the console entry point is also available:
+
+```powershell
 flow-runner
 ```
 
-The default project path is `data/project.json` in the current directory. Its backups, generated
-templates, recordings, and logs are stored under `data/backups/`, `data/templates/`,
-`data/recordings/`, and `data/logs/`. An explicitly supplied `project_path` keeps those auxiliary
-directories beside that project file. Visual styling is loaded application-wide from
-`flow_runner/resources/styles/base.qss`. The default theme is a dark, QSS-driven workspace; Python
-UI modules do not contain local color styles.
+All three commands load `data/project.json` by default. Backups, generated templates, recordings,
+and logs are written under `data/` in their corresponding subdirectories. An explicitly supplied
+`project_path` keeps those auxiliary directories beside that project file. Visual styling is loaded
+application-wide from `flow_runner/resources/styles/base.qss`. The default theme is a dark,
+QSS-driven workspace; Python UI modules do not contain local color styles.
 
 OCR engine selection is stored in the project `settings` object. PaddleOCR-json v1.4.x uses its
 stdin/stdout JSON protocol and is started lazily on the first OCR request:
@@ -60,9 +96,11 @@ stdin/stdout JSON protocol and is started lazily on the first OCR request:
 }
 ```
 
-Relative executable paths are resolved from the directory containing `project.json`. The local
-`PaddleOCR-json_v*/` folder is intentionally ignored by Git because it contains large third-party
-binaries. Use `"ocr_engine": "tesseract"` to use the Tesseract adapter instead.
+With the default `data/project.json`, relative third-party executable paths are resolved from the
+application root. With an explicitly supplied `project_path`, they are resolved from that project
+file's directory. The local `PaddleOCR-json_v*/` folder is intentionally ignored by Git because it
+contains large third-party binaries. Use `"ocr_engine": "tesseract"` to use the Tesseract adapter
+instead.
 
 Tesseract additionally requires `pytesseract`, a locally installed Tesseract executable, and the
 language data named by each OCR condition. These are real-environment dependencies and are not
