@@ -9,12 +9,10 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
-    QLabel,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
     QSplitter,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -42,7 +40,7 @@ from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.runtime_log import RuntimeLogController
 from flow_runner.ui.view_models.project_view_model import ProjectViewModel
 from flow_runner.ui.view_models.run_view_model import RunViewModel
-from flow_runner.ui.widgets import FocusWheelComboBox
+from flow_runner.ui.widgets import ColumnContainer, FocusWheelComboBox, ResponsiveControlArea
 
 
 class MainWindow(QMainWindow):
@@ -118,9 +116,6 @@ class MainWindow(QMainWindow):
         )
         self.workspace_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.workspace_splitter.setObjectName("workspaceSplitter")
-        self.workspace_splitter.addWidget(self.flow_tree)
-        self.workspace_splitter.addWidget(self.step_list)
-        self.workspace_splitter.addWidget(self.property_panel)
         self.workspace_splitter.setStretchFactor(0, 1)
         self.workspace_splitter.setStretchFactor(1, 2)
         self.workspace_splitter.setStretchFactor(2, 3)
@@ -147,16 +142,10 @@ class MainWindow(QMainWindow):
         self._workflow_id: UUID | None = None
         self._group_id: UUID | None = None
         self._parallel_block_id: UUID | None = None
-        self.runtime_toolbar = QToolBar("运行", self)
-        self.runtime_toolbar.setObjectName("runtimeToolbar")
-        self.addToolBar(self.runtime_toolbar)
         self.startup_group_combo = FocusWheelComboBox()
         self.startup_group_combo.setObjectName("startupGroupCombo")
         self.startup_workflow_combo = FocusWheelComboBox()
         self.startup_workflow_combo.setObjectName("startupWorkflowCombo")
-        self.project_toolbar = QToolBar("项目", self)
-        self.project_toolbar.setObjectName("projectToolbar")
-        self.addToolBar(self.project_toolbar)
         self.save_action = QAction("保存", self)
         self.save_action.setObjectName("saveProjectAction")
         self.save_action.setToolTip("保存项目（Ctrl+S）")
@@ -203,31 +192,6 @@ class MainWindow(QMainWindow):
         self.delete_parallel_action.setObjectName("deleteParallelBlockAction")
         self.copy_step_action = QAction("复制步骤", self)
         self.copy_step_action.setObjectName("copyStepAction")
-        self.project_toolbar.addActions(
-            [
-                self.save_action,
-                self.undo_action,
-                self.add_group_action,
-                self.copy_group_action,
-                self.add_workflow_action,
-                self.copy_workflow_action,
-                self.rename_flow_action,
-                self.move_workflow_up_action,
-                self.move_workflow_down_action,
-                self.move_workflow_group_action,
-                self.delete_flow_action,
-                self.settings_action,
-                self.add_parallel_action,
-                self.edit_parallel_action,
-                self.delete_parallel_action,
-                self.add_template_step_action,
-                self.add_step_action,
-                self.copy_step_action,
-                self.remove_step_action,
-                self.move_step_up_action,
-                self.move_step_down_action,
-            ]
-        )
         self.save_action.setEnabled(False)
         self.undo_action.setEnabled(False)
         self.start_action = QAction("启动", self)
@@ -244,26 +208,6 @@ class MainWindow(QMainWindow):
         self.run_step_action.setObjectName("runSelectedStepAction")
         self.preview_action = QAction("预览条件", self)
         self.preview_action.setObjectName("previewConditionAction")
-        startup_group_label = QLabel("启动组")
-        startup_group_label.setObjectName("startupGroupLabel")
-        startup_workflow_label = QLabel("启动流程")
-        startup_workflow_label.setObjectName("startupWorkflowLabel")
-        self.runtime_toolbar.addWidget(startup_group_label)
-        self.runtime_toolbar.addWidget(self.startup_group_combo)
-        self.runtime_toolbar.addWidget(startup_workflow_label)
-        self.runtime_toolbar.addWidget(self.startup_workflow_combo)
-        self.runtime_toolbar.addSeparator()
-        self.runtime_toolbar.addActions(
-            [
-                self.start_action,
-                self.pause_action,
-                self.stop_action,
-                self.record_action,
-                self.run_step_action,
-                self.preview_action,
-                self.diagnostics_action,
-            ]
-        )
         self.start_action.triggered.connect(self._start_selected_workflow)
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
@@ -298,6 +242,7 @@ class MainWindow(QMainWindow):
         self.pauseRequested.connect(self._toggle_pause)
         self.stopRequested.connect(self._stop_runtime)
         self.run_view_model.stateChanged.connect(self._update_runtime_actions)
+        self._build_workspace_columns()
         if self.runner_bridge is not None:
             self.runner_bridge.eventReceived.connect(self.run_view_model.consume)
             self.runner_bridge.eventReceived.connect(self.diagnostics_dialog.update_event)
@@ -312,6 +257,77 @@ class MainWindow(QMainWindow):
         self._apply_initial_window_geometry()
         self._restore_column_widths()
         self.workspace_splitter.splitterMoved.connect(self._column_widths_changed)
+
+    def _build_workspace_columns(self) -> None:
+        self.flow_controls = ResponsiveControlArea()
+        runtime = self.flow_controls.add_group("运行")
+        runtime.add_field("启动组", self.startup_group_combo, "startup_group")
+        runtime.add_field("启动流程", self.startup_workflow_combo, "startup_workflow")
+        for action in (self.start_action, self.pause_action, self.stop_action, self.record_action):
+            runtime.add_action(action)
+        flows = self.flow_controls.add_group("组与流程")
+        for action in (
+            self.add_group_action,
+            self.copy_group_action,
+            self.add_workflow_action,
+            self.copy_workflow_action,
+            self.rename_flow_action,
+            self.move_workflow_up_action,
+            self.move_workflow_down_action,
+            self.move_workflow_group_action,
+            self.delete_flow_action,
+        ):
+            flows.add_action(action)
+        parallel = self.flow_controls.add_group("并行监控")
+        for action in (
+            self.add_parallel_action,
+            self.edit_parallel_action,
+            self.delete_parallel_action,
+        ):
+            parallel.add_action(action)
+
+        self.step_controls = ResponsiveControlArea()
+        steps = self.step_controls.add_group("步骤")
+        for action in (
+            self.add_template_step_action,
+            self.add_step_action,
+            self.copy_step_action,
+            self.remove_step_action,
+            self.move_step_up_action,
+            self.move_step_down_action,
+            self.run_step_action,
+            self.preview_action,
+        ):
+            steps.add_action(action)
+
+        self.property_controls = ResponsiveControlArea()
+        project = self.property_controls.add_group("项目")
+        for action in (
+            self.save_action,
+            self.undo_action,
+            self.settings_action,
+            self.diagnostics_action,
+        ):
+            project.add_action(action)
+
+        self.flow_column = ColumnContainer(
+            self.flow_tree,
+            self.flow_controls,
+            object_name="flowColumn",
+        )
+        self.step_column = ColumnContainer(
+            self.step_list,
+            self.step_controls,
+            object_name="stepColumn",
+        )
+        self.property_column = ColumnContainer(
+            self.property_panel,
+            self.property_controls,
+            object_name="propertyColumn",
+        )
+        self.workspace_splitter.addWidget(self.flow_column)
+        self.workspace_splitter.addWidget(self.step_column)
+        self.workspace_splitter.addWidget(self.property_column)
 
     def _apply_initial_window_geometry(self) -> None:
         screen = QApplication.primaryScreen()

@@ -70,6 +70,26 @@ QStatusBar {
     border: 1px solid #2a3150;
 }
 
+#flowColumn,
+#stepColumn,
+#propertyColumn,
+#responsiveControlArea {
+    background: #111424;
+}
+
+#responsiveControlArea {
+    border: 1px solid #2a3150;
+}
+
+QWidget[controlGroup="true"] {
+    background: transparent;
+}
+
+#responsiveControlGroupTitle {
+    color: #9da7c7;
+    font-weight: 700;
+}
+
 QPushButton {
     min-height: 28px;
     padding: 0 10px;

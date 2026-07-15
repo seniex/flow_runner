@@ -3,7 +3,14 @@ from uuid import uuid4
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton, QScrollArea
+from PySide6.QtWidgets import (
+    QApplication,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QToolBar,
+    QToolButton,
+)
 
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.errors import ConfigurationError
@@ -209,7 +216,7 @@ def test_move_workflow_group_selector_uses_numbered_group_labels(qtbot, monkeypa
     assert selected == project.groups[1].id
 
 
-def test_runtime_toolbar_starts_selected_workflow_and_tracks_completion(qtbot):
+def test_runtime_controls_start_selected_workflow_and_track_completion(qtbot):
     class ImmediateExecutor:
         async def execute(self, step):
             return StepResult(outcome=StepOutcome.SUCCESS)
@@ -224,11 +231,69 @@ def test_runtime_toolbar_starts_selected_workflow_and_tracks_completion(qtbot):
     with qtbot.waitSignal(bridge.finished, timeout=3000):
         window.start_action.trigger()
 
-    assert window.runtime_toolbar.objectName() == "runtimeToolbar"
     assert window.start_action.objectName() == "startWorkflowAction"
     assert window.pause_action.objectName() == "pauseWorkflowAction"
     assert window.stop_action.objectName() == "stopWorkflowAction"
     assert window.run_view_model.state.value == "completed"
+
+
+def test_main_window_places_actions_in_responsive_column_controls(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+
+    assert window.findChild(QToolBar, "runtimeToolbar") is None
+    assert window.findChild(QToolBar, "projectToolbar") is None
+    assert window.workspace_splitter.widget(0) is window.flow_column
+    assert window.workspace_splitter.widget(1) is window.step_column
+    assert window.workspace_splitter.widget(2) is window.property_column
+
+    left = {
+        button.defaultAction()
+        for button in window.flow_controls.findChildren(QToolButton)
+    }
+    middle = {
+        button.defaultAction()
+        for button in window.step_controls.findChildren(QToolButton)
+    }
+    right = {
+        button.defaultAction()
+        for button in window.property_controls.findChildren(QToolButton)
+    }
+
+    assert left == {
+        window.start_action,
+        window.pause_action,
+        window.stop_action,
+        window.record_action,
+        window.add_group_action,
+        window.copy_group_action,
+        window.add_workflow_action,
+        window.copy_workflow_action,
+        window.rename_flow_action,
+        window.move_workflow_up_action,
+        window.move_workflow_down_action,
+        window.move_workflow_group_action,
+        window.delete_flow_action,
+        window.add_parallel_action,
+        window.edit_parallel_action,
+        window.delete_parallel_action,
+    }
+    assert middle == {
+        window.add_template_step_action,
+        window.add_step_action,
+        window.copy_step_action,
+        window.remove_step_action,
+        window.move_step_up_action,
+        window.move_step_down_action,
+        window.run_step_action,
+        window.preview_action,
+    }
+    assert right == {
+        window.save_action,
+        window.undo_action,
+        window.settings_action,
+        window.diagnostics_action,
+    }
 
 
 def test_runtime_start_without_editor_selection_uses_startup_workflow(qtbot):
