@@ -45,8 +45,7 @@ class StepCardWidget(QWidget):
         body_layout.setSpacing(3)
         body_layout.addWidget(_summary_label(_condition_summary(step), "conditionSummaryRow"))
         binding_labels = {
-            option.expression: option.label
-            for option in result_binding_options(step.condition)
+            option.expression: option.label for option in result_binding_options(step.condition)
         }
         for action in step.actions:
             body_layout.addWidget(

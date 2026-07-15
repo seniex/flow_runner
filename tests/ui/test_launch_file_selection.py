@@ -59,9 +59,10 @@ def test_default_comspec_uses_system32_when_environment_value_is_invalid(tmp_pat
     fallback.parent.mkdir(parents=True)
     fallback.write_bytes(b"")
 
-    assert default_comspec(
-        {"COMSPEC": str(tmp_path / "missing.exe"), "SystemRoot": str(root)}
-    ) == fallback
+    assert (
+        default_comspec({"COMSPEC": str(tmp_path / "missing.exe"), "SystemRoot": str(root)})
+        == fallback
+    )
 
 
 def test_infer_automatic_prefix_recognizes_only_generated_script_forms(tmp_path):

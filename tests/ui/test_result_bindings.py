@@ -110,9 +110,7 @@ def test_action_and_route_editors_preserve_binding_options_and_serialization(qtb
 
     routes.set_binding_options(options)
     routes.target_combo.setCurrentIndex(routes.target_combo.findData(RouteTargetKind.END))
-    routes.predicate_source_combo.setCurrentIndex(
-        routes.predicate_source_combo.findData("binding")
-    )
+    routes.predicate_source_combo.setCurrentIndex(routes.predicate_source_combo.findData("binding"))
     routes.predicate_binding_editor.setValue("$result.primary.text")
     routes.predicate_expected_edit.setText('"登录"')
     routes.add_button.click()

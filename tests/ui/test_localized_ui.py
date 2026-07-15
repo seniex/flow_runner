@@ -48,9 +48,7 @@ ALL_UI_CONFIG_MODELS = (
     WindowConditionConfig,
 )
 
-KNOWN_FIELD_NAMES = {
-    name for model in ALL_UI_CONFIG_MODELS for name in model.model_fields
-}
+KNOWN_FIELD_NAMES = {name for model in ALL_UI_CONFIG_MODELS for name in model.model_fields}
 
 
 class Capability:

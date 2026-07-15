@@ -40,9 +40,7 @@ def result_binding_options(
             if not isinstance(child, LeafCondition):
                 continue
             for field in RESULT_FIELDS.get(child.capability, ()):
-                expression = (
-                    f"$result.children[{json.dumps(child.id, ensure_ascii=False)}].{field}"
-                )
+                expression = f"$result.children[{json.dumps(child.id, ensure_ascii=False)}].{field}"
                 label = (
                     f"{capability_label(child.capability)}「{child.id}」→ "
                     f"{result_field_label(field)}"
@@ -60,6 +58,4 @@ def _primary_fields(condition: ConditionNode) -> tuple[str, ...]:
         if isinstance(child, LeafCondition)
         for field in RESULT_FIELDS.get(child.capability, ())
     }
-    return tuple(
-        field for field in ("position", "bounds", "text", "confidence") if field in fields
-    )
+    return tuple(field for field in ("position", "bounds", "text", "confidence") if field in fields)

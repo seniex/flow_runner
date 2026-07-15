@@ -294,17 +294,10 @@ def test_main_window_places_actions_in_responsive_column_controls(qtbot):
     assert window.workspace_splitter.widget(1) is window.step_column
     assert window.workspace_splitter.widget(2) is window.property_column
 
-    left = {
-        button.defaultAction()
-        for button in window.flow_controls.findChildren(QToolButton)
-    }
-    middle = {
-        button.defaultAction()
-        for button in window.step_controls.findChildren(QToolButton)
-    }
+    left = {button.defaultAction() for button in window.flow_controls.findChildren(QToolButton)}
+    middle = {button.defaultAction() for button in window.step_controls.findChildren(QToolButton)}
     right = {
-        button.defaultAction()
-        for button in window.property_controls.findChildren(QToolButton)
+        button.defaultAction() for button in window.property_controls.findChildren(QToolButton)
     }
 
     assert left == {

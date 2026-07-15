@@ -239,11 +239,7 @@ def _launch_target_name(config: dict[str, Any]) -> str:
     executable_name = executable.name.casefold()
     if executable_name in {"python.exe", "pythonw.exe", "python", "pythonw"} and values:
         return Path(values[0]).name
-    if (
-        executable_name in {"cmd.exe", "cmd"}
-        and len(values) >= 2
-        and values[0].casefold() == "/c"
-    ):
+    if executable_name in {"cmd.exe", "cmd"} and len(values) >= 2 and values[0].casefold() == "/c":
         return Path(values[1]).name
     return executable.name
 

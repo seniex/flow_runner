@@ -103,9 +103,7 @@ class ActionEditor(QWidget):
             item.setText(f"{row + 1}. {self._action_summary(action)}")
 
     def _action_summary(self, action: ActionSpec) -> str:
-        labels = {
-            option.expression: option.label for option in self._binding_options
-        }
+        labels = {option.expression: option.label for option in self._binding_options}
         return action_summary(action, binding_labels=labels)
 
     def commit_pending(self) -> None:
