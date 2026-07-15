@@ -14,7 +14,7 @@ Current version: `0.2.0`.
   project documents are archived separately.
 - Normal/debug logging, the wait-action countdown, and preserved condition-attempt counts on
   cancellation passed the six-item real-GUI acceptance.
-- Latest verification: 337 tests passed; Ruff, formatting, mypy, compileall, and pip check
+- Latest verification: 369 tests passed; Ruff, formatting, mypy, compileall, and pip check
   succeeded.
 - Multi-monitor and Tesseract real-environment acceptance remain `DEFERRED`; see
   [`REAL_ENVIRONMENT_CHECKLIST.md`](REAL_ENVIRONMENT_CHECKLIST.md).
@@ -147,9 +147,13 @@ The application enables Per-Monitor V2 DPI awareness before constructing Qt.
 
 ## Editor and runtime controls
 
-The default workspace keeps groups/workflows on the left, expandable step cards and detailed
-properties in the main area, and a persistent runtime log at the bottom. The runtime toolbar has
-independent startup group/workflow selectors; the selected entry is stored as
+The default workspace keeps groups/workflows on the left, expanded step cards in the middle,
+detailed properties on the right, and a persistent runtime log at the bottom. Controls live with
+the content they affect: the left column contains runtime, group/workflow, and parallel-block
+controls; the middle column contains step editing, selected-step execution, and condition preview;
+the right column contains save, undo, settings, and diagnostics. Each column wraps its controls
+onto additional rows as the user narrows that column. The startup group/workflow selectors are
+independent; the selected entry is stored as
 `settings.entry_workflow_id`, so editing another workflow does not silently change what Start runs.
 Groups, workflows, and steps display independent two-digit numbers that restart inside their direct
 container. These labels are presentation-only: raw names, UUIDs, JSON data, and route references are
@@ -160,9 +164,11 @@ policy and routes. Advanced JSON remains available for direct schema-level editi
 
 The three editor columns share one draggable splitter. Their widths are stored in
 `settings.ui_layout.column_widths` only when the project is saved and restored on the next launch.
-Collapsed step cards show only the step name; the selected card replaces the name with its compact
-detection, action, policy, and route summary. Window actions keep operation, title, and geometry on
-one row, showing geometry only for move/resize.
+Every step card stays expanded by default, with its step name at the top followed by detection,
+action, policy, and route summaries. Window actions keep operation, title, and geometry on one row,
+showing geometry only for move/resize. The main-window width and height are stored in local Windows
+application settings when the window closes successfully and restored on the next launch; these
+local preferences do not dirty or modify the project JSON.
 
 Step properties open on a compact `常用配置` tab. Capability-specific advanced fields can be
 revealed when needed, while the separate `高级 JSON` tab round-trips conditions, actions, policies,
@@ -176,10 +182,10 @@ Visual condition forms can capture a region directly from a frozen desktop/windo
 fields expose `框选区域`; image-template forms additionally expose `框选并截图`, which fills the
 selected region and writes a PNG below `data/templates/` for recognition.
 
-The project toolbar supports group/workflow/step editing, undo, validated save, settings, and
-explicit parallel blocks. Parallel execution is never inferred from routes: create a parallel block
-and select the workflows that should monitor concurrently. Children share task variables and runtime
-resources while retaining separate workflow-local variables and call stacks.
+The column controls support group/workflow/step editing, undo, validated save, settings, and explicit
+parallel blocks. Parallel execution is never inferred from routes: create a parallel block and select
+the workflows that should monitor concurrently. Children share task variables and runtime resources
+while retaining separate workflow-local variables and call stacks.
 
 Six common step templates cover OCR-and-click, OCR timeout continuation, delayed input, window
 activation plus input, count-based workflow jumps, and success/timeout branches. Steps, workflows,
@@ -191,8 +197,11 @@ The guided editor displays built-in capabilities, parameter names, choices, rout
 runtime states in Chinese while retaining stable English schema keys in advanced JSON. A single step
 can freely mix and reorder mouse, keyboard, wait, variable, process, playback, and window actions;
 the sequence list shows a readable summary rather than internal capability identifiers.
+Normal result-binding selectors and summaries show Chinese condition and result names instead of
+raw `$result...` syntax. Saving still writes the original stable binding expression, and unknown or
+custom expressions remain available through the custom-expression mode.
 
-Saving from the toolbar or with `Ctrl+S` first commits the currently edited condition, selected
+Saving from the right-column control or with `Ctrl+S` first commits the currently edited condition, selected
 action, policy hooks, route, and step, then validates and atomically writes the complete project. It
 is no longer necessary to click each nested “更新动作” and “应用” button before saving. Pending
 values are also committed in memory before switching steps, and closing with pending form values
@@ -208,8 +217,8 @@ that save. Closing while a task is running uses one explicit decision dialog: sa
 happens before stopping, a failed save does not stop the task, and a stop timeout keeps the window
 open.
 
-The runtime toolbar provides start, pause/resume, stop, input recording, selected-step execution,
-condition preview, and structured diagnostics. Visual condition previews attach the recent frame as
+The left and middle column controls provide start, pause/resume, stop, input recording,
+selected-step execution, condition preview, and structured diagnostics. Visual condition previews attach the recent frame as
 an in-memory PNG without creating temporary screenshot files. Diagnostics include step results,
 selected routes, frame/scene identifiers, retry data, errors, and resource wait events. A
 `system.wait` action displays a one-second, in-place countdown in the runtime log; pause freezes it
@@ -233,8 +242,12 @@ Program launch actions accept an optional `working_directory` and `hide_window` 
 launches pass the working directory to the child process and use `CREATE_NO_WINDOW` when hidden;
 administrator launches pass both settings to `ShellExecuteW`. If the working directory is omitted,
 normal launches inherit the current directory and administrator launches use the executable
-directory. Converted `.py` and `.pyw` helpers are hidden by default so they cannot cover the game or
-steal visible screen space.
+directory. Choosing a launch target in the guided form fills the executable, generated argument
+prefix, and working directory automatically: `.py` uses the current global Python, `.pyw` prefers
+the matching `pythonw.exe`, `.bat` uses `cmd.exe /c`, and normal executables run directly. Reselecting
+a file replaces the previous generated prefix while preserving custom trailing arguments and a
+manually customized working directory. Converted `.py` and `.pyw` helpers are hidden by default so
+they cannot cover the game or steal visible screen space.
 
 ## Persistence and safety
 
