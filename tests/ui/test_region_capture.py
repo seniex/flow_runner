@@ -1,27 +1,20 @@
-import importlib
 from datetime import datetime
 
 from PIL import Image
 
 from flow_runner.capabilities.conditions.image import ImageConditionConfig
 from flow_runner.infrastructure.capture.base import CapturedFrame
+from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.editors.model_form import ModelForm, PathFieldEditor, TupleFieldEditor
+from flow_runner.ui.native_capture_overlay import SelectionMode
+from flow_runner.ui.region_capture import RegionCaptureService, TemplateCapture
 
 
-def test_display_selection_maps_through_letterboxing_to_image_coordinates():
-    capture = importlib.import_module("flow_runner.ui.region_capture")
-
-    region = capture.map_selection_to_image(
-        (50, 150, 450, 350),
-        viewport_size=(500, 500),
-        image_size=(1000, 500),
-    )
-
-    assert region == (100, 50, 900, 450)
+class _Preferences:
+    hide_application = False
 
 
 def test_region_capture_service_saves_selected_template_crop(tmp_path):
-    capture = importlib.import_module("flow_runner.ui.region_capture")
     image = Image.new("RGB", (100, 80), "black")
     for x in range(20, 60):
         for y in range(10, 50):
@@ -32,9 +25,19 @@ def test_region_capture_service_saves_selected_template_crop(tmp_path):
         targets.append(target)
         return CapturedFrame(image=image, origin=(-100, 25))
 
-    service = capture.RegionCaptureService(
+    modes = []
+
+    def selector(frame, mode, parent):
+        modes.append(mode)
+        return (20, 10, 60, 50)
+
+    session = CaptureSelectionSession(
         frame_provider,
-        selector=lambda frame, parent: (20, 10, 60, 50),
+        _Preferences(),
+        selector=selector,
+    )
+    service = RegionCaptureService(
+        session,
         template_directory=tmp_path / "data" / "templates",
         now=lambda: datetime(2026, 7, 15, 1, 2, 3, 456000),
     )
@@ -46,13 +49,17 @@ def test_region_capture_service_saves_selected_template_crop(tmp_path):
     assert Image.open(selected.path).size == (40, 40)
     assert Image.open(selected.path).getpixel((0, 0)) == (20, 220, 60)
     assert targets == ["window:Game"]
+    assert modes == [SelectionMode.REGION]
 
 
 def test_region_capture_service_cancel_does_not_create_template(tmp_path):
-    capture = importlib.import_module("flow_runner.ui.region_capture")
-    service = capture.RegionCaptureService(
+    session = CaptureSelectionSession(
         lambda target: CapturedFrame(Image.new("RGB", (20, 20))),
-        selector=lambda frame, parent: None,
+        _Preferences(),
+        selector=lambda frame, mode, parent: None,
+    )
+    service = RegionCaptureService(
+        session,
         template_directory=tmp_path / "data" / "templates",
     )
 
@@ -62,7 +69,6 @@ def test_region_capture_service_cancel_does_not_create_template(tmp_path):
 
 
 def test_model_form_region_and_template_capture_buttons_update_values(qtbot, tmp_path):
-    capture = importlib.import_module("flow_runner.ui.region_capture")
     picked_regions = []
     captured_targets = []
 
@@ -72,7 +78,7 @@ def test_model_form_region_and_template_capture_buttons_update_values(qtbot, tmp
 
     def capture_template(target):
         captured_targets.append(target)
-        return capture.TemplateCapture(
+        return TemplateCapture(
             region=(5, 6, 45, 56),
             path=tmp_path / "templates" / "button.png",
         )
