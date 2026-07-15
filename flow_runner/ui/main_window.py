@@ -4,7 +4,7 @@ from inspect import signature
 from pathlib import Path
 from uuid import UUID
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -41,6 +41,7 @@ from flow_runner.ui.runtime_log import RuntimeLogController
 from flow_runner.ui.view_models.project_view_model import ProjectViewModel
 from flow_runner.ui.view_models.run_view_model import RunViewModel
 from flow_runner.ui.widgets import ColumnContainer, FocusWheelComboBox, ResponsiveControlArea
+from flow_runner.ui.window_preferences import WindowPreferences
 
 
 class MainWindow(QMainWindow):
@@ -68,6 +69,7 @@ class MainWindow(QMainWindow):
         select_group_target: Callable[[Project, UUID], UUID | None] | None = None,
         region_capture: RegionCaptureService | None = None,
         runtime_formatter: RuntimeEventFormatter | None = None,
+        window_preferences: WindowPreferences | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -82,6 +84,7 @@ class MainWindow(QMainWindow):
         self._confirm_close_accepts_state = _accepts_close_state(self.confirm_close)
         self.registry = registry
         self.region_capture = region_capture
+        self.window_preferences = window_preferences or WindowPreferences()
         self._saved_column_widths = _column_widths_from_settings(project.settings)
         self._pending_column_widths: tuple[int, int, int] | None = None
         self._layout_dirty = False
@@ -332,12 +335,18 @@ class MainWindow(QMainWindow):
     def _apply_initial_window_geometry(self) -> None:
         screen = QApplication.primaryScreen()
         if screen is None:
-            self.resize(1200, 800)
+            self.resize(self.window_preferences.size or QSize(1200, 800))
             return
         available = screen.availableGeometry()
-        width = min(available.width(), max(900, int(available.width() * 0.85)))
-        height = min(available.height(), max(650, int(available.height() * 0.8)))
-        self.resize(width, height)
+        saved_size = self.window_preferences.size
+        if saved_size is not None:
+            size = _clamped_window_size(saved_size, available.size())
+        else:
+            size = QSize(
+                min(available.width(), max(900, int(available.width() * 0.85))),
+                min(available.height(), max(650, int(available.height() * 0.8))),
+            )
+        self.resize(size)
         self.move(available.center() - self.rect().center())
 
     def _restore_column_widths(self) -> None:
@@ -1026,6 +1035,9 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         super().closeEvent(event)
+        if event.isAccepted():
+            size = self.normalGeometry().size() if self.isMaximized() else self.size()
+            self.window_preferences.size = size
 
     def set_recording_state(self, recording: bool) -> None:
         self.record_action.setText("停止录制" if recording else "录制")
@@ -1054,6 +1066,15 @@ def _accepts_close_state(callback: Callable[..., object]) -> bool:
     except (TypeError, ValueError):
         return False
     return True
+
+
+def _clamped_window_size(requested: QSize, available: QSize) -> QSize:
+    minimum_width = min(640, available.width())
+    minimum_height = min(480, available.height())
+    return QSize(
+        max(minimum_width, min(requested.width(), available.width())),
+        max(minimum_height, min(requested.height(), available.height())),
+    )
 
 
 def _uuid_setting(value: object) -> UUID | None:

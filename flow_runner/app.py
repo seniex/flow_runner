@@ -124,6 +124,8 @@ def create_application(
     enable_per_monitor_dpi_awareness()
     existing = QApplication.instance()
     app = existing if isinstance(existing, QApplication) else QApplication(list(argv or []))
+    app.setOrganizationName("Flow Runner")
+    app.setApplicationName("Flow Runner")
     paths = (
         ApplicationPaths.for_project(project_path)
         if project_path is not None

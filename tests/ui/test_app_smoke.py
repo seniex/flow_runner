@@ -33,6 +33,8 @@ def test_application_starts_offscreen_with_injected_project_path(qtbot, tmp_path
     composition = create_application([], project_path=path)
     qtbot.addWidget(composition.window)
 
+    assert composition.app.organizationName() == "Flow Runner"
+    assert composition.app.applicationName() == "Flow Runner"
     assert composition.window.view_model.project.name == "测试项目"
     assert composition.store.path == path
     assert composition.store.backup_directory == path.parent / "backups"

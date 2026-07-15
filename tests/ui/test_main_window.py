@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -33,6 +33,7 @@ from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.view_models.project_view_model import ProjectViewModel
+from flow_runner.ui.window_preferences import WindowPreferences
 
 
 def sample_project():
@@ -41,6 +42,52 @@ def sample_project():
         steps=[AutomationStep(name="检测"), AutomationStep(name="点击")],
     )
     return Project(name="挂机", groups=[FlowGroup(name="组A", workflows=[workflow])])
+
+
+def test_main_window_restores_and_saves_local_size_without_dirtying_project(qtbot, tmp_path):
+    settings = QSettings(str(tmp_path / "window.ini"), QSettings.Format.IniFormat)
+    preferences = WindowPreferences(settings)
+    preferences.size = QSize(700, 600)
+    project = sample_project()
+    window = MainWindow(project, window_preferences=preferences)
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(1)
+
+    assert window.size() == QSize(700, 600)
+    window.resize(740, 620)
+    window.close()
+    assert preferences.size == QSize(740, 620)
+    assert not window.view_model.dirty
+
+
+def test_main_window_clamps_oversized_saved_size_to_screen(qtbot, tmp_path):
+    settings = QSettings(str(tmp_path / "window.ini"), QSettings.Format.IniFormat)
+    preferences = WindowPreferences(settings)
+    preferences.size = QSize(100_000, 100_000)
+    window = MainWindow(sample_project(), window_preferences=preferences)
+    qtbot.addWidget(window)
+    window.show()
+    available = QApplication.primaryScreen().availableGeometry().size()
+
+    assert window.width() <= available.width()
+    assert window.height() <= available.height()
+
+
+def test_cancelled_close_does_not_save_window_size(qtbot, tmp_path):
+    settings = QSettings(str(tmp_path / "window.ini"), QSettings.Format.IniFormat)
+    preferences = WindowPreferences(settings)
+    window = MainWindow(
+        sample_project(),
+        window_preferences=preferences,
+        confirm_close=lambda **state: CloseDecision.CANCEL,
+    )
+    qtbot.addWidget(window)
+    window.view_model.rename_group(window.view_model.project.groups[0].id, "已修改")
+    window.resize(740, 620)
+
+    assert not window.close()
+    assert preferences.size is None
 
 
 def selected_step_window(qtbot):
