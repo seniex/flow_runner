@@ -64,13 +64,15 @@ class BindingFieldEditor(QWidget):
 
     def set_options(self, options: tuple[ResultBindingOption, ...]) -> None:
         current = self.value() if self.combo.count() else ""
-        blocked = self.combo.blockSignals(True)
-        self.combo.clear()
-        for option in options:
-            self.combo.addItem(option.label, option.expression)
-        self.combo.addItem("自定义表达式", None)
-        self.combo.blockSignals(blocked)
-        self.setValue(current)
+        blocked = self.blockSignals(True)
+        try:
+            self.combo.clear()
+            for option in options:
+                self.combo.addItem(option.label, option.expression)
+            self.combo.addItem("自定义表达式", None)
+            self.setValue(current)
+        finally:
+            self.blockSignals(blocked)
 
     def value(self) -> str:
         value = self.combo.currentData()

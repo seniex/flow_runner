@@ -100,7 +100,13 @@ class ActionEditor(QWidget):
         self._current_pending = False
         item = self.action_list.item(row)
         if item is not None:
-            item.setText(f"{row + 1}. {action_summary(action)}")
+            item.setText(f"{row + 1}. {self._action_summary(action)}")
+
+    def _action_summary(self, action: ActionSpec) -> str:
+        labels = {
+            option.expression: option.label for option in self._binding_options
+        }
+        return action_summary(action, binding_labels=labels)
 
     def commit_pending(self) -> None:
         if not self._current_pending:
@@ -167,7 +173,7 @@ class ActionEditor(QWidget):
         self._current_pending = False
         item = self.action_list.item(row)
         if item is not None:
-            item.setText(f"{row + 1}. {action_summary(action)}")
+            item.setText(f"{row + 1}. {self._action_summary(action)}")
         self.changed.emit()
 
     def _current_action(self) -> ActionSpec | None:
@@ -283,5 +289,8 @@ class ActionEditor(QWidget):
     def _refresh_list(self) -> None:
         self.action_list.clear()
         self.action_list.addItems(
-            [f"{index}. {action_summary(action)}" for index, action in enumerate(self._actions, 1)]
+            [
+                f"{index}. {self._action_summary(action)}"
+                for index, action in enumerate(self._actions, 1)
+            ]
         )

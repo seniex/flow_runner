@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from flow_runner.domain.conditions import ConditionGroup, LeafCondition
 from flow_runner.domain.project import AutomationStep, Workflow
 from flow_runner.ui.localization import action_summary, capability_label, choice_label
+from flow_runner.ui.result_bindings import result_binding_options
 
 
 class StepCardWidget(QWidget):
@@ -43,9 +44,16 @@ class StepCardWidget(QWidget):
         body_layout.setContentsMargins(0, 4, 0, 0)
         body_layout.setSpacing(3)
         body_layout.addWidget(_summary_label(_condition_summary(step), "conditionSummaryRow"))
+        binding_labels = {
+            option.expression: option.label
+            for option in result_binding_options(step.condition)
+        }
         for action in step.actions:
             body_layout.addWidget(
-                _summary_label(f"执行：{action_summary(action)}", "actionSummaryRow")
+                _summary_label(
+                    f"执行：{action_summary(action, binding_labels=binding_labels)}",
+                    "actionSummaryRow",
+                )
             )
         if not step.actions:
             body_layout.addWidget(_summary_label("执行：无", "actionSummaryRow"))

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -192,11 +193,15 @@ def comparison_symbol(value: Any) -> str:
     return COMPARISON_SYMBOLS.get(str(raw), choice_label(raw))
 
 
-def action_summary(action: ActionSpec) -> str:
+def action_summary(
+    action: ActionSpec,
+    *,
+    binding_labels: Mapping[str, str] | None = None,
+) -> str:
     config = action.config
     if action.capability == "input.mouse":
         operation = choice_label(config.get("operation", ""))
-        position = _format_position(config.get("position"))
+        position = _format_position(config.get("position"), binding_labels)
         button = choice_label(config.get("button", "left"))
         clicks = config.get("clicks", 1)
         detail = (
@@ -243,9 +248,9 @@ def _launch_target_name(config: dict[str, Any]) -> str:
     return executable.name
 
 
-def _format_position(value: Any) -> str:
+def _format_position(value: Any, binding_labels: Mapping[str, str] | None = None) -> str:
     if isinstance(value, str):
-        return value
+        return binding_labels.get(value, value) if binding_labels is not None else value
     if isinstance(value, (list, tuple)) and len(value) == 2:
         return f"({value[0]}, {value[1]})"
     return ""
