@@ -222,6 +222,22 @@ def test_main_window_restores_three_column_widths_from_project_settings(qtbot):
     assert [round(value / sum(actual), 2) for value in actual] == [0.15, 0.27, 0.58]
 
 
+def test_main_window_uses_confirmed_default_column_widths(qtbot):
+    project, _first, _second, _step = _project()
+    window = MainWindow(project)
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(1)
+
+    actual = window.workspace_splitter.sizes()
+    actual_ratios = [value / sum(actual) for value in actual]
+    expected_ratios = [value / 1660 for value in (249, 259, 1152)]
+    assert all(
+        abs(actual_ratio - expected_ratio) < 0.003
+        for actual_ratio, expected_ratio in zip(actual_ratios, expected_ratios, strict=True)
+    )
+
+
 def test_dragged_column_widths_are_written_only_when_project_is_saved(qtbot):
     project, _first, _second, _step = _project()
     saved = []

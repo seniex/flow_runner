@@ -68,6 +68,18 @@ def test_main_window_restores_and_saves_local_size_without_dirtying_project(qtbo
     assert not window.view_model.dirty
 
 
+def test_main_window_uses_confirmed_default_size_without_saved_preference(qtbot, tmp_path):
+    settings = QSettings(str(tmp_path / "window.ini"), QSettings.Format.IniFormat)
+    window = MainWindow(sample_project(), window_preferences=WindowPreferences(settings))
+    qtbot.addWidget(window)
+    available = QApplication.primaryScreen().availableGeometry().size()
+
+    assert window.size() == QSize(
+        min(1723, available.width()),
+        min(1102, available.height()),
+    )
+
+
 def test_main_window_clamps_oversized_saved_size_to_screen(qtbot, tmp_path):
     settings = QSettings(str(tmp_path / "window.ini"), QSettings.Format.IniFormat)
     preferences = WindowPreferences(settings)

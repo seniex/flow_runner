@@ -47,6 +47,10 @@ from flow_runner.ui.widgets import ColumnContainer, FocusWheelComboBox, Responsi
 from flow_runner.ui.window_preferences import WindowPreferences
 
 
+DEFAULT_WINDOW_SIZE = QSize(1723, 1102)
+DEFAULT_COLUMN_WIDTHS = (249, 259, 1152)
+
+
 class MainWindow(QMainWindow):
     startRequested = Signal()
     pauseRequested = Signal()
@@ -366,28 +370,22 @@ class MainWindow(QMainWindow):
     def _apply_initial_window_geometry(self) -> None:
         screen = QApplication.primaryScreen()
         if screen is None:
-            self.resize(self.window_preferences.size or QSize(1200, 800))
+            self.resize(self.window_preferences.size or DEFAULT_WINDOW_SIZE)
             return
         available = screen.availableGeometry()
         saved_size = self.window_preferences.size
         if saved_size is not None:
             size = _clamped_window_size(saved_size, available.size())
         else:
-            size = QSize(
-                min(available.width(), max(900, int(available.width() * 0.85))),
-                min(available.height(), max(650, int(available.height() * 0.8))),
-            )
+            size = _clamped_window_size(DEFAULT_WINDOW_SIZE, available.size())
         self.resize(size)
         self.move(available.center() - self.rect().center())
 
     def _restore_column_widths(self) -> None:
-        widths = self._saved_column_widths
-        if widths is not None:
-            self.workspace_splitter.setSizes(list(widths))
-        else:
-            current = self.workspace_splitter.sizes()
-            if len(current) == 3 and all(value > 0 for value in current):
-                self._saved_column_widths = current[0], current[1], current[2]
+        widths = self._saved_column_widths or DEFAULT_COLUMN_WIDTHS
+        self.workspace_splitter.setSizes(list(widths))
+        if self._saved_column_widths is None:
+            self._saved_column_widths = DEFAULT_COLUMN_WIDTHS
 
     def _column_widths_changed(self, _position: int, _index: int) -> None:
         values = [max(1, value) for value in self.workspace_splitter.sizes()]
