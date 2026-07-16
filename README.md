@@ -14,8 +14,9 @@ Current version: `0.2.0`.
   project documents are archived separately.
 - Normal/debug logging, the wait-action countdown, and preserved condition-attempt counts on
   cancellation passed the six-item real-GUI acceptance.
-- Latest verification: 416 tests passed; Ruff, formatting, mypy, compileall, and pip check
-  succeeded.
+- The automated quality gate covers pytest, Ruff, formatting, mypy, compileall, and pip dependency
+  consistency; the current run result is reported in each release handoff rather than hard-coded
+  here.
 - Multi-monitor and Tesseract real-environment acceptance remain `DEFERRED`; see
   [`REAL_ENVIRONMENT_CHECKLIST.md`](REAL_ENVIRONMENT_CHECKLIST.md).
 
@@ -223,12 +224,25 @@ happens before stopping, a failed save does not stop the task, and a stop timeou
 open.
 
 The left and middle column controls provide start, pause/resume, stop, input recording,
-selected-step execution, condition preview, and structured diagnostics. Visual condition previews attach the recent frame as
-an in-memory PNG without creating temporary screenshot files. Diagnostics include step results,
-selected routes, frame/scene identifiers, retry data, errors, and resource wait events. A
-`system.wait` action displays a one-second, in-place countdown in the runtime log; pause freezes it
-and cancellation replaces it with a final cancelled entry. Default global hotkeys are
-F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings can change or disable them.
+selected-step execution, condition preview, and structured diagnostics. Packaged high-contrast
+SVG assets provide the application/taskbar icon, command icons with their Chinese labels, and
+persistent light-blue flow-tree expand/collapse arrows. Visual condition previews attach the recent
+frame as an in-memory PNG without creating temporary screenshot files. Diagnostics include step
+results, selected routes, frame/scene identifiers, retry data, errors, and resource wait events.
+
+`设置 -> 启动流程后最小化` is a project-scoped setting and is off by default. When enabled, an
+accepted toolbar or F6 start for a workflow or parallel block minimizes the window. Rejected starts,
+selected-step execution, and condition preview do not minimize it. Completion and explicit stop do
+not restore the window automatically.
+
+A `system.wait` action displays a one-second, in-place countdown in the runtime log. F8
+pause/resume freezes built-in condition and input checkpoints, waits, recording playback, and the
+active timestamps of an independent input recording. F7 cancels in-flight runtime work, stops and
+saves an active independent recording, and releases tracked held keys and mouse buttons when the
+runtime terminates. Natural runtime completion leaves an independent recording active. Atomic OS
+calls already in progress and processes already launched cannot be reversed by pause or stop.
+Default global hotkeys are F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings
+can change or disable them.
 
 Recordings are stored by default at `data/recordings/latest.json`. The playback action can reuse a
 recording with configurable speed and maximum gap.
