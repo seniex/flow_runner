@@ -26,8 +26,9 @@ from flow_runner.domain.routing import (
 )
 from flow_runner.ui.editors.model_form import BindingFieldEditor
 from flow_runner.ui.layouts import CompactFlowLayout
-from flow_runner.ui.localization import choice_label, comparison_symbol
+from flow_runner.ui.localization import choice_label
 from flow_runner.ui.result_bindings import ResultBindingOption
+from flow_runner.ui.route_summaries import format_route_summary
 from flow_runner.ui.widgets import FocusWheelComboBox
 
 
@@ -505,58 +506,15 @@ class RouteEditor(QWidget):
                 item.setText(self._route_summary(route, index))
 
     def _route_summary(self, route: RouteRule, index: int) -> str:
-        outcome = choice_label(route.outcome)
-        if route.predicate is None and any(
-            previous.outcome == route.outcome and previous.predicate is not None
-            for previous in self._routes[:index]
-        ):
-            outcome += "（否则）"
-        predicate = (
-            f" 且 {self._predicate_summary(route.predicate)}" if route.predicate is not None else ""
+        labels = self._labels or ProjectDisplayIndex(Project(name="空项目"))
+        binding_labels = {option.expression: option.label for option in self._binding_options}
+        return format_route_summary(
+            route,
+            index,
+            self._routes,
+            labels=labels,
+            binding_labels=binding_labels,
         )
-        return f"{outcome}{predicate} → {self._target_summary(route.target)}"
-
-    def _predicate_summary(self, predicate: RoutePredicate) -> str:
-        if predicate.source == "workflow_count":
-            subject = f"{self._workflow_name(predicate.key)}执行次数"
-        elif predicate.source == "step_count":
-            subject = f"{self._step_name(predicate.key)}执行次数"
-        elif predicate.source == "binding":
-            subject = next(
-                (
-                    option.label
-                    for option in self._binding_options
-                    if option.expression == predicate.key
-                ),
-                predicate.key,
-            )
-        else:
-            subject = predicate.key
-        expected = json.dumps(predicate.expected, ensure_ascii=False)
-        return f"{subject} {comparison_symbol(predicate.operator)} {expected}"
-
-    def _target_summary(self, target: RouteTarget) -> str:
-        if target.step_id is not None:
-            return self._step_name(target.step_id)
-        if target.workflow_id is not None:
-            return self._workflow_name(target.workflow_id)
-        return choice_label(target.kind)
-
-    def _workflow_name(self, workflow_id: object) -> str:
-        if self._labels is not None:
-            try:
-                return self._labels.workflow_path(UUID(str(workflow_id)))
-            except (ValueError, TypeError, AttributeError):
-                pass
-        return str(workflow_id)
-
-    def _step_name(self, step_id: object) -> str:
-        if self._labels is not None:
-            try:
-                return self._labels.step_path(UUID(str(step_id)))
-            except (ValueError, TypeError, AttributeError):
-                pass
-        return str(step_id)
 
     def _validate_route_order(self) -> None:
         unconditional: dict[StepOutcome, int] = {}

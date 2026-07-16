@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
         self.edit_parallel_block = edit_parallel_block or self._prompt_edit_parallel_block
         self.select_group_target = select_group_target or self._prompt_workflow_group
         self.flow_tree = FlowTreePanel(project)
-        self.step_list = StepListPanel()
+        self.step_list = StepListPanel(project)
         self.property_panel = PropertyPanel(
             registry,
             project,
@@ -585,6 +585,7 @@ class MainWindow(QMainWindow):
 
     def _project_changed(self, _project: Project) -> None:
         self.runtime_formatter.set_project(_project)
+        self.step_list.set_project(_project)
         self._refresh_startup_selectors()
         self._reload_selection_from_project()
         self._refresh_save_state()

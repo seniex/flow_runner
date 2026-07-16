@@ -6,6 +6,7 @@ from PySide6.QtGui import QGuiApplication
 
 from flow_runner.infrastructure.capture.base import CapturedFrame
 from flow_runner.infrastructure.windowing.displays import (
+    PhysicalDisplay,
     PhysicalDisplayProvider,
     WindowsPhysicalDisplayProvider,
 )
@@ -18,6 +19,8 @@ class ScreenGeometry(Protocol):
     def name(self) -> str: ...
 
     def geometry(self) -> QRect: ...
+
+    def devicePixelRatio(self) -> float: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,12 +98,51 @@ def display_mappings_for_frame(
         screens if screens is not None else tuple(QGuiApplication.screens())
     )
     provider = physical_provider or WindowsPhysicalDisplayProvider()
-    physical = {display.name.casefold(): display for display in provider.displays()}
+    geometries = match_display_geometries(qt_screens, provider.displays())
+    return build_display_mappings(
+        frame_origin=frame.origin,
+        frame_size=frame.image.size,
+        displays=geometries,
+    )
+
+
+def match_display_geometries(
+    screens: tuple[ScreenGeometry, ...],
+    physical_displays: tuple[PhysicalDisplay, ...],
+) -> tuple[DisplayGeometry, ...]:
     geometries: list[DisplayGeometry] = []
-    for screen in qt_screens:
-        native = physical.get(screen.name().casefold())
-        if native is None:
-            raise ValueError(f"无法匹配显示器物理坐标：{screen.name()}")
+    used: set[int] = set()
+    for screen in screens:
+        available = [
+            (index, display) for index, display in enumerate(physical_displays) if index not in used
+        ]
+        screen_name = screen.name().casefold()
+        named = [
+            (index, display)
+            for index, display in available
+            if screen_name
+            in {display.name.casefold(), *(alias.casefold() for alias in display.aliases)}
+        ]
+        if len(named) == 1:
+            selected = named[0]
+        else:
+            compatible = [
+                (index, display)
+                for index, display in available
+                if _geometry_compatible(screen, display)
+            ]
+            if len(compatible) != 1:
+                candidates = "、".join(display.name for _, display in compatible) or "无"
+                rect = screen.geometry()
+                raise ValueError(
+                    "无法唯一匹配显示器物理坐标："
+                    f"{screen.name()}，逻辑矩形=({rect.x()}, {rect.y()}, "
+                    f"{rect.width()}, {rect.height()})，DPR={screen.devicePixelRatio():g}，"
+                    f"候选={candidates}"
+                )
+            selected = compatible[0]
+        index, native = selected
+        used.add(index)
         rect = screen.geometry()
         geometries.append(
             DisplayGeometry(
@@ -109,11 +151,17 @@ def display_mappings_for_frame(
                 native.rect,
             )
         )
-    return build_display_mappings(
-        frame_origin=frame.origin,
-        frame_size=frame.image.size,
-        displays=tuple(geometries),
-    )
+    return tuple(geometries)
+
+
+def _geometry_compatible(screen: ScreenGeometry, display: PhysicalDisplay) -> bool:
+    rect = screen.geometry()
+    ratio = screen.devicePixelRatio()
+    expected_width = round(rect.width() * ratio)
+    expected_height = round(rect.height() * ratio)
+    physical_width = display.rect[2] - display.rect[0]
+    physical_height = display.rect[3] - display.rect[1]
+    return abs(expected_width - physical_width) <= 1 and abs(expected_height - physical_height) <= 1
 
 
 def _scale_axis(

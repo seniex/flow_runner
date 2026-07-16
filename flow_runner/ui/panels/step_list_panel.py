@@ -11,16 +11,23 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flow_runner.display_labels import ProjectDisplayIndex
 from flow_runner.domain.conditions import ConditionGroup, LeafCondition
-from flow_runner.domain.project import AutomationStep, Workflow
+from flow_runner.domain.project import AutomationStep, Project, Workflow
 from flow_runner.ui.localization import action_summary, capability_label, choice_label
 from flow_runner.ui.result_bindings import result_binding_options
+from flow_runner.ui.route_summaries import format_route_summaries
 
 
 class StepCardWidget(QWidget):
     clicked = Signal()
 
-    def __init__(self, step: AutomationStep, index: int) -> None:
+    def __init__(
+        self,
+        step: AutomationStep,
+        index: int,
+        labels: ProjectDisplayIndex | None = None,
+    ) -> None:
         super().__init__()
         self.setObjectName("stepCard")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -47,6 +54,7 @@ class StepCardWidget(QWidget):
         binding_labels = {
             option.expression: option.label for option in result_binding_options(step.condition)
         }
+        route_labels = labels or ProjectDisplayIndex(Project(name="空项目"))
         for action in step.actions:
             body_layout.addWidget(
                 _summary_label(
@@ -57,7 +65,18 @@ class StepCardWidget(QWidget):
         if not step.actions:
             body_layout.addWidget(_summary_label("执行：无", "actionSummaryRow"))
         body_layout.addWidget(_summary_label(_policy_summary(step), "policySummaryRow"))
-        body_layout.addWidget(_summary_label(_route_summary(step), "routeSummaryRow"))
+        body_layout.addWidget(
+            _summary_label(
+                "\n".join(
+                    format_route_summaries(
+                        step.routes,
+                        labels=route_labels,
+                        binding_labels=binding_labels,
+                    )
+                ),
+                "routeSummaryRow",
+            )
+        )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(0)
@@ -107,19 +126,10 @@ def _policy_summary(step: AutomationStep) -> str:
     return f"策略：{' · '.join(parts)}"
 
 
-def _route_summary(step: AutomationStep) -> str:
-    if not step.routes:
-        return "路由：无"
-    summaries = [
-        f"{choice_label(route.outcome)}→{choice_label(route.target.kind)}" for route in step.routes
-    ]
-    return f"路由：{'；'.join(summaries)}"
-
-
 class StepListPanel(QWidget):
     stepSelected = Signal(object)
 
-    def __init__(self) -> None:
+    def __init__(self, project: Project) -> None:
         super().__init__()
         self.setObjectName("stepListPanel")
         self.list = QListWidget()
@@ -127,6 +137,11 @@ class StepListPanel(QWidget):
         layout.addWidget(self.list)
         self._items: dict[UUID, QListWidgetItem] = {}
         self.list.currentItemChanged.connect(self._on_current_item)
+        self.set_project(project)
+
+    def set_project(self, project: Project) -> None:
+        self._project = project
+        self._labels = ProjectDisplayIndex(project)
 
     def set_workflow(self, workflow: Workflow) -> None:
         self.list.clear()
@@ -136,7 +151,7 @@ class StepListPanel(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, step.id)
             item.setData(Qt.ItemDataRole.AccessibleTextRole, step.name)
             self.list.addItem(item)
-            card = StepCardWidget(step, index)
+            card = StepCardWidget(step, index, self._labels)
             card.clicked.connect(lambda step_item=item: self.list.setCurrentItem(step_item))
             self.list.setItemWidget(item, card)
             item.setSizeHint(card.sizeHint())
