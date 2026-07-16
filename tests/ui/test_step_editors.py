@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtTest import QSignalSpy
+from PySide6.QtWidgets import QPushButton
 
 from flow_runner.capabilities.actions.keyboard import KeyboardActionConfig
 from flow_runner.capabilities.actions.mouse import MouseActionConfig
@@ -29,6 +30,7 @@ from flow_runner.ui.editors.condition_editor import ConditionEditor, switch_cond
 from flow_runner.ui.editors.model_form import ModelForm, PathFieldEditor, TupleFieldEditor
 from flow_runner.ui.editors.policy_editor import PolicyEditor
 from flow_runner.ui.editors.route_editor import RouteEditor
+from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import action_summary
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.region_capture import PointCapture, TemplateCapture
@@ -55,6 +57,14 @@ def registry():
     result.register_condition(Capability("vision.image", ImageConditionConfig))
     result.register_action(Capability("system.wait", OcrConditionConfig))
     return result
+
+
+def _action_capability_button(editor: ActionEditor, capability: str) -> QPushButton:
+    return next(
+        button
+        for button in editor.capability_buttons.buttons()
+        if button.property("capability") == capability
+    )
 
 
 def test_switching_ocr_to_image_preserves_common_fields_policy_and_routes():
@@ -556,8 +566,44 @@ def test_action_and_route_editors_round_trip_models(qtbot):
     routes.set_routes([route])
 
     assert actions.action_specs() == [action]
-    assert actions.capability_combo.itemData(0) == "system.wait"
+    assert _action_capability_button(actions, "system.wait").text() == "等待"
     assert routes.routes() == [route]
+
+
+def test_action_editor_uses_wrapping_capability_buttons(qtbot):
+    editor = ActionEditor(registry())
+    qtbot.addWidget(editor)
+
+    assert not hasattr(editor, "capability_combo")
+    assert isinstance(editor.capability_layout, CompactFlowLayout)
+    assert {button.property("capability") for button in editor.capability_buttons.buttons()} == {
+        metadata.name for metadata in registry().action_metadata()
+    }
+
+
+def test_action_capability_button_switches_form_and_is_exclusive(qtbot):
+    capabilities = registry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    editor = ActionEditor(capabilities)
+    qtbot.addWidget(editor)
+    wait_button = _action_capability_button(editor, "system.wait")
+    mouse_button = _action_capability_button(editor, "input.mouse")
+
+    mouse_button.click()
+
+    assert mouse_button.isChecked()
+    assert not wait_button.isChecked()
+    assert editor.current_capability() == "input.mouse"
+    assert editor.config_form.editor("operation") is not None
+
+
+def test_action_editor_selects_button_when_loading_existing_action(qtbot):
+    editor = ActionEditor(registry())
+    qtbot.addWidget(editor)
+    editor.set_actions([ActionSpec(capability="system.wait", config={"keywords": "等待"})])
+
+    assert _action_capability_button(editor, "system.wait").isChecked()
+    assert editor.config_form.editor("keywords").text() == "等待"
 
 
 def test_action_editor_adds_action_from_generated_config_form(qtbot):
@@ -591,7 +637,7 @@ def test_action_editor_preserves_runtime_coordinate_binding(qtbot):
     capabilities.register_action(Capability("input.mouse", MouseActionConfig))
     editor = ActionEditor(capabilities)
     qtbot.addWidget(editor)
-    editor.capability_combo.setCurrentIndex(editor.capability_combo.findData("input.mouse"))
+    _action_capability_button(editor, "input.mouse").click()
     position = editor.config_form.editor("position")
     assert isinstance(position, TupleFieldEditor)
     position.setBinding("$result.primary.position")
@@ -804,10 +850,7 @@ def test_action_editor_localizes_and_summarizes_mixed_action_sequence(qtbot):
 
     labels = [editor.action_list.item(index).text() for index in range(3)]
 
-    assert (
-        editor.capability_combo.itemText(editor.capability_combo.findData("input.mouse"))
-        == "鼠标操作"
-    )
+    assert _action_capability_button(editor, "input.mouse").text() == "鼠标操作"
     assert labels == [
         "1. 鼠标：左键点击 (100, 200)",
         "2. 键盘：按下并释放 q",

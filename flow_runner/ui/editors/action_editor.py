@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -15,10 +16,10 @@ from flow_runner.capabilities.registry import CapabilityRegistry
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.ui.editor_metadata import common_fields_for
 from flow_runner.ui.editors.model_form import ModelForm
+from flow_runner.ui.layouts import CompactFlowLayout
 from flow_runner.ui.localization import action_summary, capability_label
 from flow_runner.ui.region_capture import PointCapture
 from flow_runner.ui.result_bindings import ResultBindingOption
-from flow_runner.ui.widgets import FocusWheelComboBox
 
 
 class ActionEditor(QWidget):
@@ -38,9 +39,20 @@ class ActionEditor(QWidget):
         self._binding_options: tuple[ResultBindingOption, ...] = ()
         self._loading = False
         self._current_pending = False
-        self.capability_combo = FocusWheelComboBox()
+        self.capability_container = QWidget()
+        self.capability_container.setObjectName("actionCapabilitySelector")
+        self.capability_layout = CompactFlowLayout(self.capability_container, spacing=6)
+        self.capability_buttons = QButtonGroup(self)
+        self.capability_buttons.setExclusive(True)
         for metadata in registry.action_metadata():
-            self.capability_combo.addItem(capability_label(metadata.name), metadata.name)
+            button = QPushButton(capability_label(metadata.name))
+            button.setObjectName("actionCapabilityButton")
+            button.setCheckable(True)
+            button.setProperty("capability", metadata.name)
+            self.capability_buttons.addButton(button)
+            self.capability_layout.addWidget(button)
+        if self.capability_buttons.buttons():
+            self.capability_buttons.buttons()[0].setChecked(True)
         self._actions: list[ActionSpec] = []
         self.config_container = QWidget()
         self.config_layout = QVBoxLayout(self.config_container)
@@ -54,7 +66,7 @@ class ActionEditor(QWidget):
         self.down_button = QPushButton("下移")
         self.error_label = QLabel("")
         layout = QVBoxLayout(self)
-        layout.addWidget(self.capability_combo)
+        layout.addWidget(self.capability_container)
         layout.addWidget(self.config_container)
         layout.addWidget(self.action_list)
         buttons = QHBoxLayout()
@@ -69,7 +81,7 @@ class ActionEditor(QWidget):
             buttons.addWidget(button)
         layout.addLayout(buttons)
         layout.addWidget(self.error_label)
-        self.capability_combo.currentIndexChanged.connect(self._capability_changed)
+        self.capability_buttons.buttonClicked.connect(self._capability_changed)
         self.action_list.currentItemChanged.connect(self._selection_changed)
         self.add_button.clicked.connect(self._add_current)
         self.update_button.clicked.connect(self._update_current)
@@ -123,7 +135,7 @@ class ActionEditor(QWidget):
             raise ValueError("请先添加当前动作")
         self.commit_current()
 
-    def _capability_changed(self) -> None:
+    def _capability_changed(self, _button: object = None) -> None:
         self._rebuild_form()
         if not self._loading:
             self._current_pending = True
@@ -138,8 +150,8 @@ class ActionEditor(QWidget):
             if widget is not None:
                 widget.deleteLater()
         self.config_form = None
-        capability = self.capability_combo.currentData()
-        if not isinstance(capability, str):
+        capability = self.current_capability()
+        if capability is None:
             return
         self.config_form = ModelForm(
             self.registry.action(capability).config_model,
@@ -195,8 +207,8 @@ class ActionEditor(QWidget):
         return action
 
     def _build_current_action(self) -> ActionSpec:
-        capability = self.capability_combo.currentData()
-        if not isinstance(capability, str) or self.config_form is None:
+        capability = self.current_capability()
+        if capability is None or self.config_form is None:
             raise ValueError("请选择动作类型")
         config = self.registry.validated_action_config(
             capability,
@@ -231,20 +243,31 @@ class ActionEditor(QWidget):
         if not 0 <= row < len(self._actions):
             return
         action = self._actions[row]
-        index = self.capability_combo.findData(action.capability)
-        if index < 0:
+        button = self._button_for_capability(action.capability)
+        if button is None:
             self.error_label.setText(f"未知动作能力：{action.capability}")
             return
         self._loading = True
-        self.capability_combo.blockSignals(True)
-        self.capability_combo.setCurrentIndex(index)
-        self.capability_combo.blockSignals(False)
+        self.capability_buttons.blockSignals(True)
+        button.setChecked(True)
+        self.capability_buttons.blockSignals(False)
         self._rebuild_form()
         if self.config_form is not None:
             self.config_form.set_values(action.config)
         self._current_pending = False
         self._loading = False
         self.error_label.clear()
+
+    def current_capability(self) -> str | None:
+        button = self.capability_buttons.checkedButton()
+        capability = button.property("capability") if button is not None else None
+        return capability if isinstance(capability, str) else None
+
+    def _button_for_capability(self, capability: str) -> QPushButton | None:
+        for button in self.capability_buttons.buttons():
+            if button.property("capability") == capability:
+                return button
+        return None
 
     def _remove_current(self) -> None:
         row = self.action_list.currentRow()

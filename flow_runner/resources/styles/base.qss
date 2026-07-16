@@ -120,6 +120,16 @@ QPushButton[role="primary"] {
     border-color: #4f71ff;
 }
 
+#actionCapabilityButton {
+    min-width: 64px;
+}
+
+#actionCapabilityButton:checked {
+    color: #ffffff;
+    background: #4f71ff;
+    border-color: #6683ff;
+}
+
 QWidget[status="running"] {
     border: 1px solid #2fc67c;
 }
