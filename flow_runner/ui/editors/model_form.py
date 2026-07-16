@@ -135,11 +135,11 @@ class TupleFieldEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.mode_combo)
         layout.addWidget(self.pages, 1)
-        self.pick_button = QPushButton("框选区域")
+        self.pick_button = QPushButton("框选区域", self)
         self.pick_button.setObjectName("pickRegionButton")
         self.pick_button.setVisible(allow_pick)
         layout.addWidget(self.pick_button)
-        self.point_button = QPushButton("点选坐标")
+        self.point_button = QPushButton("点选坐标", self)
         self.point_button.setObjectName("pickMousePointButton")
         self.point_button.setVisible(allow_point_pick)
         layout.addWidget(self.point_button)
@@ -197,9 +197,9 @@ class PathFieldEditor(QWidget):
         self.setProperty("fieldKind", "path")
         self._file_filter = file_filter
         self.line_edit = QLineEdit()
-        self.browse_button = QPushButton("选择…")
+        self.browse_button = QPushButton("选择…", self)
         self.browse_button.setProperty("role", "browse")
-        self.capture_button = QPushButton("框选并截图")
+        self.capture_button = QPushButton("框选并截图", self)
         self.capture_button.setObjectName("captureTemplateButton")
         self.capture_button.setVisible(allow_capture)
         layout = QHBoxLayout(self)
@@ -304,10 +304,13 @@ class ModelForm(QWidget):
             )
             self.form_layout.addField(label, editor, name)
             self._connect_editor(editor)
+            if isinstance(editor, TupleFieldEditor):
+                editor.mode_combo.setMaximumWidth(88)
+                for part in editor.value_editors:
+                    part.setMaximumWidth(140)
         if self._window_action_form:
             geometry = self.editors.get("geometry")
             if isinstance(geometry, TupleFieldEditor):
-                geometry.mode_combo.setMaximumWidth(88)
                 for part in geometry.value_editors:
                     part.setMaximumWidth(62)
             operation = self.editors.get("operation")

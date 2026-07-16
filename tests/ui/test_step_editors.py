@@ -2,8 +2,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import QEvent, QObject
 from PySide6.QtTest import QSignalSpy
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 
 from flow_runner.capabilities.actions.keyboard import KeyboardActionConfig
 from flow_runner.capabilities.actions.mouse import MouseActionConfig
@@ -65,6 +66,17 @@ def _action_capability_button(editor: ActionEditor, capability: str) -> QPushBut
         for button in editor.capability_buttons.buttons()
         if button.property("capability") == capability
     )
+
+
+class _ShownTopLevelRecorder(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.widgets = []
+
+    def eventFilter(self, watched, event):  # noqa: N802
+        if event.type() == QEvent.Type.Show and isinstance(watched, QWidget) and watched.isWindow():
+            self.widgets.append(watched)
+        return False
 
 
 def test_switching_ocr_to_image_preserves_common_fields_policy_and_routes():
@@ -595,6 +607,57 @@ def test_action_capability_button_switches_form_and_is_exclusive(qtbot):
     assert not wait_button.isChecked()
     assert editor.current_capability() == "input.mouse"
     assert editor.config_form.editor("operation") is not None
+
+
+def test_dynamic_guided_forms_do_not_show_parentless_buttons(qtbot):
+    capabilities = registry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    panel = PropertyPanel(capabilities, Project(name="p"))
+    qtbot.addWidget(panel)
+    panel.show()
+    recorder = _ShownTopLevelRecorder()
+    QApplication.instance().installEventFilter(recorder)
+    try:
+        _action_capability_button(panel.action_editor, "input.mouse").click()
+        panel.set_step(
+            AutomationStep(
+                name="image and mouse",
+                condition=LeafCondition(
+                    id="image",
+                    capability="vision.image",
+                    config={"template_path": "template.png"},
+                ),
+                actions=[ActionSpec(capability="input.mouse", config={})],
+            )
+        )
+        qtbot.wait(1)
+    finally:
+        QApplication.instance().removeEventFilter(recorder)
+
+    assert [widget.objectName() for widget in recorder.widgets] == []
+
+
+def test_property_panel_has_no_horizontal_scroll_for_image_and_mouse_forms(qtbot):
+    capabilities = registry()
+    capabilities.register_action(Capability("input.mouse", MouseActionConfig))
+    panel = PropertyPanel(capabilities, Project(name="p"))
+    qtbot.addWidget(panel)
+    panel.resize(1000, 800)
+    panel.set_step(
+        AutomationStep(
+            name="image and mouse",
+            condition=LeafCondition(
+                id="image",
+                capability="vision.image",
+                config={"template_path": "template.png"},
+            ),
+            actions=[ActionSpec(capability="input.mouse", config={})],
+        )
+    )
+    panel.show()
+    qtbot.wait(1)
+
+    assert panel.horizontalScrollBar().maximum() == 0
 
 
 def test_action_editor_selects_button_when_loading_existing_action(qtbot):

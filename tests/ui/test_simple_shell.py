@@ -1,5 +1,5 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtWidgets import QAbstractItemView, QLabel
 
 from flow_runner.domain.actions import ActionSpec
 from flow_runner.domain.conditions import LeafCondition
@@ -192,6 +192,74 @@ def test_step_card_height_reflows_when_step_column_width_changes(qtbot):
     qtbot.wait(1)
 
     assert panel.list.item(0).sizeHint().height() < narrow_height
+
+
+def test_single_oversized_step_card_scrolls_to_complete_last_line(qtbot):
+    project, workflow = _project_with_long_multi_route_step()
+    step = workflow.steps[0].model_copy(
+        update={
+            "actions": [
+                ActionSpec(
+                    capability="input.keyboard",
+                    config={"operation": "press", "key": f"F{index}"},
+                )
+                for index in range(1, 31)
+            ]
+        }
+    )
+    workflow = workflow.model_copy(update={"steps": [step]})
+    panel = StepListPanel(project)
+    qtbot.addWidget(panel)
+    panel.resize(280, 300)
+    panel.set_workflow(workflow)
+    panel.show()
+    qtbot.wait(1)
+
+    scrollbar = panel.list.verticalScrollBar()
+    assert panel.list.verticalScrollMode() == QAbstractItemView.ScrollMode.ScrollPerPixel
+    assert scrollbar.maximum() > 0
+
+    scrollbar.setValue(scrollbar.maximum())
+    qtbot.wait(1)
+    card = panel.list.itemWidget(panel.list.item(0))
+    route_label = card.findChild(QLabel, "routeSummaryRow")
+    bottom = route_label.mapTo(panel.list.viewport(), QPoint(0, route_label.height())).y()
+    assert bottom <= panel.list.viewport().height()
+
+
+def test_step_card_wraps_long_template_path_inside_card(qtbot):
+    step = AutomationStep(
+        name="路径换行",
+        condition=LeafCondition(
+            id="image",
+            capability="vision.image",
+            config={
+                "template_path": (
+                    r"D:\3eyes\Python\codex\apps\flow_runner\data\templates\legacy\转职挑战.png"
+                )
+            },
+        ),
+        actions=[
+            ActionSpec(
+                capability="input.mouse",
+                config={"operation": "click", "position": [1900 + index, 1200 + index]},
+            )
+            for index in range(16)
+        ],
+    )
+    workflow = Workflow(name="流程", steps=[step])
+    project = Project(name="p", groups=[FlowGroup(name="组", workflows=[workflow])])
+    panel = StepListPanel(project)
+    qtbot.addWidget(panel)
+    panel.resize(280, 400)
+    panel.set_workflow(workflow)
+    panel.show()
+    qtbot.wait(1)
+
+    card = panel.list.itemWidget(panel.list.item(0))
+    label = card.findChild(QLabel, "conditionSummaryRow")
+    assert label.height() > label.fontMetrics().lineSpacing()
+    assert label.width() <= card.width() - 20
 
 
 def test_main_window_default_layout_exposes_simple_editor_and_runtime_log(qtbot):

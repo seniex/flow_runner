@@ -3,6 +3,7 @@ from uuid import UUID
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -39,8 +40,8 @@ class StepCardWidget(QWidget):
         self.number_label.setObjectName("stepCardNumber")
         self.title_label = QLabel(step.name)
         self.title_label.setObjectName("stepCardTitle")
-        header = QWidget()
-        header_layout = QHBoxLayout(header)
+        self.header = QWidget()
+        header_layout = QHBoxLayout(self.header)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.setSpacing(6)
         header_layout.addWidget(self.number_label)
@@ -80,7 +81,7 @@ class StepCardWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(0)
-        layout.addWidget(header)
+        layout.addWidget(self.header)
         layout.addWidget(self.body)
 
     def set_selected(self, selected: bool) -> None:
@@ -92,6 +93,34 @@ class StepCardWidget(QWidget):
         if event.button() is Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
+
+    def content_height(self) -> int:
+        layout = self.layout()
+        body_layout = self.body.layout()
+        if layout is None or body_layout is None:
+            return self.sizeHint().height()
+        outer = layout.contentsMargins()
+        body_margins = body_layout.contentsMargins()
+        visible_heights = [
+            widget.height()
+            for index in range(body_layout.count())
+            if (item := body_layout.itemAt(index)) is not None
+            and (widget := item.widget()) is not None
+            and not widget.isHidden()
+        ]
+        body_height = (
+            body_margins.top()
+            + body_margins.bottom()
+            + sum(visible_heights)
+            + max(0, len(visible_heights) - 1) * body_layout.spacing()
+        )
+        return (
+            outer.top()
+            + outer.bottom()
+            + self.header.sizeHint().height()
+            + body_height
+            + layout.spacing()
+        )
 
 
 def _summary_label(text: str, object_name: str) -> QLabel:
@@ -134,6 +163,7 @@ class StepListPanel(QWidget):
         self.setObjectName("stepListPanel")
         self.list = QListWidget()
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.list.viewport().installEventFilter(self)
         layout = QVBoxLayout(self)
         layout.addWidget(self.list)
@@ -186,11 +216,21 @@ class StepListPanel(QWidget):
             if not isinstance(card, StepCardWidget):
                 continue
             card.setFixedWidth(width)
+            summary_width = max(1, width - 20)
+            for label in card.findChildren(QLabel):
+                if label.objectName().endswith("SummaryRow"):
+                    label.setMinimumSize(0, 0)
+                    label.setMaximumSize(16_777_215, 16_777_215)
+                    label.setFixedSize(summary_width, label.heightForWidth(summary_width))
+                    label.updateGeometry()
+            body_layout = card.body.layout()
+            if body_layout is not None:
+                body_layout.invalidate()
             layout = card.layout()
             if layout is None:
                 continue
+            layout.invalidate()
             layout.activate()
-            height = card.heightForWidth(width)
-            if height < 0:
-                height = card.sizeHint().height()
-            item.setSizeHint(QSize(width, max(card.minimumSizeHint().height(), height)))
+            height = card.content_height()
+            card.setFixedHeight(height)
+            item.setSizeHint(QSize(width, height))
