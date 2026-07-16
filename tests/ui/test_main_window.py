@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from PySide6.QtCore import QSettings, QSize, Qt
+from PySide6.QtCore import QCoreApplication, QSettings, QSize, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -78,6 +78,41 @@ def test_main_window_uses_confirmed_default_size_without_saved_preference(qtbot,
         min(1723, available.width()),
         min(1102, available.height()),
     )
+
+
+def test_default_test_window_does_not_overwrite_real_application_size(qtbot):
+    previous_organization = QCoreApplication.organizationName()
+    previous_application = QCoreApplication.applicationName()
+    QCoreApplication.setOrganizationName("Flow Runner")
+    QCoreApplication.setApplicationName("Flow Runner")
+    settings = QSettings()
+    original_width = settings.value("window/width")
+    original_height = settings.value("window/height")
+    try:
+        settings.setValue("window/width", 1777)
+        settings.setValue("window/height", 999)
+        settings.sync()
+        window = MainWindow(sample_project())
+        qtbot.addWidget(window)
+        window.resize(800, 800)
+        window.show()
+        window.close()
+        settings.sync()
+
+        assert settings.value("window/width", type=int) == 1777
+        assert settings.value("window/height", type=int) == 999
+    finally:
+        if original_width is None:
+            settings.remove("window/width")
+        else:
+            settings.setValue("window/width", original_width)
+        if original_height is None:
+            settings.remove("window/height")
+        else:
+            settings.setValue("window/height", original_height)
+        settings.sync()
+        QCoreApplication.setOrganizationName(previous_organization)
+        QCoreApplication.setApplicationName(previous_application)
 
 
 def test_main_window_clamps_oversized_saved_size_to_screen(qtbot, tmp_path):
