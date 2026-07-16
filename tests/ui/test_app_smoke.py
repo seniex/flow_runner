@@ -773,6 +773,25 @@ def test_settings_dialog_round_trips_debug_logging(qtbot):
     assert dialog.project_settings()["debug_logging"] is True
 
 
+@pytest.mark.parametrize(
+    ("settings", "expected"),
+    [
+        ({}, False),
+        ({"minimize_on_workflow_start": "true"}, False),
+        ({"minimize_on_workflow_start": False}, False),
+        ({"minimize_on_workflow_start": True}, True),
+    ],
+)
+def test_settings_dialog_round_trips_minimize_on_workflow_start(qtbot, settings, expected):
+    dialog = SettingsDialog(HotkeyConfig(), settings)
+    qtbot.addWidget(dialog)
+
+    assert dialog.minimize_on_start_check.isChecked() is expected
+    stored = dialog.project_settings()["minimize_on_workflow_start"]
+    assert stored is expected
+    assert isinstance(stored, bool)
+
+
 def test_application_creates_one_mode_log_file_per_startup(qtbot, tmp_path):
     normal_path = tmp_path / "normal" / "project.json"
     debug_path = tmp_path / "debug" / "project.json"

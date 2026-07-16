@@ -151,6 +151,35 @@ class LifecycleBridge:
         return True
 
 
+class AcceptingBridge:
+    def __init__(self, accepted):
+        self.eventReceived = _FakeSignal()
+        self.failed = _FakeSignal()
+        self.is_running = False
+        self.accepted = accepted
+        self.started = []
+
+    def start(self, project, workflow_id):
+        del project
+        self.started.append(workflow_id)
+        return self.accepted
+
+    def start_parallel(self, project, block_id):
+        del project
+        self.started.append(block_id)
+        return self.accepted
+
+    def run_step(self, project, workflow_id, step_id):
+        del project, workflow_id
+        self.started.append(step_id)
+        return self.accepted
+
+    def preview_condition(self, project, workflow_id, step_id):
+        del project, workflow_id
+        self.started.append(step_id)
+        return self.accepted
+
+
 def _close_decision(decision, calls):
     def confirm(*, modified=False, running=False):
         calls.append((modified, running))
@@ -344,6 +373,104 @@ def test_main_window_suppresses_rejected_runtime_controls(qtbot):
 
     assert pause_events == []
     assert stop_events == []
+
+
+def test_accepted_workflow_start_minimizes_when_enabled(qtbot):
+    project = sample_project().model_copy(update={"settings": {"minimize_on_workflow_start": True}})
+    bridge = AcceptingBridge(accepted=True)
+    window = MainWindow(project, runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.show()
+
+    window.start_action.trigger()
+
+    assert window.isMinimized()
+
+
+def test_rejected_start_does_not_minimize(qtbot):
+    project = sample_project().model_copy(update={"settings": {"minimize_on_workflow_start": True}})
+    window = MainWindow(project, runner_bridge=AcceptingBridge(accepted=False))
+    qtbot.addWidget(window)
+    window.show()
+
+    window.start_action.trigger()
+
+    assert not window.isMinimized()
+
+
+def test_accepted_parallel_start_minimizes_when_enabled(qtbot):
+    project = sample_project()
+    first = project.groups[0].workflows[0]
+    second = Workflow(name="流程2")
+    block = ParallelBlock(name="并行", workflow_ids=[first.id, second.id])
+    project = project.model_copy(
+        update={
+            "groups": [FlowGroup(name="组A", workflows=[first, second])],
+            "parallel_blocks": [block],
+            "settings": {"minimize_on_workflow_start": True},
+        }
+    )
+    bridge = AcceptingBridge(accepted=True)
+    window = MainWindow(project, runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.flow_tree.select_parallel_block(block.id)
+    window.show()
+
+    window.start_action.trigger()
+
+    assert bridge.started == [block.id]
+    assert window.isMinimized()
+
+
+def test_accepted_workflow_start_signal_minimizes_when_enabled(qtbot):
+    project = sample_project().model_copy(update={"settings": {"minimize_on_workflow_start": True}})
+    window = MainWindow(project, runner_bridge=AcceptingBridge(accepted=True))
+    qtbot.addWidget(window)
+    window.show()
+
+    window.startRequested.emit()
+
+    assert window.isMinimized()
+
+
+def test_selected_step_run_and_preview_never_minimize(qtbot):
+    project = sample_project().model_copy(update={"settings": {"minimize_on_workflow_start": True}})
+    workflow = project.groups[0].workflows[0]
+    bridge = AcceptingBridge(accepted=True)
+    window = MainWindow(project, runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(workflow.id)
+    window.step_list.select_step(workflow.steps[0].id)
+    window.show()
+
+    window.run_step_action.trigger()
+    assert not window.isMinimized()
+
+    window.preview_action.trigger()
+    assert not window.isMinimized()
+
+
+def test_completed_minimized_run_stays_minimized(qtbot):
+    class ImmediateExecutor:
+        async def execute(self, step):
+            del step
+            return StepResult(outcome=StepOutcome.SUCCESS)
+
+    workflow = Workflow(name="main")
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="g", workflows=[workflow])],
+        settings={"minimize_on_workflow_start": True},
+    )
+    bridge = RunnerBridge(Runner(ImmediateExecutor()))
+    window = MainWindow(project, runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.show()
+
+    with qtbot.waitSignal(bridge.finished, timeout=3000):
+        window.startRequested.emit()
+
+    assert window.isMinimized()
 
 
 def test_main_window_places_actions_in_responsive_column_controls(qtbot):

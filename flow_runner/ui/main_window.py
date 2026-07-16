@@ -959,16 +959,18 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("运行服务尚未配置")
             return
         if self._parallel_block_id is not None:
-            self.runner_bridge.start_parallel(
+            accepted = self.runner_bridge.start_parallel(
                 self.view_model.project,
                 self._parallel_block_id,
             )
-            return
-        workflow_id = self.startup_workflow_combo.currentData()
-        if not isinstance(workflow_id, UUID):
-            self.statusBar().showMessage("请先配置要启动的流程")
-            return
-        self.runner_bridge.start(self.view_model.project, workflow_id)
+        else:
+            workflow_id = self.startup_workflow_combo.currentData()
+            if not isinstance(workflow_id, UUID):
+                self.statusBar().showMessage("请先配置要启动的流程")
+                return
+            accepted = self.runner_bridge.start(self.view_model.project, workflow_id)
+        if accepted and self.view_model.project.settings.get("minimize_on_workflow_start") is True:
+            self.showMinimized()
 
     def _toggle_pause(self) -> None:
         if self.runner_bridge is None:

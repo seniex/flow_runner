@@ -53,6 +53,11 @@ class SettingsDialog(QDialog):
         self.debug_logging_check = QCheckBox("启用调试日志（下次启动生效）")
         self.debug_logging_check.setChecked(bool(self.settings.get("debug_logging", False)))
         layout.addRow("运行日志", self.debug_logging_check)
+        self.minimize_on_start_check = QCheckBox("启动流程后最小化")
+        self.minimize_on_start_check.setChecked(
+            self.settings.get("minimize_on_workflow_start") is True
+        )
+        layout.addRow("运行行为", self.minimize_on_start_check)
         for action, value in hotkeys.model_dump().items():
             entry = QLineEdit(value)
             self.entries[action] = entry
@@ -100,6 +105,7 @@ class SettingsDialog(QDialog):
                 "window_capture_fallback": self.window_capture_fallback_check.isChecked(),
                 "window_capture_timeout_seconds": self.window_capture_timeout_spin.value(),
                 "debug_logging": self.debug_logging_check.isChecked(),
+                "minimize_on_workflow_start": self.minimize_on_start_check.isChecked(),
                 "hotkeys": self.hotkey_config().model_dump(),
             }
         )
