@@ -41,6 +41,14 @@ class PyAutoGuiMouseDevice:
         self._held_buttons: set[str] = set()
         self._state_lock = threading.Lock()
 
+    def bind_timing(
+        self,
+        sleep: Callable[[float], Awaitable[None]],
+        clock: Callable[[], float],
+    ) -> None:
+        self.sleep = sleep
+        self.clock = clock
+
     async def click(self, **kwargs: object) -> None:
         position = kwargs["position"]
         if not isinstance(position, tuple):
@@ -57,7 +65,7 @@ class PyAutoGuiMouseDevice:
                 interval=0.0,
             )
             if interval > 0 and index + 1 < clicks:
-                await asyncio.sleep(interval)
+                await self.sleep(interval)
 
     async def move(self, **kwargs: object) -> None:
         position = kwargs["position"]

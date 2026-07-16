@@ -10,6 +10,7 @@ from flow_runner.capabilities.actions.variables import SetVariableAction, SetVar
 from flow_runner.capabilities.actions.wait import WaitAction, WaitActionConfig
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.errors import ActionError
+from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.context import StepContext
 from flow_runner.infrastructure.input.keyboard import PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import PyAutoGuiMouseDevice
@@ -545,6 +546,58 @@ async def test_recording_player_treats_zero_max_gap_as_unlimited(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_recording_playback_freezes_between_events_while_paused(tmp_path):
+    path = tmp_path / "recording.json"
+    RecordingStore.save(
+        path,
+        [
+            RecordedEvent(timestamp=0.0, kind="move", data={"x": 1, "y": 2}),
+            RecordedEvent(
+                timestamp=0.1,
+                kind="click",
+                data={"x": 1, "y": 2, "button": "left"},
+            ),
+            RecordedEvent(timestamp=0.2, kind="move", data={"x": 3, "y": 4}),
+        ],
+    )
+    token = CancellationToken()
+    calls = []
+
+    class Backend:
+        def moveTo(self, x, y):
+            calls.append(("move", x, y))
+
+        def click(self, **kwargs):
+            calls.append(("click", kwargs))
+
+    task = asyncio.create_task(
+        RecordingPlayer(
+            sleep=token.sleep,
+            clock=token.active_time,
+            backend=Backend(),
+        )(path, speed=1.0, max_gap=1.0)
+    )
+    for _ in range(100):
+        if calls:
+            break
+        await asyncio.sleep(0.001)
+    assert calls == [("move", 1, 2)]
+    token.pause()
+    await asyncio.sleep(0.03)
+    assert calls == [("move", 1, 2)]
+    token.resume()
+    for _ in range(200):
+        if len(calls) >= 2:
+            break
+        await asyncio.sleep(0.001)
+    assert [call[0] for call in calls] == ["move", "click"]
+    await asyncio.sleep(0.03)
+    assert [call[0] for call in calls] == ["move", "click"]
+    await asyncio.wait_for(task, timeout=0.3)
+    assert [call[0] for call in calls] == ["move", "click", "move"]
+
+
+@pytest.mark.asyncio
 async def test_recording_player_disables_and_restores_pyautogui_pause(tmp_path):
     path = tmp_path / "recording.json"
     RecordingStore.save(
@@ -812,6 +865,35 @@ async def test_segmented_mouse_move_uses_absolute_timing_without_accumulating_ca
 
 
 @pytest.mark.asyncio
+async def test_bound_mouse_timing_freezes_segments_while_paused():
+    token = CancellationToken()
+    calls = []
+
+    class Backend:
+        def position(self):
+            return (0, 0)
+
+        def moveTo(self, x, y, *, _pause=True):
+            calls.append((x, y))
+
+    device = PyAutoGuiMouseDevice(Backend())
+    device.bind_timing(token.sleep, token.active_time)
+    task = asyncio.create_task(device.move(position=(60, 0), duration=0.1))
+    for _ in range(100):
+        if calls:
+            break
+        await asyncio.sleep(0.001)
+    assert calls
+    token.pause()
+    count = len(calls)
+    await asyncio.sleep(0.03)
+    assert len(calls) == count
+    token.resume()
+    await asyncio.wait_for(task, timeout=0.3)
+    assert calls[-1] == (60, 0)
+
+
+@pytest.mark.asyncio
 async def test_segmented_drag_releases_button_after_cancellation():
     first_move = asyncio.Event()
 
@@ -870,6 +952,31 @@ async def test_segmented_key_writes_stop_after_task_cancellation():
 
     assert backend.calls == [("a", 0.0)]
     assert len(backend.calls) == calls_after_cancel
+
+
+@pytest.mark.asyncio
+async def test_bound_keyboard_timing_freezes_repeated_keys_while_paused():
+    token = CancellationToken()
+    calls = []
+
+    class Backend:
+        def press(self, key, presses, interval):
+            calls.append((key, presses, interval))
+
+    device = PyAutoGuiKeyboardDevice(Backend())
+    device.bind_timing(token.sleep)
+    task = asyncio.create_task(device.press("a", 3, 0.05))
+    for _ in range(100):
+        if calls:
+            break
+        await asyncio.sleep(0.001)
+    assert len(calls) == 1
+    token.pause()
+    await asyncio.sleep(0.03)
+    assert len(calls) == 1
+    token.resume()
+    await asyncio.wait_for(task, timeout=0.3)
+    assert len(calls) == 3
 
 
 @pytest.mark.asyncio

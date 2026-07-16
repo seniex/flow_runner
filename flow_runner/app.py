@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import monotonic
 
 from PySide6.QtWidgets import QApplication
 
@@ -166,6 +167,12 @@ def create_application(
 
         if not isinstance(token, CancellationToken):
             raise TypeError("runner supplied an invalid cancellation token")
+        mouse_binder = getattr(mouse, "bind_timing", None)
+        if callable(mouse_binder):
+            mouse_binder(token.sleep, token.active_time)
+        keyboard_binder = getattr(keyboard, "bind_timing", None)
+        if callable(keyboard_binder):
+            keyboard_binder(token.sleep)
         execution_registry = _build_registry(
             perception,
             token.sleep,
@@ -173,6 +180,7 @@ def create_application(
             mouse,
             keyboard,
             window_geometry,
+            clock=token.active_time,
         )
         return StepExecutor(
             StepRuntime(
@@ -265,6 +273,8 @@ def _build_registry(
     mouse_device: MouseDevice,
     keyboard_device: KeyboardDevice,
     window_geometry: WindowOriginProvider,
+    *,
+    clock: Callable[[], float] = monotonic,
 ) -> CapabilityRegistry:
     registry = CapabilityRegistry()
     for condition in (
@@ -279,12 +289,14 @@ def _build_registry(
         ProcessCondition(WindowsProcessQuery()),
     ):
         registry.register_condition(condition)
-    registry.register_action(MouseAction(mouse_device, window_origin=window_geometry.origin))
+    registry.register_action(
+        MouseAction(mouse_device, window_origin=window_geometry.origin, sleep=sleep)
+    )
     registry.register_action(KeyboardAction(keyboard_device))
     registry.register_action(WaitAction(sleep))
     registry.register_action(SetVariableAction())
     registry.register_action(LaunchProcessAction(WindowsProcessLauncher()))
-    registry.register_action(PlaybackScriptAction(RecordingPlayer(sleep=sleep)))
+    registry.register_action(PlaybackScriptAction(RecordingPlayer(sleep=sleep, clock=clock)))
     registry.register_action(WindowAction(Win32WindowController()))
     return registry
 

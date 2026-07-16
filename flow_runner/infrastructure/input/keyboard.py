@@ -3,7 +3,7 @@ import ctypes
 import importlib
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from ctypes import wintypes
 from typing import Any, Literal, Protocol
 
@@ -36,12 +36,16 @@ class PyAutoGuiKeyboardDevice:
         )
         self._held_keys: set[str] = set()
         self._state_lock = threading.Lock()
+        self.sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
+
+    def bind_timing(self, sleep: Callable[[float], Awaitable[None]]) -> None:
+        self.sleep = sleep
 
     async def press(self, key: str, count: int, interval: float) -> None:
         for index in range(count):
             await asyncio.to_thread(self.backend.press, key, presses=1, interval=0.0)
             if interval > 0 and index + 1 < count:
-                await asyncio.sleep(interval)
+                await self.sleep(interval)
 
     async def hotkey(self, keys: tuple[str, ...]) -> None:
         await asyncio.to_thread(self.backend.hotkey, *keys)
@@ -56,7 +60,7 @@ class PyAutoGuiKeyboardDevice:
             else:
                 await asyncio.to_thread(self.unicode_writer, character)
             if interval > 0 and index + 1 < len(text):
-                await asyncio.sleep(interval)
+                await self.sleep(interval)
 
     async def key_down(self, key: str) -> None:
         await asyncio.to_thread(self._key_down, key)
