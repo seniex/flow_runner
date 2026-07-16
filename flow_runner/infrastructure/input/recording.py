@@ -76,9 +76,7 @@ class RecordingRecorder:
             return self._paused_at is not None
 
     def set_ignored_keys(self, keys: Iterable[object]) -> None:
-        normalized = frozenset(
-            str(key).strip().upper() for key in keys if str(key).strip()
-        )
+        normalized = frozenset(str(key).strip().upper() for key in keys if str(key).strip())
         with self._lock:
             self._ignored_keys = normalized
 

@@ -229,6 +229,10 @@ SVG assets provide the application/taskbar icon, command icons with their Chines
 persistent light-blue flow-tree expand/collapse arrows. Visual condition previews attach the recent
 frame as an in-memory PNG without creating temporary screenshot files. Diagnostics include step
 results, selected routes, frame/scene identifiers, retry data, errors, and resource wait events.
+Collapsed workflow groups are remembered in local application settings, independently for each
+project UUID. Refreshing or restarting restores those groups, newly created groups remain expanded,
+and the parallel-monitor root is not included. Changing expansion state does not dirty or modify the
+project JSON.
 
 `设置 -> 启动流程后最小化` is a project-scoped setting and is off by default. When enabled, an
 accepted toolbar or F6 start for a workflow or parallel block minimizes the window. Rejected starts,
@@ -236,13 +240,19 @@ selected-step execution, and condition preview do not minimize it. Completion an
 not restore the window automatically.
 
 A `system.wait` action displays a one-second, in-place countdown in the runtime log. F8
-pause/resume freezes built-in condition and input checkpoints, waits, recording playback, and the
-active timestamps of an independent input recording. F7 cancels in-flight runtime work, stops and
-saves an active independent recording, and releases tracked held keys and mouse buttons when the
-runtime terminates. Natural runtime completion leaves an independent recording active. Atomic OS
-calls already in progress and processes already launched cannot be reversed by pause or stop.
-Default global hotkeys are F6 start, F7 stop, F8 pause/resume, and F9 recording; project settings
-can change or disable them.
+pause/resume freezes built-in condition and input checkpoints, waits, and recording playback, but
+does not pause an independent input recording. The dedicated `暂停录制` / `继续录制` control works
+with or without a running workflow and changes only the recording state. F7 cancels in-flight
+runtime work, stops and saves an active or paused independent recording, and releases tracked held
+keys and mouse buttons when the runtime terminates. Natural runtime completion leaves an independent
+recording active. Atomic OS calls already in progress and processes already launched cannot be
+reversed by pause or stop.
+
+Default global hotkeys are F6 start, F7 stop, F8 workflow pause/resume, and F9 recording. The
+`record_pause` hotkey defaults to empty (disabled) and can be configured in Settings. Saving hotkey
+changes replaces the active listener and recording filter immediately; all five effective control
+hotkeys (start, stop, workflow pause, recording toggle, and recording pause) are excluded from newly
+recorded key events. A key removed from the control bindings becomes recordable immediately.
 
 Recordings are stored by default at `data/recordings/latest.json`. The playback action can reuse a
 recording with configurable speed and maximum gap.

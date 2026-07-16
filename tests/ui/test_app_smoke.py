@@ -231,8 +231,7 @@ def test_hotkey_service_reconfigure_before_start_uses_new_bindings():
     service = HotkeyService(
         HotkeyConfig(start="F6", stop="", pause="", record=""),
         actions={},
-        listener_factory=lambda on_press: listeners.append(Listener(on_press))
-        or listeners[-1],
+        listener_factory=lambda on_press: listeners.append(Listener(on_press)) or listeners[-1],
     )
     service.reconfigure(HotkeyConfig(start="F11", stop="", pause="", record=""))
     service.start()
@@ -257,8 +256,7 @@ def test_active_hotkey_service_can_remove_all_bindings():
     service = HotkeyService(
         HotkeyConfig(start="F6", stop="", pause="", record=""),
         actions={},
-        listener_factory=lambda on_press: listeners.append(Listener(on_press))
-        or listeners[-1],
+        listener_factory=lambda on_press: listeners.append(Listener(on_press)) or listeners[-1],
     )
     service.start()
     service.reconfigure(HotkeyConfig(start="", stop="", pause="", record=""))
@@ -597,8 +595,9 @@ def test_saved_hotkey_changes_apply_and_filter_immediately(qtbot, tmp_path):
             record_pause="",
         ),
         hotkey_listener_factory=hotkey_factory,
-        recording_listener_factory=lambda **provided: recording_callbacks.update(provided)
-        or Listener(),
+        recording_listener_factory=lambda **provided: (
+            recording_callbacks.update(provided) or Listener()
+        ),
         recording_path=recording_path,
     )
     qtbot.addWidget(composition.window)

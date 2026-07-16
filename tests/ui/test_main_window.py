@@ -112,9 +112,7 @@ def test_flow_group_collapse_survives_refresh_and_new_groups_default_open(qtbot,
     assert not window.flow_tree.tree.topLevelItem(0).isExpanded()
 
     window.view_model.add_group(FlowGroup(name="新增组"))
-    newest = window.flow_tree.tree.topLevelItem(
-        window.flow_tree.tree.topLevelItemCount() - 1
-    )
+    newest = window.flow_tree.tree.topLevelItem(window.flow_tree.tree.topLevelItemCount() - 1)
     assert newest.isExpanded()
 
 
