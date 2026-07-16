@@ -2,7 +2,7 @@ import asyncio
 import importlib
 import random
 import threading
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from pathlib import Path
 from time import monotonic
 from typing import Any, Protocol
@@ -64,6 +64,7 @@ class RecordingRecorder:
         self._lock = threading.Lock()
         self._paused_at: float | None = None
         self._paused_total = 0.0
+        self._ignored_keys: frozenset[str] = frozenset()
 
     @property
     def is_recording(self) -> bool:
@@ -73,6 +74,13 @@ class RecordingRecorder:
     def is_paused(self) -> bool:
         with self._lock:
             return self._paused_at is not None
+
+    def set_ignored_keys(self, keys: Iterable[object]) -> None:
+        normalized = frozenset(
+            str(key).strip().upper() for key in keys if str(key).strip()
+        )
+        with self._lock:
+            self._ignored_keys = normalized
 
     def start(self) -> None:
         if self.listener is not None:
@@ -116,9 +124,17 @@ class RecordingRecorder:
         RecordingStore.save(path, events)
         return events
 
-    def _append(self, kind: str, data: dict[str, Any]) -> None:
+    def _append(
+        self,
+        kind: str,
+        data: dict[str, Any],
+        *,
+        key_name: str | None = None,
+    ) -> None:
         with self._lock:
             if self.listener is None or self._paused_at is not None:
+                return
+            if key_name is not None and key_name.strip().upper() in self._ignored_keys:
                 return
             self.events.append(
                 RecordedEvent(
@@ -143,10 +159,12 @@ class RecordingRecorder:
         self._append("scroll", {"x": x, "y": y, "units": dy})
 
     def _on_press(self, key: object) -> None:
-        self._append("key_press", {"key": _input_name(key)})
+        name = _input_name(key)
+        self._append("key_press", {"key": name}, key_name=name)
 
     def _on_release(self, key: object) -> None:
-        self._append("key_release", {"key": _input_name(key)})
+        name = _input_name(key)
+        self._append("key_release", {"key": name}, key_name=name)
 
 
 class RecordingPlayer:

@@ -692,6 +692,60 @@ def test_recording_recorder_captures_timed_events_and_saves(tmp_path):
     assert RecordingStore.load(path) == events
 
 
+def test_recording_recorder_excludes_configured_control_key_pairs(tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    recorder = RecordingRecorder(
+        listener_factory=lambda **provided: callbacks.update(provided) or Listener()
+    )
+    recorder.set_ignored_keys({"F6", "F10"})
+    recorder.start()
+    callbacks["on_release"]("f6")
+    callbacks["on_press"]("f10")
+    callbacks["on_release"]("f10")
+    callbacks["on_press"]("a")
+    callbacks["on_release"]("a")
+
+    events = recorder.stop(tmp_path / "recording.json")
+
+    assert [(event.kind, event.data["key"]) for event in events] == [
+        ("key_press", "a"),
+        ("key_release", "a"),
+    ]
+
+
+def test_recording_recorder_updates_ignored_keys_during_recording(tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    recorder = RecordingRecorder(
+        listener_factory=lambda **provided: callbacks.update(provided) or Listener()
+    )
+    recorder.set_ignored_keys({"F6"})
+    recorder.start()
+    callbacks["on_press"]("f6")
+    recorder.set_ignored_keys({"F10"})
+    callbacks["on_press"]("f6")
+    callbacks["on_press"]("f10")
+
+    events = recorder.stop(tmp_path / "recording.json")
+
+    assert [event.data["key"] for event in events] == ["f6"]
+
+
 def test_recording_recorder_excludes_paused_input_and_time(tmp_path):
     now = 10.0
     callbacks = {}
