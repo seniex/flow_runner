@@ -62,10 +62,17 @@ class RecordingRecorder:
         self.started_at = 0.0
         self.events: list[RecordedEvent] = []
         self._lock = threading.Lock()
+        self._paused_at: float | None = None
+        self._paused_total = 0.0
 
     @property
     def is_recording(self) -> bool:
         return self.listener is not None
+
+    @property
+    def is_paused(self) -> bool:
+        with self._lock:
+            return self._paused_at is not None
 
     def start(self) -> None:
         if self.listener is not None:
@@ -73,6 +80,8 @@ class RecordingRecorder:
         with self._lock:
             self.events = []
             self.started_at = self.clock()
+            self._paused_at = None
+            self._paused_total = 0.0
         self.listener = self.listener_factory(
             on_move=self._on_move,
             on_click=self._on_click,
@@ -82,13 +91,26 @@ class RecordingRecorder:
         )
         self.listener.start()
 
+    def pause(self) -> None:
+        with self._lock:
+            if self.listener is None or self._paused_at is not None:
+                return
+            self._paused_at = self.clock()
+
+    def resume(self) -> None:
+        with self._lock:
+            if self.listener is None or self._paused_at is None:
+                return
+            self._paused_total += max(0.0, self.clock() - self._paused_at)
+            self._paused_at = None
+
     def stop(self, path: Path) -> list[RecordedEvent]:
         listener = self.listener
         if listener is None:
             return []
         listener.stop()
-        self.listener = None
         with self._lock:
+            self.listener = None
             events = list(self.events)
         path.parent.mkdir(parents=True, exist_ok=True)
         RecordingStore.save(path, events)
@@ -96,9 +118,14 @@ class RecordingRecorder:
 
     def _append(self, kind: str, data: dict[str, Any]) -> None:
         with self._lock:
+            if self.listener is None or self._paused_at is not None:
+                return
             self.events.append(
                 RecordedEvent(
-                    timestamp=max(0.0, self.clock() - self.started_at),
+                    timestamp=max(
+                        0.0,
+                        self.clock() - self.started_at - self._paused_total,
+                    ),
                     kind=kind,
                     data=data,
                 )

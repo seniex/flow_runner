@@ -692,6 +692,100 @@ def test_recording_recorder_captures_timed_events_and_saves(tmp_path):
     assert RecordingStore.load(path) == events
 
 
+def test_recording_recorder_excludes_paused_input_and_time(tmp_path):
+    now = 10.0
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    recorder = RecordingRecorder(
+        listener_factory=lambda **provided: callbacks.update(provided) or Listener(),
+        clock=lambda: now,
+    )
+    recorder.start()
+    now = 11.0
+    callbacks["on_press"]("a")
+    recorder.pause()
+    recorder.pause()
+    now = 16.0
+    callbacks["on_press"]("ignored")
+    recorder.resume()
+    recorder.resume()
+    now = 17.0
+    callbacks["on_press"]("b")
+
+    events = recorder.stop(tmp_path / "recording.json")
+
+    assert [event.data["key"] for event in events] == ["a", "b"]
+    assert [event.timestamp for event in events] == pytest.approx([1.0, 2.0])
+
+
+def test_recording_recorder_stop_while_paused_saves_pre_pause_events(tmp_path):
+    now = 20.0
+    callbacks = {}
+
+    class Listener:
+        def __init__(self):
+            self.stopped = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    listener = Listener()
+    recorder = RecordingRecorder(
+        listener_factory=lambda **provided: callbacks.update(provided) or listener,
+        clock=lambda: now,
+    )
+    recorder.start()
+    now = 21.0
+    callbacks["on_press"]("a")
+    recorder.pause()
+    now = 25.0
+    callbacks["on_press"]("ignored")
+
+    events = recorder.stop(tmp_path / "recording.json")
+
+    assert listener.stopped
+    assert not recorder.is_recording
+    assert [event.data["key"] for event in events] == ["a"]
+
+
+def test_recording_recorder_save_failure_still_stops_listener(tmp_path, monkeypatch):
+    class Listener:
+        def __init__(self):
+            self.stopped = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    listener = Listener()
+    recorder = RecordingRecorder(listener_factory=lambda **provided: listener)
+    recorder.start()
+
+    def fail_save(path, events):
+        del path, events
+        raise OSError("disk full")
+
+    monkeypatch.setattr(RecordingStore, "save", fail_save)
+
+    with pytest.raises(OSError, match="disk full"):
+        recorder.stop(tmp_path / "recording.json")
+
+    assert listener.stopped
+    assert not recorder.is_recording
+
+
 @pytest.mark.asyncio
 async def test_pyautogui_devices_translate_actions_to_backend_calls():
     class Backend:
