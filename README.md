@@ -197,7 +197,10 @@ Six common step templates cover OCR-and-click, OCR timeout continuation, delayed
 activation plus input, count-based workflow jumps, and success/timeout branches. Steps, workflows,
 and groups can be copied with new UUIDs; references inside the copied scope are remapped while
 external references remain unchanged. Existing parallel blocks can be edited, and a workflow cannot
-be deleted while a named parallel block still depends on it.
+be deleted while a named parallel block still depends on it. After confirmation, deleting any other
+workflow atomically removes route rules that jump to, call, or count that workflow; deleting the
+configured entry workflow selects the first remaining workflow, and one undo restores the complete
+change.
 
 The guided editor displays built-in capabilities, parameter names, choices, route outcomes, and
 runtime states in Chinese while retaining stable English schema keys in advanced JSON. A single step
