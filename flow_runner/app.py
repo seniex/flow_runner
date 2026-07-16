@@ -97,7 +97,7 @@ class ApplicationComposition:
     def shutdown(self) -> None:
         if self.recorder.is_recording:
             self.recorder.stop(self.recording_path)
-            self.window.set_recording_state(False)
+            self.window.set_recording_state(False, paused=False)
         self.hotkey_service.stop()
         self.runner_bridge.shutdown()
         self.release_inputs()
@@ -108,13 +108,27 @@ class ApplicationComposition:
         self.mouse_device.release_all()
         self.keyboard_device.release_all()
 
-    def set_runtime_paused(self, paused: bool) -> None:
+    def toggle_recording_pause(self) -> None:
         if not self.recorder.is_recording:
             return
-        if paused:
-            self.recorder.pause()
-        else:
+        if self.recorder.is_paused:
             self.recorder.resume()
+            self.window.set_recording_state(True, paused=False)
+            self.window.statusBar().showMessage("正在录制输入")
+        else:
+            self.recorder.pause()
+            self.window.set_recording_state(True, paused=True)
+            self.window.statusBar().showMessage("录制已暂停")
+
+    def apply_hotkey_config(self, config: HotkeyConfig) -> None:
+        try:
+            self.hotkey_service.reconfigure(config)
+        except Exception as error:
+            self.recorder.set_ignored_keys(self.hotkey_service.control_keys)
+            self.window.statusBar().showMessage(f"快捷键更新失败：{error}")
+            return
+        self.recorder.set_ignored_keys(self.hotkey_service.control_keys)
+        self.window.statusBar().showMessage("快捷键已更新")
 
     def stop_recording_after_runtime_stop(self) -> None:
         if not self.recorder.is_recording:
@@ -122,20 +136,20 @@ class ApplicationComposition:
         try:
             events = self.recorder.stop(self.recording_path)
         except Exception as error:
-            self.window.set_recording_state(False)
+            self.window.set_recording_state(False, paused=False)
             self.window.statusBar().showMessage(f"录制保存失败：{error}")
             return
-        self.window.set_recording_state(False)
+        self.window.set_recording_state(False, paused=False)
         self.window.statusBar().showMessage(f"录制已保存：{len(events)} 个事件")
 
     def toggle_recording(self) -> None:
         if self.recorder.is_recording:
             events = self.recorder.stop(self.recording_path)
-            self.window.set_recording_state(False)
+            self.window.set_recording_state(False, paused=False)
             self.window.statusBar().showMessage(f"录制已保存：{len(events)} 个事件")
         else:
             self.recorder.start()
-            self.window.set_recording_state(True)
+            self.window.set_recording_state(True, paused=False)
             self.window.statusBar().showMessage("正在录制输入")
 
 
@@ -264,6 +278,7 @@ def create_application(
     configured_hotkeys = hotkey_config or HotkeyConfig.model_validate(
         project.settings.get("hotkeys", {})
     )
+    recorder.set_ignored_keys(configured_hotkeys.enabled_bindings())
     hotkey_service = HotkeyService(
         configured_hotkeys,
         actions={
@@ -271,6 +286,7 @@ def create_application(
             "pause": window.pauseRequested.emit,
             "stop": window.stopRequested.emit,
             "record": window.recordRequested.emit,
+            "record_pause": window.recordPauseRequested.emit,
         },
         listener_factory=hotkey_listener_factory,
     )
@@ -292,7 +308,8 @@ def create_application(
         keyboard_device=keyboard,
     )
     window.recordRequested.connect(lambda: composition.toggle_recording())
-    window.runtimePauseChanged.connect(lambda paused: composition.set_runtime_paused(paused))
+    window.recordPauseRequested.connect(lambda: composition.toggle_recording_pause())
+    window.hotkeyConfigChanged.connect(lambda config: composition.apply_hotkey_config(config))
     window.runtimeStopAccepted.connect(lambda: composition.stop_recording_after_runtime_stop())
     runner_bridge.terminated.connect(lambda: composition.release_inputs())
     app.aboutToQuit.connect(lambda: composition.shutdown())

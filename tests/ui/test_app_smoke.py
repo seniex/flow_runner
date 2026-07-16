@@ -418,25 +418,117 @@ def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_pat
     assert path.exists()
 
 
-def test_application_pause_and_stop_coordinate_active_recording(qtbot, tmp_path):
+def test_recording_pause_button_and_hotkey_work_without_runtime(qtbot, tmp_path):
+    hotkey_listeners = []
     callbacks = {}
 
     class Listener:
-        def __init__(self):
-            self.started = False
-            self.stopped = False
+        def __init__(self, on_press=None):
+            self.on_press = on_press
 
         def start(self):
-            self.started = True
+            pass
 
         def stop(self):
-            self.stopped = True
+            pass
 
-    listener = Listener()
-
-    def recording_factory(**provided):
-        callbacks.update(provided)
+    def hotkey_factory(on_press):
+        listener = Listener(on_press)
+        hotkey_listeners.append(listener)
         return listener
+
+    composition = create_application(
+        [],
+        project_path=tmp_path / "project.json",
+        hotkey_config=HotkeyConfig(
+            start="",
+            stop="",
+            pause="",
+            record="F6",
+            record_pause="F10",
+        ),
+        hotkey_listener_factory=hotkey_factory,
+        recording_listener_factory=lambda **provided: callbacks.update(provided) or Listener(),
+        recording_path=tmp_path / "latest.json",
+    )
+    qtbot.addWidget(composition.window)
+    composition.start_services()
+
+    hotkey_listeners[0].on_press("f6")
+    assert composition.recorder.is_recording
+    hotkey_listeners[0].on_press("f10")
+    assert composition.recorder.is_paused
+    hotkey_listeners[0].on_press("f10")
+    assert not composition.recorder.is_paused
+    composition.shutdown()
+
+
+def test_workflow_and_recording_pause_are_independent(qtbot, tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    workflow = Workflow(
+        name="main",
+        steps=[
+            AutomationStep(
+                name="wait",
+                actions=[{"capability": "system.wait", "config": {"seconds": 60}}],
+            )
+        ],
+    )
+    project_path = tmp_path / "project.json"
+    ProjectStore(project_path).save(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    )
+    composition = create_application(
+        [],
+        project_path=project_path,
+        recording_listener_factory=lambda **provided: callbacks.update(provided) or Listener(),
+        recording_path=tmp_path / "latest.json",
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.record_action.trigger()
+    with qtbot.waitSignal(composition.runner_bridge.eventReceived, timeout=3000):
+        composition.window.start_action.trigger()
+
+    composition.window.pause_action.trigger()
+    qtbot.waitUntil(lambda: composition.runner.state is RunnerState.PAUSED)
+    qtbot.waitUntil(lambda: composition.window.run_view_model.state is RunnerState.PAUSED)
+    assert composition.recorder.is_recording
+    assert not composition.recorder.is_paused
+
+    composition.window.record_pause_action.trigger()
+    assert composition.recorder.is_paused
+    assert composition.runner.state is RunnerState.PAUSED
+
+    composition.window.pause_action.trigger()
+    qtbot.waitUntil(lambda: composition.runner.state is RunnerState.RUNNING)
+    assert composition.recorder.is_paused
+
+    composition.window.record_pause_action.trigger()
+    assert not composition.recorder.is_paused
+    assert composition.runner.state is RunnerState.RUNNING
+
+    with qtbot.waitSignal(composition.runner_bridge.terminated, timeout=3000):
+        composition.window.stop_action.trigger()
+    composition.shutdown()
+
+
+def test_runtime_stop_saves_manually_paused_recording(qtbot, tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
 
     workflow = Workflow(
         name="main",
@@ -455,33 +547,97 @@ def test_application_pause_and_stop_coordinate_active_recording(qtbot, tmp_path)
     composition = create_application(
         [],
         project_path=project_path,
-        recording_listener_factory=recording_factory,
+        recording_listener_factory=lambda **provided: callbacks.update(provided) or Listener(),
         recording_path=recording_path,
     )
     qtbot.addWidget(composition.window)
     composition.window.record_action.trigger()
     callbacks["on_press"]("a")
+    composition.window.record_pause_action.trigger()
     with qtbot.waitSignal(composition.runner_bridge.eventReceived, timeout=3000):
         composition.window.start_action.trigger()
-
-    composition.window.pause_action.trigger()
-    qtbot.waitUntil(lambda: composition.runner.state is RunnerState.PAUSED)
-    qtbot.waitUntil(lambda: composition.window.run_view_model.state is RunnerState.PAUSED)
-    assert composition.recorder.is_paused
-    callbacks["on_press"]("ignored")
-
-    composition.window.pause_action.trigger()
-    qtbot.waitUntil(lambda: composition.runner.state is RunnerState.RUNNING)
-    qtbot.waitUntil(lambda: composition.window.run_view_model.state is RunnerState.RUNNING)
-    assert not composition.recorder.is_paused
-    callbacks["on_press"]("b")
 
     with qtbot.waitSignal(composition.runner_bridge.terminated, timeout=3000):
         composition.window.stop_action.trigger()
 
-    assert listener.stopped
-    assert recording_path.exists()
-    assert composition.window.record_action.text() == "录制"
+    assert not composition.recorder.is_recording
+    assert [event.data["key"] for event in RecordingStore.load(recording_path)] == ["a"]
+    composition.shutdown()
+
+
+def test_saved_hotkey_changes_apply_and_filter_immediately(qtbot, tmp_path):
+    hotkey_listeners = []
+    recording_callbacks = {}
+    recording_path = tmp_path / "latest.json"
+
+    class Listener:
+        def __init__(self, on_press=None):
+            self.on_press = on_press
+            self.stopped = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    def hotkey_factory(on_press):
+        listener = Listener(on_press)
+        hotkey_listeners.append(listener)
+        return listener
+
+    composition = create_application(
+        [],
+        project_path=tmp_path / "project.json",
+        hotkey_config=HotkeyConfig(
+            start="F11",
+            stop="F12",
+            pause="F10",
+            record="F6",
+            record_pause="",
+        ),
+        hotkey_listener_factory=hotkey_factory,
+        recording_listener_factory=lambda **provided: recording_callbacks.update(provided)
+        or Listener(),
+        recording_path=recording_path,
+    )
+    qtbot.addWidget(composition.window)
+    composition.start_services()
+    hotkey_listeners[0].on_press("f6")
+    recording_callbacks["on_release"]("f6")
+
+    replacement = HotkeyConfig(
+        start="F11",
+        stop="F12",
+        pause="F10",
+        record="F8",
+        record_pause="F9",
+    )
+    composition.window.edit_settings = lambda current: {
+        **current,
+        "hotkeys": replacement.model_dump(),
+    }
+    composition.window.settings_action.trigger()
+
+    assert hotkey_listeners[0].stopped
+    assert len(hotkey_listeners) == 2
+    recording_callbacks["on_press"]("f6")
+    recording_callbacks["on_release"]("f6")
+    for key in ("f8", "f9", "f10", "f11", "f12"):
+        recording_callbacks["on_press"](key)
+        recording_callbacks["on_release"](key)
+
+    hotkey_listeners[1].on_press("f9")
+    assert composition.recorder.is_paused
+    hotkey_listeners[1].on_press("f9")
+    assert not composition.recorder.is_paused
+    hotkey_listeners[1].on_press("f8")
+
+    events = RecordingStore.load(recording_path)
+    assert [(event.kind, event.data["key"]) for event in events] == [
+        ("key_press", "f6"),
+        ("key_release", "f6"),
+    ]
     composition.shutdown()
 
 
