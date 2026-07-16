@@ -901,10 +901,15 @@ class MainWindow(QMainWindow):
                     f"{'、'.join(dependencies)}；请先编辑或删除这些并行块"
                 )
                 return
-            if self.confirm_delete(f"流程“{workflow.name}”"):
-                self.view_model.remove_workflow(workflow.id)
+            reference_count = self.view_model.workflow_route_reference_count(workflow.id)
+            cleanup_note = f"，并同时删除 {reference_count} 条引用路由" if reference_count else ""
+            if self.confirm_delete(f"流程“{workflow.name}”{cleanup_note}"):
+                removed_routes = self.view_model.remove_workflow(workflow.id)
                 self._workflow_id = None
                 self._refresh_context_actions()
+                self.statusBar().showMessage(
+                    f"已删除流程“{workflow.name}”并清理 {removed_routes} 条引用路由"
+                )
             return
         if self._group_id is not None:
             group = next(

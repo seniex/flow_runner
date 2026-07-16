@@ -12,6 +12,7 @@ from flow_runner.domain.project import (
     Project,
     Workflow,
 )
+from flow_runner.domain.routing import RouteRule, RouteTargetKind
 
 
 class ProjectViewModel(QObject):
@@ -135,7 +136,32 @@ class ProjectViewModel(QObject):
             lambda workflow: Workflow(id=workflow.id, name=name, steps=workflow.steps),
         )
 
-    def remove_workflow(self, workflow_id: UUID) -> None:
+    @staticmethod
+    def _route_references_workflow(route: RouteRule, workflow_id: UUID) -> bool:
+        target = route.target
+        if (
+            target.kind in {RouteTargetKind.JUMP_WORKFLOW, RouteTargetKind.CALL_WORKFLOW}
+            and target.workflow_id == workflow_id
+        ):
+            return True
+        predicate = route.predicate
+        return (
+            predicate is not None
+            and predicate.source == "workflow_count"
+            and predicate.key == str(workflow_id)
+        )
+
+    def workflow_route_reference_count(self, workflow_id: UUID) -> int:
+        return sum(
+            self._route_references_workflow(route, workflow_id)
+            for group in self.project.groups
+            for workflow in group.workflows
+            if workflow.id != workflow_id
+            for step in workflow.steps
+            for route in step.routes
+        )
+
+    def remove_workflow(self, workflow_id: UUID) -> int:
         dependencies = [
             block.name
             for block in self.project.parallel_blocks
@@ -148,14 +174,38 @@ class ProjectViewModel(QObject):
         groups: list[FlowGroup] = []
         found = False
         for group in self.project.groups:
-            workflows = [workflow for workflow in group.workflows if workflow.id != workflow_id]
-            if len(workflows) != len(group.workflows):
-                found = True
-                group = FlowGroup(id=group.id, name=group.name, workflows=workflows)
-            groups.append(group)
+            workflows: list[Workflow] = []
+            for workflow in group.workflows:
+                if workflow.id == workflow_id:
+                    found = True
+                    continue
+                steps: list[AutomationStep] = []
+                for step in workflow.steps:
+                    routes = [
+                        route
+                        for route in step.routes
+                        if not self._route_references_workflow(route, workflow_id)
+                    ]
+                    steps.append(step.model_copy(update={"routes": routes}))
+                workflows.append(workflow.model_copy(update={"steps": steps}))
+            groups.append(group.model_copy(update={"workflows": workflows}))
         if not found:
             raise KeyError(workflow_id)
-        self._commit(self.project.model_copy(update={"groups": groups}))
+
+        settings = dict(self.project.settings)
+        if settings.get("entry_workflow_id") == str(workflow_id):
+            first_workflow = next(
+                (workflow for group in groups for workflow in group.workflows),
+                None,
+            )
+            if first_workflow is None:
+                settings.pop("entry_workflow_id", None)
+            else:
+                settings["entry_workflow_id"] = str(first_workflow.id)
+
+        removed_routes = self.workflow_route_reference_count(workflow_id)
+        self._commit(self.project.model_copy(update={"groups": groups, "settings": settings}))
+        return removed_routes
 
     def add_step(self, workflow_id: UUID, step: AutomationStep) -> None:
         self._replace_workflow(

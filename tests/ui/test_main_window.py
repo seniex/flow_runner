@@ -22,7 +22,12 @@ from flow_runner.domain.project import (
     Workflow,
 )
 from flow_runner.domain.results import StepResult
-from flow_runner.domain.routing import RouteRule, RouteTarget
+from flow_runner.domain.routing import (
+    ComparisonOperator,
+    RoutePredicate,
+    RouteRule,
+    RouteTarget,
+)
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.ui.dialogs.close_confirmation_dialog import (
@@ -1197,6 +1202,77 @@ def test_view_model_updates_parallel_block_validates_and_undoes(qtbot):
         model.update_parallel_block(invalid)
 
 
+def test_remove_workflow_cleans_inbound_routes_and_undoes_atomically(qtbot):
+    target = Workflow(name="目标")
+    jump_route = RouteRule(
+        outcome=StepOutcome.SUCCESS,
+        target=RouteTarget.jump_workflow(target.id),
+    )
+    call_route = RouteRule(
+        outcome=StepOutcome.CANCELLED,
+        target=RouteTarget.call_workflow(target.id),
+    )
+    count_route = RouteRule(
+        outcome=StepOutcome.FAILURE,
+        predicate=RoutePredicate.workflow_count(
+            target.id,
+            ComparisonOperator.GE,
+            1,
+        ),
+        target=RouteTarget.end(),
+    )
+    retained_route = RouteRule(
+        outcome=StepOutcome.TIMEOUT,
+        target=RouteTarget.end(),
+    )
+    source = Workflow(
+        name="来源",
+        steps=[
+            AutomationStep(
+                name="步骤",
+                routes=[jump_route, call_route, count_route, retained_route],
+            )
+        ],
+    )
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="g", workflows=[source, target])],
+        settings={"entry_workflow_id": str(source.id)},
+    )
+    model = ProjectViewModel(project)
+
+    assert model.workflow_route_reference_count(target.id) == 3
+    removed_routes = model.remove_workflow(target.id)
+
+    assert removed_routes == 3
+    assert model.project.groups[0].workflows == [
+        source.model_copy(
+            update={"steps": [source.steps[0].model_copy(update={"routes": [retained_route]})]}
+        )
+    ]
+    assert model.project.settings["entry_workflow_id"] == str(source.id)
+    assert model.project.validate_references() == []
+    model.undo()
+    assert model.project == project
+
+
+def test_remove_entry_workflow_selects_first_remaining_or_clears_setting(qtbot):
+    first = Workflow(name="A")
+    second = Workflow(name="B")
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="g", workflows=[first, second])],
+        settings={"entry_workflow_id": str(first.id)},
+    )
+    model = ProjectViewModel(project)
+
+    assert model.remove_workflow(first.id) == 0
+    assert model.project.settings["entry_workflow_id"] == str(second.id)
+
+    assert model.remove_workflow(second.id) == 0
+    assert "entry_workflow_id" not in model.project.settings
+
+
 def test_edit_parallel_action_updates_tree_and_undo_history(qtbot):
     first = Workflow(name="A")
     second = Workflow(name="B")
@@ -1248,6 +1324,45 @@ def test_delete_workflow_blocked_when_parallel_block_depends_on_it(qtbot):
     ]
     assert "双流程监控" in window.statusBar().currentMessage()
     assert "编辑或删除" in window.statusBar().currentMessage()
+
+
+def test_delete_referenced_workflow_confirms_cleanup_and_clears_selection(qtbot):
+    target = Workflow(name="目标")
+    source = Workflow(
+        name="来源",
+        steps=[
+            AutomationStep(
+                name="跳转",
+                routes=[
+                    RouteRule(
+                        outcome=StepOutcome.SUCCESS,
+                        target=RouteTarget.jump_workflow(target.id),
+                    )
+                ],
+            )
+        ],
+    )
+    confirmations = []
+    window = MainWindow(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[source, target])]),
+        confirm_delete=lambda label: confirmations.append(label) or True,
+    )
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(target.id)
+
+    window.delete_flow_action.trigger()
+
+    assert len(confirmations) == 1
+    assert "目标" in confirmations[0]
+    assert "1 条引用路由" in confirmations[0]
+    assert [workflow.id for workflow in window.view_model.project.groups[0].workflows] == [
+        source.id
+    ]
+    assert window.view_model.project.groups[0].workflows[0].steps[0].routes == []
+    assert window._workflow_id is None
+    assert window.property_panel.step_id is None
+    assert "已删除" in window.statusBar().currentMessage()
+    assert "1 条引用路由" in window.statusBar().currentMessage()
 
 
 def test_single_step_action_runs_only_selected_step(qtbot):
