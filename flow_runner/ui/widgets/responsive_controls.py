@@ -23,7 +23,7 @@ class ResponsiveControlGroup(QWidget):
 
     def add_action(self, action: QAction) -> QToolButton:
         button = QToolButton(self.body)
-        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         button.setDefaultAction(action)
         self.flow.addWidget(button)
         return button

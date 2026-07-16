@@ -63,10 +63,12 @@ from flow_runner.infrastructure.windowing.geometry import (
     Win32WindowGeometry,
     WindowOriginProvider,
 )
+from flow_runner.infrastructure.windowing.identity import set_windows_app_user_model_id
 from flow_runner.infrastructure.windowing.win32 import Win32WindowController, Win32WindowQuery
 from flow_runner.ui.capture_preferences import CapturePreferences
 from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.hotkeys import HotkeyConfig, HotkeyService, ListenerFactory
+from flow_runner.ui.icons import application_icon
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.region_capture import PointCaptureService, RegionCaptureService
 from flow_runner.ui.runner_bridge import RunnerBridge
@@ -149,8 +151,13 @@ def create_application(
     keyboard_device: KeyboardDevice | None = None,
 ) -> ApplicationComposition:
     enable_per_monitor_dpi_awareness()
+    set_windows_app_user_model_id()
     existing = QApplication.instance()
     app = existing if isinstance(existing, QApplication) else QApplication(list(argv or []))
+    try:
+        app.setWindowIcon(application_icon())
+    except Exception:
+        pass
     app.setOrganizationName("Flow Runner")
     app.setApplicationName("Flow Runner")
     paths = (
@@ -249,6 +256,10 @@ def create_application(
         capture_preferences=capture_preferences,
         runtime_formatter=runtime_formatter,
     )
+    try:
+        window.setWindowIcon(app.windowIcon())
+    except Exception:
+        pass
     recorder = RecordingRecorder(listener_factory=recording_listener_factory)
     configured_hotkeys = hotkey_config or HotkeyConfig.model_validate(
         project.settings.get("hotkeys", {})

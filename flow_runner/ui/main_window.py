@@ -33,6 +33,7 @@ from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.dialogs.template_step_dialog import TemplateStepDialog
 from flow_runner.ui.hotkeys import HotkeyConfig
+from flow_runner.ui.icons import ACTION_ICON_NAMES, icon
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
 from flow_runner.ui.panels.property_panel import PropertyPanel
 from flow_runner.ui.panels.step_list_panel import StepListPanel
@@ -220,6 +221,10 @@ class MainWindow(QMainWindow):
         self.run_step_action.setObjectName("runSelectedStepAction")
         self.preview_action = QAction("预览条件", self)
         self.preview_action.setObjectName("previewConditionAction")
+        for action in self.findChildren(QAction):
+            icon_name = ACTION_ICON_NAMES.get(action.objectName())
+            if icon_name is not None:
+                action.setIcon(icon(icon_name))
         self.start_action.triggered.connect(self._start_selected_workflow)
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
@@ -1022,6 +1027,7 @@ class MainWindow(QMainWindow):
         self.run_step_action.setEnabled(not active)
         self.preview_action.setEnabled(not active)
         self.pause_action.setText("继续" if state is RunnerState.PAUSED else "暂停")
+        self.pause_action.setIcon(icon("resume" if state is RunnerState.PAUSED else "pause"))
 
     def closeEvent(self, event: QCloseEvent) -> None:
         modified = (

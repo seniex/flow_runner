@@ -165,6 +165,14 @@ QTreeWidget::item {
     padding: 3px 6px;
 }
 
+QTreeWidget::branch:has-children:closed {
+    image: url("__ICON_DIR__/branch-closed.svg");
+}
+
+QTreeWidget::branch:has-children:open {
+    image: url("__ICON_DIR__/branch-open.svg");
+}
+
 QListWidget::item:selected,
 QTreeWidget::item:selected {
     color: #ffffff;
