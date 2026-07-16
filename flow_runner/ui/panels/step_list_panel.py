@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -133,6 +133,8 @@ class StepListPanel(QWidget):
         super().__init__()
         self.setObjectName("stepListPanel")
         self.list = QListWidget()
+        self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.list.viewport().installEventFilter(self)
         layout = QVBoxLayout(self)
         layout.addWidget(self.list)
         self._items: dict[UUID, QListWidgetItem] = {}
@@ -154,8 +156,8 @@ class StepListPanel(QWidget):
             card = StepCardWidget(step, index, self._labels)
             card.clicked.connect(lambda step_item=item: self.list.setCurrentItem(step_item))
             self.list.setItemWidget(item, card)
-            item.setSizeHint(card.sizeHint())
             self._items[step.id] = item
+        QTimer.singleShot(0, self._refresh_card_sizes)
 
     def select_step(self, step_id: UUID) -> None:
         self.list.setCurrentItem(self._items[step_id])
@@ -165,9 +167,27 @@ class StepListPanel(QWidget):
             card = self.list.itemWidget(item)
             if isinstance(card, StepCardWidget):
                 card.set_selected(item is current)
-                item.setSizeHint(card.sizeHint())
+        self._refresh_card_sizes()
         if current is None:
             return
         step_id = current.data(Qt.ItemDataRole.UserRole)
         if isinstance(step_id, UUID):
             self.stepSelected.emit(step_id)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802
+        if watched is self.list.viewport() and event.type() == QEvent.Type.Resize:
+            QTimer.singleShot(0, self._refresh_card_sizes)
+        return super().eventFilter(watched, event)
+
+    def _refresh_card_sizes(self) -> None:
+        width = max(1, self.list.viewport().width())
+        for item in self._items.values():
+            card = self.list.itemWidget(item)
+            if not isinstance(card, StepCardWidget):
+                continue
+            card.setFixedWidth(width)
+            card.layout().activate()
+            height = card.heightForWidth(width)
+            if height < 0:
+                height = card.sizeHint().height()
+            item.setSizeHint(QSize(width, max(card.minimumSizeHint().height(), height)))

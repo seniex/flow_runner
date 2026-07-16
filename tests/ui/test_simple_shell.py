@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel
 
 from flow_runner.domain.actions import ActionSpec
@@ -47,6 +48,29 @@ def _project():
         settings={"entry_workflow_id": str(second.id)},
     )
     return project, first, second, step
+
+
+def _project_with_long_multi_route_step():
+    target_step = AutomationStep(name="名称很长的目标步骤用于验证自动换行")
+    target = Workflow(name="名称很长的目标流程用于验证自动换行", steps=[target_step])
+    source_step = AutomationStep(
+        name="多路由步骤",
+        routes=[
+            RouteRule(outcome=outcome, target=RouteTarget.jump_workflow(target.id))
+            for outcome in (
+                StepOutcome.SUCCESS,
+                StepOutcome.NOT_MATCHED,
+                StepOutcome.TIMEOUT,
+                StepOutcome.FAILURE,
+            )
+        ],
+    )
+    source = Workflow(name="来源流程", steps=[source_step])
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="名称很长的流程组用于验证自动换行", workflows=[source, target])],
+    )
+    return project, source
 
 
 def test_main_window_startup_selector_persists_and_controls_start(qtbot):
@@ -134,6 +158,40 @@ def test_step_card_routes_use_numbered_paths_and_explicit_lines(qtbot):
     assert empty_route_card.findChild(QLabel, "routeSummaryRow").text() == (
         "路由：成功时顺序进入下一步骤；其它结果结束"
     )
+
+
+def test_step_cards_wrap_routes_to_viewport_without_horizontal_scroll(qtbot):
+    project, workflow = _project_with_long_multi_route_step()
+    panel = StepListPanel(project)
+    qtbot.addWidget(panel)
+    panel.resize(280, 500)
+    panel.set_workflow(workflow)
+    panel.show()
+    qtbot.wait(1)
+
+    assert panel.list.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    assert panel.list.horizontalScrollBar().maximum() == 0
+    item = panel.list.item(0)
+    card = panel.list.itemWidget(item)
+    route_label = card.findChild(QLabel, "routeSummaryRow")
+    assert card.width() <= panel.list.viewport().width()
+    assert item.sizeHint().height() >= route_label.geometry().bottom() + 8
+
+
+def test_step_card_height_reflows_when_step_column_width_changes(qtbot):
+    project, workflow = _project_with_long_multi_route_step()
+    panel = StepListPanel(project)
+    qtbot.addWidget(panel)
+    panel.resize(280, 500)
+    panel.set_workflow(workflow)
+    panel.show()
+    qtbot.wait(1)
+    narrow_height = panel.list.item(0).sizeHint().height()
+
+    panel.resize(700, 500)
+    qtbot.wait(1)
+
+    assert panel.list.item(0).sizeHint().height() < narrow_height
 
 
 def test_main_window_default_layout_exposes_simple_editor_and_runtime_log(qtbot):
