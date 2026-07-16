@@ -166,10 +166,12 @@ policy and routes. Advanced JSON remains available for direct schema-level editi
 The three editor columns share one draggable splitter. Their widths are stored in
 `settings.ui_layout.column_widths` only when the project is saved and restored on the next launch.
 Every step card stays expanded by default, with its step name at the top followed by detection,
-action, policy, and route summaries. Window actions keep operation, title, and geometry on one row,
-showing geometry only for move/resize. The main-window width and height are stored in local Windows
-application settings when the window closes successfully and restored on the next launch; these
-local preferences do not dirty or modify the project JSON.
+action, policy, and route summaries. Each configured route occupies its own line and shows its
+result, count or variable predicate, and numbered group/workflow/step target; a step without explicit
+routes describes the implicit success continuation and non-success termination. Window actions keep
+operation, title, and geometry on one row, showing geometry only for move/resize. The main-window
+width and height are stored in local Windows application settings when the window closes successfully
+and restored on the next launch; these local preferences do not dirty or modify the project JSON.
 
 Step properties open on a compact `常用配置` tab. Capability-specific advanced fields can be
 revealed when needed, while the separate `高级 JSON` tab round-trips conditions, actions, policies,
@@ -186,7 +188,11 @@ native-resolution overlay over the complete captured desktop or window: releasin
 immediately completes a region, a single click completes a point, and Esc cancels. The local
 `框选时隐藏程序界面` preference can hide Flow Runner before capture and is restored after success,
 cancellation, or failure. This preference is remembered outside the project JSON and does not mark
-the project as modified.
+the project as modified. On Windows, visible Flow Runner windows are excluded from screen capture
+before they are hidden, preventing compositor animations from leaving a frozen or translucent copy
+in the selection frame. Qt monitor model names are matched to Windows display-device names through
+EDID aliases, with a guarded DPI-aware geometry fallback for drivers or virtual displays that do not
+expose stable names.
 
 The column controls support group/workflow/step editing, undo, validated save, settings, and explicit
 parallel blocks. Parallel execution is never inferred from routes: create a parallel block and select

@@ -1,3 +1,4 @@
+import pytest
 from PIL import Image
 from PySide6.QtCore import QRect
 
@@ -11,9 +12,10 @@ from flow_runner.ui.display_mapping import (
 
 
 class _Screen:
-    def __init__(self, name, rect):
+    def __init__(self, name, rect, device_pixel_ratio=1.0):
         self._name = name
         self._rect = rect
+        self._device_pixel_ratio = device_pixel_ratio
 
     def name(self):
         return self._name
@@ -21,10 +23,16 @@ class _Screen:
     def geometry(self):
         return self._rect
 
+    def devicePixelRatio(self):
+        return self._device_pixel_ratio
+
 
 class _PhysicalDisplays:
+    def __init__(self, *displays):
+        self._displays = displays or (PhysicalDisplay(r"\\.\DISPLAY1", (-1920, 0, 0, 1080)),)
+
     def displays(self):
-        return (PhysicalDisplay(r"\\.\DISPLAY1", (-1920, 0, 0, 1080)),)
+        return self._displays
 
 
 def test_display_mapping_converts_150_percent_logical_points_to_frame_pixels():
@@ -110,3 +118,57 @@ def test_display_mappings_for_frame_matches_qt_and_physical_display_names():
 
     assert mappings[0].display.logical == (-1536, 0, 0, 864)
     assert mappings[0].physical_region == (-1920, 0, 0, 1080)
+
+
+def test_display_mapping_matches_qt_model_name_to_windows_device_alias():
+    frame = CapturedFrame(Image.new("RGB", (2560, 1440)), origin=(0, 0))
+    screen = _Screen("27E1Q", QRect(0, 0, 2560, 1440))
+    provider = _PhysicalDisplays(
+        PhysicalDisplay(
+            r"\\.\DISPLAY1",
+            (0, 0, 2560, 1440),
+            aliases=("27E1Q",),
+        )
+    )
+
+    mappings = display_mappings_for_frame(
+        frame,
+        screens=(screen,),
+        physical_provider=provider,
+    )
+
+    assert mappings[0].display.name == "27E1Q"
+    assert mappings[0].display.physical == (0, 0, 2560, 1440)
+
+
+def test_display_mapping_uses_unique_dpi_aware_geometry_fallback():
+    frame = CapturedFrame(Image.new("RGB", (2560, 1440)), origin=(0, 0))
+    screen = _Screen("MODEL", QRect(0, 0, 1707, 960), 1.5)
+    provider = _PhysicalDisplays(
+        PhysicalDisplay(r"\\.\DISPLAY1", (0, 0, 2560, 1440)),
+        PhysicalDisplay(r"\\.\DISPLAY2", (2560, 0, 4480, 1080)),
+    )
+
+    mappings = display_mappings_for_frame(
+        frame,
+        screens=(screen,),
+        physical_provider=provider,
+    )
+
+    assert mappings[0].display.physical == (0, 0, 2560, 1440)
+
+
+def test_display_mapping_rejects_ambiguous_geometry_fallback():
+    frame = CapturedFrame(Image.new("RGB", (1920, 1080)), origin=(0, 0))
+    screen = _Screen("MODEL", QRect(0, 0, 1920, 1080))
+    provider = _PhysicalDisplays(
+        PhysicalDisplay(r"\\.\DISPLAY1", (0, 0, 1920, 1080)),
+        PhysicalDisplay(r"\\.\DISPLAY2", (1920, 0, 3840, 1080)),
+    )
+
+    with pytest.raises(ValueError, match="无法唯一匹配"):
+        display_mappings_for_frame(
+            frame,
+            screens=(screen,),
+            physical_provider=provider,
+        )

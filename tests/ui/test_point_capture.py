@@ -5,6 +5,7 @@ from PIL import Image
 from PySide6.QtWidgets import QWidget
 
 from flow_runner.infrastructure.capture.base import CapturedFrame
+from flow_runner.ui import application_visibility
 from flow_runner.ui.capture_selection import CaptureSelectionSession
 from flow_runner.ui.native_capture_overlay import SelectionMode
 from flow_runner.ui.region_capture import PointCapture, PointCaptureService
@@ -38,6 +39,79 @@ def test_selection_session_hides_before_capture_and_restores_after_selection(qtb
     assert result.frame.origin == (-10, 20)
     assert events[0][:2] == ("capture", False)
     assert events[1][0:2] == ("select", False)
+    assert parent.isVisible()
+
+
+def test_selection_session_flushes_compositor_before_capture(qtbot, monkeypatch):
+    events = []
+    parent = QWidget()
+    qtbot.addWidget(parent)
+    parent.show()
+    preferences = FakePreferences(hide_application=True)
+    monkeypatch.setattr(
+        application_visibility,
+        "_flush_window_compositor",
+        lambda: events.append(("flush", parent.isVisible())),
+    )
+
+    def frame_provider(target):
+        events.append(("capture", parent.isVisible(), target))
+        return CapturedFrame(Image.new("RGB", (100, 80)))
+
+    session = CaptureSelectionSession(
+        frame_provider,
+        preferences,
+        selector=lambda frame, mode, owner: (10, 20),
+    )
+    session.select("desktop", SelectionMode.POINT, parent)
+
+    assert events[:2] == [("flush", False), ("capture", False, "desktop")]
+
+
+def test_selection_session_excludes_windows_from_capture_and_restores_affinity(
+    qtbot,
+    monkeypatch,
+):
+    events = []
+    parent = QWidget()
+    qtbot.addWidget(parent)
+    parent.show()
+    preferences = FakePreferences(hide_application=True)
+    affinity_state = ((123, 0),)
+    monkeypatch.setattr(
+        application_visibility,
+        "_exclude_windows_from_capture",
+        lambda widgets: events.append(("exclude", parent.isVisible())) or affinity_state,
+    )
+    monkeypatch.setattr(
+        application_visibility,
+        "_restore_window_affinities",
+        lambda state: events.append(("restore", state, parent.isVisible())),
+    )
+    monkeypatch.setattr(
+        application_visibility,
+        "_flush_window_compositor",
+        lambda: events.append(("flush", parent.isVisible())),
+    )
+
+    def frame_provider(target):
+        events.append(("capture", parent.isVisible(), target))
+        return CapturedFrame(Image.new("RGB", (100, 80)))
+
+    def selector(frame, mode, owner):
+        events.append(("select", parent.isVisible()))
+        return (10, 20)
+
+    session = CaptureSelectionSession(frame_provider, preferences, selector=selector)
+    session.select("desktop", SelectionMode.POINT, parent)
+
+    assert events == [
+        ("exclude", True),
+        ("flush", False),
+        ("capture", False, "desktop"),
+        ("select", False),
+        ("restore", affinity_state, False),
+    ]
     assert parent.isVisible()
 
 

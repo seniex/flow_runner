@@ -40,3 +40,17 @@ def test_display_numbers_are_not_written_into_model_names():
     assert group.name == "原组"
     assert workflow.name == "原流程"
     assert step.name == "原步骤"
+
+
+def test_workflow_entry_path_includes_first_step_and_handles_empty_workflow():
+    first_step = AutomationStep(name="入口步骤")
+    populated = Workflow(name="有步骤", steps=[first_step])
+    empty = Workflow(name="空流程")
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="组", workflows=[populated, empty])],
+    )
+    labels = ProjectDisplayIndex(project)
+
+    assert labels.workflow_entry_path(populated.id) == "01. 组 / 01. 有步骤 / 01. 入口步骤"
+    assert labels.workflow_entry_path(empty.id) == "01. 组 / 02. 空流程"

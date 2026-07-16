@@ -74,7 +74,7 @@ def test_step_list_keeps_all_cards_expanded_and_titles_visible(qtbot):
     _project_value, first, _second, step = _project()
     second_step = AutomationStep(name="第二步")
     first = first.model_copy(update={"steps": [step, second_step]})
-    panel = StepListPanel()
+    panel = StepListPanel(_project_value)
     qtbot.addWidget(panel)
 
     panel.set_workflow(first)
@@ -99,6 +99,41 @@ def test_step_list_keeps_all_cards_expanded_and_titles_visible(qtbot):
     assert len(card.findChildren(QLabel, "actionSummaryRow")) == 2
     assert card.findChild(QLabel, "policySummaryRow").text().startswith("策略")
     assert card.findChild(QLabel, "routeSummaryRow").text().startswith("路由")
+
+
+def test_step_card_routes_use_numbered_paths_and_explicit_lines(qtbot):
+    target_step = AutomationStep(name="目标步骤")
+    target = Workflow(name="目标流程", steps=[target_step])
+    source_step = AutomationStep(
+        name="来源步骤",
+        routes=[
+            RouteRule(
+                outcome=StepOutcome.SUCCESS,
+                target=RouteTarget.jump_workflow(target.id),
+            ),
+            RouteRule(outcome=StepOutcome.FAILURE, target=RouteTarget.end()),
+        ],
+    )
+    source = Workflow(name="来源流程", steps=[source_step])
+    project = Project(
+        name="p",
+        groups=[FlowGroup(name="组", workflows=[source, target])],
+    )
+    window = MainWindow(project)
+    qtbot.addWidget(window)
+    window.flow_tree.select_workflow(source.id)
+    card = window.step_list.list.itemWidget(window.step_list.list.item(0))
+
+    assert card.findChild(QLabel, "routeSummaryRow").text().splitlines() == [
+        "路由 1：成功 → 跳转流程：01. 组 / 02. 目标流程 / 01. 目标步骤",
+        "路由 2：失败 → 结束任务",
+    ]
+
+    window.flow_tree.select_workflow(target.id)
+    empty_route_card = window.step_list.list.itemWidget(window.step_list.list.item(0))
+    assert empty_route_card.findChild(QLabel, "routeSummaryRow").text() == (
+        "路由：成功时顺序进入下一步骤；其它结果结束"
+    )
 
 
 def test_main_window_default_layout_exposes_simple_editor_and_runtime_log(qtbot):

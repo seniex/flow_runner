@@ -23,11 +23,14 @@ class ProjectDisplayIndex:
         self._steps: dict[UUID, NumberedName] = {}
         self._workflow_groups: dict[UUID, UUID] = {}
         self._step_workflows: dict[UUID, UUID] = {}
+        self._workflow_entry_steps: dict[UUID, UUID] = {}
         for group_index, group in enumerate(project.groups, start=1):
             self._groups[group.id] = NumberedName(group_index, group.name)
             for workflow_index, workflow in enumerate(group.workflows, start=1):
                 self._workflows[workflow.id] = NumberedName(workflow_index, workflow.name)
                 self._workflow_groups[workflow.id] = group.id
+                if workflow.steps:
+                    self._workflow_entry_steps[workflow.id] = workflow.steps[0].id
                 for step_index, step in enumerate(workflow.steps, start=1):
                     self._steps[step.id] = NumberedName(step_index, step.name)
                     self._step_workflows[step.id] = workflow.id
@@ -58,3 +61,7 @@ class ProjectDisplayIndex:
 
     def workflow_id_for_step(self, step_id: UUID) -> UUID | None:
         return self._step_workflows.get(step_id)
+
+    def workflow_entry_path(self, workflow_id: UUID) -> str:
+        step_id = self._workflow_entry_steps.get(workflow_id)
+        return self.step_path(step_id) if step_id is not None else self.workflow_path(workflow_id)
