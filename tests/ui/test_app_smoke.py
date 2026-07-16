@@ -116,6 +116,17 @@ def test_empty_hotkey_disables_the_action():
     assert config.enabled_bindings() == {"F7": "stop"}
 
 
+def test_record_pause_hotkey_defaults_to_disabled():
+    config = HotkeyConfig()
+    assert config.record_pause == ""
+    assert "" not in config.enabled_bindings()
+
+
+def test_record_pause_hotkey_participates_in_duplicate_validation():
+    with pytest.raises(ValidationError, match="duplicate"):
+        HotkeyConfig(record="F9", record_pause="F9")
+
+
 def test_runner_bridge_shutdown_reports_success_when_idle():
     bridge = RunnerBridge(Runner(object()))
 
@@ -155,6 +166,136 @@ def test_hotkey_service_dispatches_and_stops_injected_listener():
 
     assert calls == ["start"]
     assert created[0].started and created[0].stopped
+
+
+def test_hotkey_service_reconfigures_active_listener_immediately():
+    calls = []
+    listeners = []
+
+    class Listener:
+        def __init__(self, on_press):
+            self.on_press = on_press
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def stop(self):
+            self.stopped = True
+
+    def factory(on_press):
+        listener = Listener(on_press)
+        listeners.append(listener)
+        return listener
+
+    service = HotkeyService(
+        HotkeyConfig(start="F6", stop="", pause="", record=""),
+        actions={
+            "start": lambda: calls.append("start"),
+            "record_pause": lambda: calls.append("record_pause"),
+        },
+        listener_factory=factory,
+    )
+    service.start()
+    service.reconfigure(
+        HotkeyConfig(
+            start="",
+            stop="",
+            pause="",
+            record="",
+            record_pause="F10",
+        )
+    )
+
+    assert listeners[0].stopped
+    assert listeners[1].started
+    listeners[1].on_press("f10")
+    assert calls == ["record_pause"]
+    assert service.control_keys == frozenset({"F10"})
+
+
+def test_hotkey_service_reconfigure_before_start_uses_new_bindings():
+    listeners = []
+
+    class Listener:
+        def __init__(self, on_press):
+            self.on_press = on_press
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    service = HotkeyService(
+        HotkeyConfig(start="F6", stop="", pause="", record=""),
+        actions={},
+        listener_factory=lambda on_press: listeners.append(Listener(on_press))
+        or listeners[-1],
+    )
+    service.reconfigure(HotkeyConfig(start="F11", stop="", pause="", record=""))
+    service.start()
+    assert service.control_keys == frozenset({"F11"})
+    assert len(listeners) == 1
+
+
+def test_active_hotkey_service_can_remove_all_bindings():
+    listeners = []
+
+    class Listener:
+        def __init__(self, on_press):
+            self.on_press = on_press
+            self.stopped = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    service = HotkeyService(
+        HotkeyConfig(start="F6", stop="", pause="", record=""),
+        actions={},
+        listener_factory=lambda on_press: listeners.append(Listener(on_press))
+        or listeners[-1],
+    )
+    service.start()
+    service.reconfigure(HotkeyConfig(start="", stop="", pause="", record=""))
+    assert listeners[0].stopped
+    assert service.control_keys == frozenset()
+    assert service.listener is None
+
+
+def test_hotkey_service_rolls_back_bindings_when_replacement_listener_fails():
+    created = 0
+
+    class Listener:
+        def __init__(self, fail=False):
+            self.fail = fail
+
+        def start(self):
+            if self.fail:
+                raise OSError("listener failed")
+
+        def stop(self):
+            pass
+
+    def factory(on_press):
+        del on_press
+        nonlocal created
+        created += 1
+        return Listener(fail=created == 2)
+
+    service = HotkeyService(
+        HotkeyConfig(start="F6", stop="", pause="", record=""),
+        actions={},
+        listener_factory=factory,
+    )
+    service.start()
+    with pytest.raises(OSError, match="listener failed"):
+        service.reconfigure(HotkeyConfig(start="F11", stop="", pause="", record=""))
+    assert service.control_keys == frozenset({"F6"})
 
 
 def test_application_hotkeys_start_selected_workflow_and_stop_on_shutdown(qtbot, tmp_path):
