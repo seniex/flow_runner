@@ -51,6 +51,8 @@ class MainWindow(QMainWindow):
     pauseRequested = Signal()
     stopRequested = Signal()
     recordRequested = Signal()
+    recordPauseRequested = Signal()
+    hotkeyConfigChanged = Signal(object)
     runtimePauseChanged = Signal(bool)
     runtimeStopAccepted = Signal()
 
@@ -215,6 +217,9 @@ class MainWindow(QMainWindow):
         self.stop_action.setObjectName("stopWorkflowAction")
         self.record_action = QAction("录制", self)
         self.record_action.setObjectName("recordAction")
+        self.record_pause_action = QAction("暂停录制", self)
+        self.record_pause_action.setObjectName("pauseRecordingAction")
+        self.record_pause_action.setEnabled(False)
         self.diagnostics_action = QAction("诊断", self)
         self.diagnostics_action.setObjectName("diagnosticsAction")
         self.run_step_action = QAction("单步运行", self)
@@ -229,6 +234,7 @@ class MainWindow(QMainWindow):
         self.pause_action.triggered.connect(self._toggle_pause)
         self.stop_action.triggered.connect(self._stop_runtime)
         self.record_action.triggered.connect(self.recordRequested.emit)
+        self.record_pause_action.triggered.connect(self.recordPauseRequested.emit)
         self.run_step_action.triggered.connect(self._run_selected_step)
         self.preview_action.triggered.connect(self._preview_selected_condition)
         self.diagnostics_action.triggered.connect(self.diagnostics_dialog.show)
@@ -280,7 +286,13 @@ class MainWindow(QMainWindow):
         runtime = self.flow_controls.add_group("运行")
         runtime.add_field("启动组", self.startup_group_combo, "startup_group")
         runtime.add_field("启动流程", self.startup_workflow_combo, "startup_workflow")
-        for action in (self.start_action, self.pause_action, self.stop_action, self.record_action):
+        for action in (
+            self.start_action,
+            self.pause_action,
+            self.stop_action,
+            self.record_action,
+            self.record_pause_action,
+        ):
             runtime.add_action(action)
         flows = self.flow_controls.add_group("组与流程")
         for action in (
@@ -901,8 +913,14 @@ class MainWindow(QMainWindow):
         settings = self.edit_settings(dict(self.view_model.project.settings))
         if settings is None:
             return
+        previous_hotkeys = HotkeyConfig.model_validate(
+            self.view_model.project.settings.get("hotkeys", {})
+        )
+        updated_hotkeys = HotkeyConfig.model_validate(settings.get("hotkeys", {}))
         self.view_model.update_settings(settings)
-        self.statusBar().showMessage("设置已更新；OCR 引擎和全局热键将在下次启动时生效")
+        self.statusBar().showMessage("设置已更新；OCR 引擎将在下次启动时生效")
+        if updated_hotkeys != previous_hotkeys:
+            self.hotkeyConfigChanged.emit(updated_hotkeys)
 
     def _prompt_settings(self, settings: dict[str, object]) -> dict[str, object] | None:
         hotkeys = HotkeyConfig.model_validate(settings.get("hotkeys", {}))
@@ -1059,9 +1077,12 @@ class MainWindow(QMainWindow):
             size = self.normalGeometry().size() if self.isMaximized() else self.size()
             self.window_preferences.size = size
 
-    def set_recording_state(self, recording: bool) -> None:
+    def set_recording_state(self, recording: bool, *, paused: bool = False) -> None:
         self.record_action.setText("停止录制" if recording else "录制")
         self.record_action.setProperty("status", "recording" if recording else "idle")
+        self.record_pause_action.setEnabled(recording)
+        self.record_pause_action.setText("继续录制" if recording and paused else "暂停录制")
+        self.record_pause_action.setIcon(icon("resume" if recording and paused else "pause"))
 
     def _request_close_decision(self, *, modified: bool, running: bool) -> CloseDecision:
         if self._confirm_close_accepts_state:

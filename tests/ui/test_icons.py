@@ -16,6 +16,7 @@ def sample_project() -> Project:
 
 
 def test_declared_icons_are_loadable():
+    assert ACTION_ICON_NAMES["pauseRecordingAction"] == "pause"
     assert not application_icon().isNull()
     for name in set(ACTION_ICON_NAMES.values()):
         assert not icon(name).isNull(), name

@@ -30,6 +30,7 @@ ACTION_ICON_NAMES = {
     "pauseWorkflowAction": "pause",
     "stopWorkflowAction": "stop",
     "recordAction": "record",
+    "pauseRecordingAction": "pause",
     "diagnosticsAction": "diagnostics",
     "runSelectedStepAction": "start",
     "previewConditionAction": "preview",

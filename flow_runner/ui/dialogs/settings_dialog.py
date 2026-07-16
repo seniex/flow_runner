@@ -67,6 +67,7 @@ class SettingsDialog(QDialog):
                     "stop": "停止热键",
                     "pause": "暂停/继续热键",
                     "record": "录制热键",
+                    "record_pause": "暂停/继续录制热键",
                 }.get(action, action),
                 entry,
             )

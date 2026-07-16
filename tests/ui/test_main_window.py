@@ -30,6 +30,7 @@ from flow_runner.ui.dialogs.close_confirmation_dialog import (
     CloseDecision,
 )
 from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
+from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
 from flow_runner.ui.view_models.project_view_model import ProjectViewModel
@@ -494,6 +495,7 @@ def test_main_window_places_actions_in_responsive_column_controls(qtbot):
         window.pause_action,
         window.stop_action,
         window.record_action,
+        window.record_pause_action,
         window.add_group_action,
         window.copy_group_action,
         window.add_workflow_action,
@@ -523,6 +525,34 @@ def test_main_window_places_actions_in_responsive_column_controls(qtbot):
         window.settings_action,
         window.diagnostics_action,
     }
+
+
+def test_recording_pause_action_has_independent_states(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+
+    assert not window.record_pause_action.isEnabled()
+    assert window.record_pause_action.text() == "暂停录制"
+
+    window.set_recording_state(True, paused=False)
+    assert window.record_pause_action.isEnabled()
+    pause_icon = window.record_pause_action.icon().cacheKey()
+
+    window.set_recording_state(True, paused=True)
+    assert window.record_pause_action.text() == "继续录制"
+    assert window.record_pause_action.icon().cacheKey() != pause_icon
+
+    window.set_recording_state(False)
+    assert not window.record_pause_action.isEnabled()
+
+
+def test_recording_pause_action_emits_request(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+    window.set_recording_state(True)
+
+    with qtbot.waitSignal(window.recordPauseRequested):
+        window.record_pause_action.trigger()
 
 
 def test_runtime_start_without_editor_selection_uses_startup_workflow(qtbot):
@@ -984,6 +1014,25 @@ def test_settings_action_updates_project_settings_through_view_model(qtbot):
 
     assert window.view_model.project.settings == updated_settings
     assert window.view_model.dirty
+
+
+def test_settings_action_emits_changed_hotkey_config(qtbot):
+    updated = {
+        "hotkeys": {
+            "start": "F11",
+            "stop": "F12",
+            "pause": "F10",
+            "record": "F8",
+            "record_pause": "F9",
+        }
+    }
+    window = MainWindow(sample_project(), edit_settings=lambda current: updated)
+    qtbot.addWidget(window)
+
+    with qtbot.waitSignal(window.hotkeyConfigChanged) as changed:
+        window.settings_action.trigger()
+
+    assert changed.args == [HotkeyConfig.model_validate(updated["hotkeys"])]
 
 
 def test_selecting_parallel_block_starts_all_configured_workflows(qtbot):

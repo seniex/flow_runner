@@ -906,6 +906,17 @@ def test_settings_dialog_round_trips_window_capture_options(qtbot):
     assert settings["window_capture_timeout_seconds"] == 2.25
 
 
+def test_settings_dialog_round_trips_record_pause_hotkey(qtbot):
+    dialog = SettingsDialog(
+        HotkeyConfig(record_pause="F10"),
+        {"hotkeys": {"record_pause": "F10"}},
+    )
+    qtbot.addWidget(dialog)
+
+    assert dialog.entries["record_pause"].text() == "F10"
+    assert dialog.project_settings()["hotkeys"]["record_pause"] == "F10"
+
+
 def test_settings_dialog_round_trips_debug_logging(qtbot):
     dialog = SettingsDialog(HotkeyConfig(), {"debug_logging": True})
     qtbot.addWidget(dialog)
