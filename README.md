@@ -6,7 +6,7 @@ of fixed OCR/image step combinations.
 
 ## Current release
 
-Current version: `0.2.0`.
+Current version: `0.3.0`.
 
 - Groups, workflows, and steps use independent two-digit display numbers without changing raw
   names, UUIDs, JSON data, or route references.
