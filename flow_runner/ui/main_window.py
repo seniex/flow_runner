@@ -46,7 +46,6 @@ from flow_runner.ui.view_models.run_view_model import RunViewModel
 from flow_runner.ui.widgets import ColumnContainer, FocusWheelComboBox, ResponsiveControlArea
 from flow_runner.ui.window_preferences import WindowPreferences
 
-
 DEFAULT_WINDOW_SIZE = QSize(1723, 1102)
 DEFAULT_COLUMN_WIDTHS = (249, 259, 1152)
 

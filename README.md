@@ -165,6 +165,9 @@ policy and routes. Advanced JSON remains available for direct schema-level editi
 
 The three editor columns share one draggable splitter. Their widths are stored in
 `settings.ui_layout.column_widths` only when the project is saved and restored on the next launch.
+Without saved preferences, the workspace starts at `1723 × 1102` (clamped to the current screen)
+with three-column proportions based on `249 / 259 / 1152`; saved local window dimensions and saved
+project column widths still take precedence.
 Every step card stays expanded by default, with its step name at the top followed by detection,
 action, policy, and route summaries. Each configured route occupies its own line and shows its
 result, count or variable predicate, and numbered group/workflow/step target; a step without explicit
@@ -172,6 +175,8 @@ routes describes the implicit success continuation and non-success termination. 
 operation, title, and geometry on one row, showing geometry only for move/resize. The main-window
 width and height are stored in local Windows application settings when the window closes successfully
 and restored on the next launch; these local preferences do not dirty or modify the project JSON.
+Step cards constrain themselves to the middle-column viewport: long route lines wrap within the
+card, resizing the column recalculates card height, and the step list never uses horizontal scrolling.
 
 Step properties open on a compact `常用配置` tab. Capability-specific advanced fields can be
 revealed when needed, while the separate `高级 JSON` tab round-trips conditions, actions, policies,
@@ -180,6 +185,8 @@ an unconditional route that would hide a later conditional route is rejected bef
 Common action, detection, policy, and route fields use a wrapping horizontal layout: controls stay
 on one row while space permits and wrap only in narrower windows. Complex condition trees, action
 sequences, and advanced policy hooks retain dedicated editing areas.
+The action guide exposes registered action types as an exclusive wrapping button group; selecting a
+button switches the same capability-specific form used when editing an existing action.
 
 Visual condition forms can capture a region directly from a frozen desktop/window frame. Region
 fields expose `框选区域`; image-template forms additionally expose `框选并截图`, which fills the

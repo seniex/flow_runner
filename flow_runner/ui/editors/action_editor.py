@@ -265,7 +265,7 @@ class ActionEditor(QWidget):
 
     def _button_for_capability(self, capability: str) -> QPushButton | None:
         for button in self.capability_buttons.buttons():
-            if button.property("capability") == capability:
+            if isinstance(button, QPushButton) and button.property("capability") == capability:
                 return button
         return None
 

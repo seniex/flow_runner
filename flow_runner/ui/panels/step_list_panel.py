@@ -186,7 +186,10 @@ class StepListPanel(QWidget):
             if not isinstance(card, StepCardWidget):
                 continue
             card.setFixedWidth(width)
-            card.layout().activate()
+            layout = card.layout()
+            if layout is None:
+                continue
+            layout.activate()
             height = card.heightForWidth(width)
             if height < 0:
                 height = card.sizeHint().height()
