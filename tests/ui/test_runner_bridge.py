@@ -93,6 +93,29 @@ def test_runner_bridge_rejects_parallel_start(qtbot):
     assert "already running" in blocker.args[0]
 
 
+def test_runner_bridge_reports_request_acceptance(qtbot):
+    workflow = Workflow(name="main", steps=[AutomationStep(name="step")])
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    bridge = RunnerBridge(Runner(ImmediateExecutor()))
+
+    with qtbot.waitSignal(bridge.finished, timeout=3000):
+        assert bridge.start(project, workflow.id) is True
+
+    assert bridge.pause() is False
+    assert bridge.resume() is False
+    assert bridge.stop() is False
+
+
+def test_runner_bridge_rejected_start_returns_false(qtbot):
+    workflow = Workflow(name="main")
+    project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    bridge = RunnerBridge(Runner(ImmediateExecutor()))
+    bridge._running = True
+
+    with qtbot.waitSignal(bridge.failed, timeout=1000):
+        assert bridge.start(project, workflow.id) is False
+
+
 def test_runner_bridge_shutdown_cancels_and_joins_runtime_thread(qtbot):
     workflow = Workflow(name="main", steps=[AutomationStep(name="wait")])
     project = Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])

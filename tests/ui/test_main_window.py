@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QToolButton,
 )
 
-from flow_runner.domain.enums import StepOutcome
+from flow_runner.domain.enums import RunnerState, StepOutcome
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import (
     AutomationStep,
@@ -127,6 +127,28 @@ class _FakeRunnerBridge:
         if self.shutdown_result:
             self._running = False
         return self.shutdown_result
+
+
+class LifecycleBridge:
+    def __init__(self, accepted=True):
+        self.eventReceived = _FakeSignal()
+        self.failed = _FakeSignal()
+        self.is_running = True
+        self.accepted = accepted
+
+    def pause(self):
+        return self.accepted
+
+    def resume(self):
+        return self.accepted
+
+    def stop(self):
+        return self.accepted
+
+    def shutdown(self, *, timeout_seconds=5.0):
+        del timeout_seconds
+        self.is_running = False
+        return True
 
 
 def _close_decision(decision, calls):
@@ -282,6 +304,46 @@ def test_runtime_controls_start_selected_workflow_and_track_completion(qtbot):
     assert window.pause_action.objectName() == "pauseWorkflowAction"
     assert window.stop_action.objectName() == "stopWorkflowAction"
     assert window.run_view_model.state.value == "completed"
+
+
+def test_main_window_emits_only_accepted_runtime_controls(qtbot):
+    bridge = LifecycleBridge()
+    window = MainWindow(sample_project(), runner_bridge=bridge)
+    qtbot.addWidget(window)
+    window.run_view_model.state = RunnerState.RUNNING
+    window._update_runtime_actions(RunnerState.RUNNING)
+
+    with qtbot.waitSignal(window.runtimePauseChanged) as paused:
+        window.pause_action.trigger()
+
+    assert paused.args == [True]
+
+    window.run_view_model.state = RunnerState.PAUSED
+    window._update_runtime_actions(RunnerState.PAUSED)
+    with qtbot.waitSignal(window.runtimePauseChanged) as resumed:
+        window.pauseRequested.emit()
+
+    assert resumed.args == [False]
+
+    with qtbot.waitSignal(window.runtimeStopAccepted):
+        window.stopRequested.emit()
+
+
+def test_main_window_suppresses_rejected_runtime_controls(qtbot):
+    window = MainWindow(sample_project(), runner_bridge=LifecycleBridge(False))
+    qtbot.addWidget(window)
+    pause_events = []
+    stop_events = []
+    window.runtimePauseChanged.connect(pause_events.append)
+    window.runtimeStopAccepted.connect(lambda: stop_events.append(True))
+    window.run_view_model.state = RunnerState.RUNNING
+    window._update_runtime_actions(RunnerState.RUNNING)
+
+    window.pause_action.trigger()
+    window.stop_action.trigger()
+
+    assert pause_events == []
+    assert stop_events == []
 
 
 def test_main_window_places_actions_in_responsive_column_controls(qtbot):

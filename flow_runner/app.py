@@ -106,6 +106,26 @@ class ApplicationComposition:
         self.mouse_device.release_all()
         self.keyboard_device.release_all()
 
+    def set_runtime_paused(self, paused: bool) -> None:
+        if not self.recorder.is_recording:
+            return
+        if paused:
+            self.recorder.pause()
+        else:
+            self.recorder.resume()
+
+    def stop_recording_after_runtime_stop(self) -> None:
+        if not self.recorder.is_recording:
+            return
+        try:
+            events = self.recorder.stop(self.recording_path)
+        except Exception as error:
+            self.window.set_recording_state(False)
+            self.window.statusBar().showMessage(f"录制保存失败：{error}")
+            return
+        self.window.set_recording_state(False)
+        self.window.statusBar().showMessage(f"录制已保存：{len(events)} 个事件")
+
     def toggle_recording(self) -> None:
         if self.recorder.is_recording:
             events = self.recorder.stop(self.recording_path)
@@ -261,6 +281,8 @@ def create_application(
         keyboard_device=keyboard,
     )
     window.recordRequested.connect(lambda: composition.toggle_recording())
+    window.runtimePauseChanged.connect(lambda paused: composition.set_runtime_paused(paused))
+    window.runtimeStopAccepted.connect(lambda: composition.stop_recording_after_runtime_stop())
     runner_bridge.terminated.connect(lambda: composition.release_inputs())
     app.aboutToQuit.connect(lambda: composition.shutdown())
     return composition

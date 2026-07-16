@@ -50,6 +50,8 @@ class MainWindow(QMainWindow):
     pauseRequested = Signal()
     stopRequested = Signal()
     recordRequested = Signal()
+    runtimePauseChanged = Signal(bool)
+    runtimeStopAccepted = Signal()
 
     def __init__(
         self,
@@ -972,9 +974,11 @@ class MainWindow(QMainWindow):
         if self.runner_bridge is None:
             return
         if self.run_view_model.state is RunnerState.PAUSED:
-            self.runner_bridge.resume()
+            if self.runner_bridge.resume():
+                self.runtimePauseChanged.emit(False)
         else:
-            self.runner_bridge.pause()
+            if self.runner_bridge.pause():
+                self.runtimePauseChanged.emit(True)
 
     def _run_selected_step(self) -> None:
         if (
@@ -1005,8 +1009,8 @@ class MainWindow(QMainWindow):
         )
 
     def _stop_runtime(self) -> None:
-        if self.runner_bridge is not None:
-            self.runner_bridge.stop()
+        if self.runner_bridge is not None and self.runner_bridge.stop():
+            self.runtimeStopAccepted.emit()
 
     def _update_runtime_actions(self, state: RunnerState) -> None:
         active = state in {RunnerState.RUNNING, RunnerState.PAUSED}

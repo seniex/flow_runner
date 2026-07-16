@@ -8,7 +8,7 @@ from PySide6.QtGui import QKeySequence
 from flow_runner.app import create_application
 from flow_runner.capabilities.actions.mouse import MouseAction
 from flow_runner.domain.conditions import LeafCondition
-from flow_runner.domain.enums import ConditionOutcome, StepOutcome
+from flow_runner.domain.enums import ConditionOutcome, RunnerState, StepOutcome
 from flow_runner.domain.errors import ConfigurationError
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.routing import (
@@ -20,6 +20,7 @@ from flow_runner.domain.routing import (
 from flow_runner.engine.cancellation import CancellationToken
 from flow_runner.engine.runner import Runner
 from flow_runner.infrastructure.capture.targets import TargetCapture, WindowCaptureMode
+from flow_runner.infrastructure.input.recording import RecordingStore
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.windowing.geometry import Win32WindowGeometry
@@ -274,6 +275,161 @@ def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_pat
 
     assert recording_listener.started and recording_listener.stopped
     assert path.exists()
+
+
+def test_application_pause_and_stop_coordinate_active_recording(qtbot, tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def __init__(self):
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def stop(self):
+            self.stopped = True
+
+    listener = Listener()
+
+    def recording_factory(**provided):
+        callbacks.update(provided)
+        return listener
+
+    workflow = Workflow(
+        name="main",
+        steps=[
+            AutomationStep(
+                name="wait",
+                actions=[{"capability": "system.wait", "config": {"seconds": 60}}],
+            )
+        ],
+    )
+    project_path = tmp_path / "project.json"
+    ProjectStore(project_path).save(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    )
+    recording_path = tmp_path / "latest.json"
+    composition = create_application(
+        [],
+        project_path=project_path,
+        recording_listener_factory=recording_factory,
+        recording_path=recording_path,
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.record_action.trigger()
+    callbacks["on_press"]("a")
+    with qtbot.waitSignal(composition.runner_bridge.eventReceived, timeout=3000):
+        composition.window.start_action.trigger()
+
+    composition.window.pause_action.trigger()
+    qtbot.waitUntil(lambda: composition.runner.state is RunnerState.PAUSED)
+    qtbot.waitUntil(lambda: composition.window.run_view_model.state is RunnerState.PAUSED)
+    assert composition.recorder.is_paused
+    callbacks["on_press"]("ignored")
+
+    composition.window.pause_action.trigger()
+    qtbot.waitUntil(lambda: composition.runner.state is RunnerState.RUNNING)
+    qtbot.waitUntil(lambda: composition.window.run_view_model.state is RunnerState.RUNNING)
+    assert not composition.recorder.is_paused
+    callbacks["on_press"]("b")
+
+    with qtbot.waitSignal(composition.runner_bridge.terminated, timeout=3000):
+        composition.window.stop_action.trigger()
+
+    assert listener.stopped
+    assert recording_path.exists()
+    assert composition.window.record_action.text() == "录制"
+    composition.shutdown()
+
+
+def test_runtime_stop_reports_recording_save_failure_without_blocking_stop(
+    qtbot, tmp_path, monkeypatch
+):
+    class Listener:
+        def __init__(self):
+            self.stopped = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    listener = Listener()
+    workflow = Workflow(
+        name="main",
+        steps=[
+            AutomationStep(
+                name="wait",
+                actions=[{"capability": "system.wait", "config": {"seconds": 60}}],
+            )
+        ],
+    )
+    project_path = tmp_path / "project.json"
+    ProjectStore(project_path).save(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    )
+    composition = create_application(
+        [],
+        project_path=project_path,
+        recording_listener_factory=lambda **callbacks: listener,
+        recording_path=tmp_path / "latest.json",
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.record_action.trigger()
+    with qtbot.waitSignal(composition.runner_bridge.eventReceived, timeout=3000):
+        composition.window.start_action.trigger()
+
+    def fail_save(path, events):
+        del path, events
+        raise OSError("disk full")
+
+    monkeypatch.setattr(RecordingStore, "save", fail_save)
+    with qtbot.waitSignal(composition.runner_bridge.terminated, timeout=3000):
+        composition.window.stop_action.trigger()
+
+    assert listener.stopped
+    assert not composition.recorder.is_recording
+    assert composition.window.record_action.text() == "录制"
+    assert "录制保存失败：disk full" in composition.window.statusBar().currentMessage()
+    composition.shutdown()
+
+
+def test_natural_runtime_completion_leaves_independent_recording_active(qtbot, tmp_path):
+    class Listener:
+        def __init__(self):
+            self.stopped = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    listener = Listener()
+    workflow = Workflow(name="main")
+    project_path = tmp_path / "project.json"
+    ProjectStore(project_path).save(
+        Project(name="p", groups=[FlowGroup(name="g", workflows=[workflow])])
+    )
+    composition = create_application(
+        [],
+        project_path=project_path,
+        recording_listener_factory=lambda **callbacks: listener,
+        recording_path=tmp_path / "latest.json",
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.record_action.trigger()
+
+    with qtbot.waitSignal(composition.runner_bridge.finished, timeout=3000):
+        composition.window.start_action.trigger()
+
+    assert composition.recorder.is_recording
+    assert not listener.stopped
+    composition.window.record_action.trigger()
+    composition.shutdown()
 
 
 def test_application_save_action_persists_property_edits(qtbot, tmp_path):

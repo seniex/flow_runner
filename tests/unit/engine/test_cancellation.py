@@ -61,3 +61,38 @@ async def test_pause_aware_sleep_preserves_remaining_active_delay():
 
     token.resume()
     await asyncio.wait_for(sleeper, timeout=0.12)
+
+
+@pytest.mark.asyncio
+async def test_pause_aware_sleep_cleans_up_children_when_caller_is_cancelled():
+    token = CancellationToken()
+    existing = set(asyncio.all_tasks())
+    sleeper = asyncio.create_task(token.sleep(60))
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    sleeper.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await sleeper
+    await asyncio.sleep(0)
+
+    created = set(asyncio.all_tasks()).difference(existing)
+    assert not created
+
+
+@pytest.mark.asyncio
+async def test_paused_checkpoint_cleans_up_children_when_caller_is_cancelled():
+    token = CancellationToken()
+    token.pause()
+    existing = set(asyncio.all_tasks())
+    waiter = asyncio.create_task(token.wait_until_active())
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+    await asyncio.sleep(0)
+
+    created = set(asyncio.all_tasks()).difference(existing)
+    assert not created

@@ -55,17 +55,17 @@ class RunnerBridge(QObject):
         self._loop: asyncio.AbstractEventLoop | None = None
         self._messages: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
 
-    def start(self, project: Project, entry_workflow_id: UUID) -> None:
-        self._start_thread("workflow", project, entry_workflow_id)
+    def start(self, project: Project, entry_workflow_id: UUID) -> bool:
+        return self._start_thread("workflow", project, entry_workflow_id)
 
-    def start_parallel(self, project: Project, block_id: UUID) -> None:
-        self._start_thread("parallel", project, block_id)
+    def start_parallel(self, project: Project, block_id: UUID) -> bool:
+        return self._start_thread("parallel", project, block_id)
 
-    def run_step(self, project: Project, workflow_id: UUID, step_id: UUID) -> None:
-        self._start_thread("step", project, workflow_id, step_id)
+    def run_step(self, project: Project, workflow_id: UUID, step_id: UUID) -> bool:
+        return self._start_thread("step", project, workflow_id, step_id)
 
-    def preview_condition(self, project: Project, workflow_id: UUID, step_id: UUID) -> None:
-        self._start_thread("preview", project, workflow_id, step_id)
+    def preview_condition(self, project: Project, workflow_id: UUID, step_id: UUID) -> bool:
+        return self._start_thread("preview", project, workflow_id, step_id)
 
     def _start_thread(
         self,
@@ -73,10 +73,10 @@ class RunnerBridge(QObject):
         project: Project,
         entry_id: UUID,
         step_id: UUID | None = None,
-    ) -> None:
+    ) -> bool:
         if self._running:
             self._post("failed", "runner is already running")
-            return
+            return False
         self._running = True
         self._thread = threading.Thread(
             target=self._run,
@@ -85,21 +85,28 @@ class RunnerBridge(QObject):
             name="FlowRunnerRuntime",
         )
         self._thread.start()
+        return True
 
-    def stop(self) -> None:
+    def stop(self) -> bool:
         loop = self._loop
-        if loop is not None:
-            loop.call_soon_threadsafe(self.runner.stop)
+        if loop is None:
+            return False
+        loop.call_soon_threadsafe(self.runner.stop)
+        return True
 
-    def pause(self) -> None:
+    def pause(self) -> bool:
         loop = self._loop
-        if loop is not None:
-            loop.call_soon_threadsafe(self.runner.pause)
+        if loop is None:
+            return False
+        loop.call_soon_threadsafe(self.runner.pause)
+        return True
 
-    def resume(self) -> None:
+    def resume(self) -> bool:
         loop = self._loop
-        if loop is not None:
-            loop.call_soon_threadsafe(self.runner.resume)
+        if loop is None:
+            return False
+        loop.call_soon_threadsafe(self.runner.resume)
+        return True
 
     @property
     def is_running(self) -> bool:

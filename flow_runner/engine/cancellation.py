@@ -46,9 +46,7 @@ class CancellationToken:
 
     def active_time(self) -> float:
         now = self._clock()
-        paused_now = (
-            max(0.0, now - self._paused_at) if self._paused_at is not None else 0.0
-        )
+        paused_now = max(0.0, now - self._paused_at) if self._paused_at is not None else 0.0
         return now - self._paused_total - paused_now
 
     def raise_if_cancelled(self) -> None:
@@ -64,13 +62,17 @@ class CancellationToken:
             return
         active_task = asyncio.create_task(self._active.wait())
         cancel_task = asyncio.create_task(self._cancelled.wait())
-        done, pending = await asyncio.wait(
-            {active_task, cancel_task},
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
+        tasks = {active_task, cancel_task}
+        try:
+            done, _ = await asyncio.wait(
+                tasks,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
         if cancel_task in done:
             self.raise_if_cancelled()
 
@@ -86,13 +88,17 @@ class CancellationToken:
             timer_task = asyncio.create_task(asyncio.sleep(remaining))
             pause_task = asyncio.create_task(self._paused.wait())
             cancel_task = asyncio.create_task(self._cancelled.wait())
-            done, pending = await asyncio.wait(
-                {timer_task, pause_task, cancel_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            for task in pending:
-                task.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
+            tasks = {timer_task, pause_task, cancel_task}
+            try:
+                done, _ = await asyncio.wait(
+                    tasks,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+            finally:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
             if cancel_task in done:
                 self.raise_if_cancelled()
             if pause_task in done:
