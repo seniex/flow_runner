@@ -30,6 +30,7 @@ from flow_runner.ui.dialogs.close_confirmation_dialog import (
     CloseDecision,
 )
 from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
+from flow_runner.ui.flow_tree_preferences import FlowTreePreferences
 from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.main_window import MainWindow
 from flow_runner.ui.runner_bridge import RunnerBridge
@@ -73,6 +74,48 @@ def test_main_window_clamps_oversized_saved_size_to_screen(qtbot, tmp_path):
 
     assert window.width() <= available.width()
     assert window.height() <= available.height()
+
+
+def test_flow_group_collapse_is_local_and_does_not_dirty_project(qtbot, tmp_path):
+    settings = QSettings(str(tmp_path / "tree.ini"), QSettings.Format.IniFormat)
+    preferences = FlowTreePreferences(settings)
+    project = sample_project()
+    window = MainWindow(project, flow_tree_preferences=preferences)
+    qtbot.addWidget(window)
+
+    first_group = window.flow_tree.tree.topLevelItem(0)
+    first_group.setExpanded(False)
+    settings.sync()
+
+    assert not window.view_model.dirty
+    reopened = MainWindow(
+        project,
+        flow_tree_preferences=FlowTreePreferences(
+            QSettings(str(tmp_path / "tree.ini"), QSettings.Format.IniFormat)
+        ),
+    )
+    qtbot.addWidget(reopened)
+    assert not reopened.flow_tree.tree.topLevelItem(0).isExpanded()
+
+
+def test_flow_group_collapse_survives_refresh_and_new_groups_default_open(qtbot, tmp_path):
+    preferences = FlowTreePreferences(
+        QSettings(str(tmp_path / "tree.ini"), QSettings.Format.IniFormat)
+    )
+    project = sample_project()
+    window = MainWindow(project, flow_tree_preferences=preferences)
+    qtbot.addWidget(window)
+    window.flow_tree.tree.topLevelItem(0).setExpanded(False)
+
+    group_id = window.view_model.project.groups[0].id
+    window.view_model.rename_group(group_id, "已重命名")
+    assert not window.flow_tree.tree.topLevelItem(0).isExpanded()
+
+    window.view_model.add_group(FlowGroup(name="新增组"))
+    newest = window.flow_tree.tree.topLevelItem(
+        window.flow_tree.tree.topLevelItemCount() - 1
+    )
+    assert newest.isExpanded()
 
 
 def test_cancelled_close_does_not_save_window_size(qtbot, tmp_path):

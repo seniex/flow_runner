@@ -11,6 +11,7 @@ class FlowTreePanel(QWidget):
     groupSelected = Signal(object)
     workflowSelected = Signal(object)
     parallelBlockSelected = Signal(object)
+    groupExpansionChanged = Signal(object, bool)
 
     def __init__(self, project: Project) -> None:
         super().__init__()
@@ -22,7 +23,10 @@ class FlowTreePanel(QWidget):
         self._items: dict[UUID, QTreeWidgetItem] = {}
         self._group_items: dict[UUID, QTreeWidgetItem] = {}
         self._parallel_items: dict[UUID, QTreeWidgetItem] = {}
+        self._restoring_expansion = False
         self.tree.currentItemChanged.connect(self._on_current_item)
+        self.tree.itemExpanded.connect(self._on_item_expanded)
+        self.tree.itemCollapsed.connect(self._on_item_collapsed)
         self.set_project(project)
 
     def set_project(self, project: Project) -> None:
@@ -63,6 +67,35 @@ class FlowTreePanel(QWidget):
 
     def select_parallel_block(self, block_id: UUID) -> None:
         self.tree.setCurrentItem(self._parallel_items[block_id])
+
+    def restore_collapsed_groups(self, collapsed: frozenset[UUID]) -> frozenset[UUID]:
+        valid = frozenset(group_id for group_id in collapsed if group_id in self._group_items)
+        self._restoring_expansion = True
+        try:
+            for group_id, item in self._group_items.items():
+                item.setExpanded(group_id not in valid)
+        finally:
+            self._restoring_expansion = False
+        return valid
+
+    def collapsed_group_ids(self) -> frozenset[UUID]:
+        return frozenset(
+            group_id for group_id, item in self._group_items.items() if not item.isExpanded()
+        )
+
+    def _on_item_expanded(self, item: QTreeWidgetItem) -> None:
+        self._emit_group_expansion(item, True)
+
+    def _on_item_collapsed(self, item: QTreeWidgetItem) -> None:
+        self._emit_group_expansion(item, False)
+
+    def _emit_group_expansion(self, item: QTreeWidgetItem, expanded: bool) -> None:
+        if self._restoring_expansion:
+            return
+        group_id = item.data(0, Qt.ItemDataRole.UserRole)
+        kind = item.data(0, int(Qt.ItemDataRole.UserRole) + 1)
+        if kind == "group" and isinstance(group_id, UUID):
+            self.groupExpansionChanged.emit(group_id, expanded)
 
     def _on_current_item(self, current: QTreeWidgetItem | None) -> None:
         if current is None:

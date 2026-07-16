@@ -32,6 +32,7 @@ from flow_runner.ui.dialogs.guided_add_dialog import GuidedAddDialog
 from flow_runner.ui.dialogs.parallel_block_dialog import ParallelBlockDialog
 from flow_runner.ui.dialogs.settings_dialog import SettingsDialog
 from flow_runner.ui.dialogs.template_step_dialog import TemplateStepDialog
+from flow_runner.ui.flow_tree_preferences import FlowTreePreferences
 from flow_runner.ui.hotkeys import HotkeyConfig
 from flow_runner.ui.icons import ACTION_ICON_NAMES, icon
 from flow_runner.ui.panels.flow_tree_panel import FlowTreePanel
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
         capture_preferences: CapturePreferences | None = None,
         runtime_formatter: RuntimeEventFormatter | None = None,
         window_preferences: WindowPreferences | None = None,
+        flow_tree_preferences: FlowTreePreferences | None = None,
     ) -> None:
         super().__init__()
         self.view_model = ProjectViewModel(project)
@@ -95,6 +97,7 @@ class MainWindow(QMainWindow):
         self.point_capture = point_capture
         self.capture_preferences = capture_preferences or CapturePreferences()
         self.window_preferences = window_preferences or WindowPreferences()
+        self.flow_tree_preferences = flow_tree_preferences or FlowTreePreferences()
         self._saved_column_widths = _column_widths_from_settings(project.settings)
         self._pending_column_widths: tuple[int, int, int] | None = None
         self._layout_dirty = False
@@ -149,6 +152,8 @@ class MainWindow(QMainWindow):
         self.flow_tree.workflowSelected.connect(self._select_workflow)
         self.flow_tree.groupSelected.connect(self._select_group)
         self.flow_tree.parallelBlockSelected.connect(self._select_parallel_block)
+        self.flow_tree.groupExpansionChanged.connect(self._flow_group_expansion_changed)
+        self._restore_flow_group_expansion()
         self.step_list.stepSelected.connect(self._select_step)
         self.view_model.projectChanged.connect(self._project_changed)
         self.view_model.historyChanged.connect(self._history_changed)
@@ -585,6 +590,19 @@ class MainWindow(QMainWindow):
         self._refresh_save_state()
         self._refresh_undo_state()
 
+    def _restore_flow_group_expansion(self) -> None:
+        project_id = self.view_model.project.id
+        stored = self.flow_tree_preferences.collapsed_groups(project_id)
+        valid = self.flow_tree.restore_collapsed_groups(stored)
+        if valid != stored:
+            self.flow_tree_preferences.set_collapsed_groups(project_id, valid)
+
+    def _flow_group_expansion_changed(self, _group_id: UUID, _expanded: bool) -> None:
+        self.flow_tree_preferences.set_collapsed_groups(
+            self.view_model.project.id,
+            self.flow_tree.collapsed_group_ids(),
+        )
+
     def _reload_selection_from_project(self) -> None:
         project = self.view_model.project
         selected_step_id = self.property_panel.step_id
@@ -593,6 +611,7 @@ class MainWindow(QMainWindow):
         self.step_list.blockSignals(True)
         try:
             self.flow_tree.set_project(project)
+            self._restore_flow_group_expansion()
             if self._parallel_block_id is not None:
                 try:
                     self.flow_tree.select_parallel_block(self._parallel_block_id)
