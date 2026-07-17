@@ -1,16 +1,15 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import model_validator
 
 from flow_runner.domain.enums import StepOutcome
 from flow_runner.domain.results import ActionResult
+from flow_runner.domain.window_targets import WindowTarget
 from flow_runner.infrastructure.windowing.win32 import WindowController
 
 
-class WindowActionConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class WindowActionConfig(WindowTarget):
     operation: Literal["activate", "minimize", "restore", "move_resize"]
-    title: str
     geometry: tuple[int, int, int, int] | None = None
 
     @model_validator(mode="after")
@@ -30,15 +29,15 @@ class WindowAction:
     async def execute(self, config: WindowActionConfig, context: Any) -> ActionResult:
         del context
         if config.operation == "activate":
-            await self.controller.activate(config.title)
+            provider_data = await self.controller.activate(config)
         elif config.operation == "minimize":
-            await self.controller.minimize(config.title)
+            provider_data = await self.controller.minimize(config)
         elif config.operation == "restore":
-            await self.controller.restore(config.title)
+            provider_data = await self.controller.restore(config)
         else:
             assert config.geometry is not None
-            await self.controller.move_resize(config.title, config.geometry)
-        return ActionResult(outcome=StepOutcome.SUCCESS)
+            provider_data = await self.controller.move_resize(config, config.geometry)
+        return ActionResult(outcome=StepOutcome.SUCCESS, provider_data=provider_data)
 
     def required_resources(self, config: WindowActionConfig) -> frozenset[str]:
-        return frozenset({f"window:{config.title}"})
+        return frozenset({config.resource_key})

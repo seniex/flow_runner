@@ -49,7 +49,7 @@ def test_initial_templates_build_valid_ordinary_steps():
         "wait_then_key": {"name": "等待按键", "seconds": 1.5, "key": "space"},
         "activate_window_then_key": {
             "name": "激活按键",
-            "window_title": "Game",
+            "window_process_name": "game.exe",
             "key": "f1",
         },
         "jump_after_two_runs": {
@@ -75,6 +75,11 @@ def test_initial_templates_build_valid_ordinary_steps():
 
         assert isinstance(step, AutomationStep)
         assert candidate.validate_references() == []
+        if template_id == "activate_window_then_key":
+            assert step.actions[0].config == {
+                "operation": "activate",
+                "process_name": "game.exe",
+            }
 
 
 def test_template_dialog_uses_project_dropdowns_for_uuid_targets(qtbot):

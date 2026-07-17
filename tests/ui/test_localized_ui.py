@@ -97,6 +97,28 @@ def test_mouse_coordinate_fields_and_choices_are_localized():
     assert choice_label("target") == "目标相对坐标"
 
 
+def test_window_process_fields_and_summaries_are_localized():
+    assert field_label("process_name") == "进程名"
+    assert field_label("fallback_process_names") == "备用进程名"
+    process_action = ActionSpec(
+        capability="system.window_action",
+        config={
+            "operation": "activate",
+            "process_name": "chrome.exe",
+            "fallback_process_names": ["PotPlayerMini64.exe", "potplayer.exe"],
+        },
+    )
+    title_action = ActionSpec(
+        capability="system.window_action",
+        config={"operation": "activate", "title": "Game"},
+    )
+
+    assert action_summary(process_action) == (
+        "窗口：激活窗口 chrome.exe（备用：PotPlayerMini64.exe、potplayer.exe）"
+    )
+    assert action_summary(title_action) == "窗口：激活窗口 Game"
+
+
 def test_normal_binding_controls_do_not_expose_internal_result_syntax(qtbot):
     capabilities = CapabilityRegistry()
     capabilities.register_condition(Capability("vision.ocr", OcrConditionConfig))

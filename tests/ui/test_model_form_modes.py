@@ -21,7 +21,12 @@ def test_common_field_metadata_covers_initial_capabilities():
         "input.keyboard": frozenset({"operation", "key", "keys", "text", "count"}),
         "system.wait": frozenset({"seconds"}),
         "system.launch": frozenset({"path", "arguments", "run_as_admin"}),
-        "system.window_action": frozenset({"operation", "title", "geometry"}),
+        "system.window": frozenset(
+            {"process_name", "fallback_process_names", "require_foreground"}
+        ),
+        "system.window_action": frozenset(
+            {"operation", "process_name", "fallback_process_names", "geometry"}
+        ),
     }
     assert metadata.common_fields_for("unknown.capability") is None
 
@@ -68,9 +73,9 @@ def test_editor_preferences_persist_only_advanced_visibility(tmp_path):
         (WaitActionConfig, frozenset({"seconds"}), "seconds", None),
         (
             WindowActionConfig,
-            frozenset({"operation", "title", "geometry"}),
+            frozenset({"operation", "process_name", "fallback_process_names", "geometry"}),
+            "process_name",
             "title",
-            None,
         ),
     ],
 )
@@ -86,13 +91,7 @@ def test_model_form_separates_common_and_advanced_fields(
 
     assert not form.editor(common_field).isHidden()
     if advanced_field is None:
-        if model_type is WindowActionConfig:
-            assert form.editor("geometry").isHidden()
-            assert all(
-                not editor.isHidden() for name, editor in form.editors.items() if name != "geometry"
-            )
-        else:
-            assert all(not editor.isHidden() for editor in form.editors.values())
+        assert all(not editor.isHidden() for editor in form.editors.values())
         return
 
     assert form.editor(advanced_field).isHidden()
@@ -100,6 +99,24 @@ def test_model_form_separates_common_and_advanced_fields(
     form.set_advanced_visible(True)
 
     assert not form.editor(advanced_field).isHidden()
+
+
+def test_legacy_window_title_round_trips_while_process_fields_remain_empty(qtbot):
+    form = ModelForm(
+        WindowActionConfig,
+        common_fields=frozenset(
+            {"operation", "process_name", "fallback_process_names", "geometry"}
+        ),
+    )
+    qtbot.addWidget(form)
+    form.set_values({"operation": "activate", "title": "Game"})
+
+    values = form.values()
+
+    assert form.editor("title").isHidden()
+    assert values["process_name"] is None
+    assert values["title"] == "Game"
+    assert WindowActionConfig.model_validate(values).title == "Game"
 
 
 def test_hidden_advanced_values_are_preserved_and_counted(qtbot):

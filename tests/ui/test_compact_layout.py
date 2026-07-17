@@ -75,14 +75,17 @@ def test_window_action_common_fields_stay_on_one_row_and_geometry_switches(qtbot
     form.form_layout.setGeometry(form.rect())
 
     operation = form.editor("operation")
-    title = form.editor("title")
+    process_name = form.editor("process_name")
+    fallback_process_names = form.editor("fallback_process_names")
     geometry = form.editor("geometry")
     assert geometry.isHidden()
+    assert form.editor("title").isHidden()
 
     operation.setCurrentIndex(operation.findData("move_resize"))
     form.form_layout.setGeometry(form.rect())
     containers = [
-        form.form_layout.containerForField(editor) for editor in (operation, title, geometry)
+        form.form_layout.containerForField(editor)
+        for editor in (operation, process_name, fallback_process_names, geometry)
     ]
     assert not geometry.isHidden()
     assert len({container.geometry().top() for container in containers}) == 1

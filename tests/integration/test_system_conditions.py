@@ -50,30 +50,59 @@ async def test_region_change_compares_consecutive_frames():
 @pytest.mark.asyncio
 async def test_window_and_process_conditions_use_query_adapters():
     class Windows:
-        def query(self, title):
-            return {"exists": True, "foreground": True, "title": "Game Window"}
+        def query(self, target):
+            assert target.process_names == ("game.exe", "game-legacy.exe")
+            return {
+                "exists": True,
+                "foreground": True,
+                "title": "Game Window",
+                "selected_process_name": "game.exe",
+                "matched_handles": [42],
+            }
 
     class Processes:
         def exists(self, name):
             return name == "game.exe"
 
     window = await WindowCondition(Windows()).evaluate(
-        WindowConditionConfig(title="Game", require_foreground=True), None
+        WindowConditionConfig(
+            process_name="game.exe",
+            fallback_process_names=["game-legacy.exe"],
+            require_foreground=True,
+        ),
+        None,
     )
     process = await ProcessCondition(Processes()).evaluate(
         ProcessConditionConfig(name="game.exe"), None
     )
     assert window.outcome is ConditionOutcome.MATCH
+    assert window.provider_data["matched_handles"] == [42]
     assert process.outcome is ConditionOutcome.MATCH
+
+
+@pytest.mark.asyncio
+async def test_window_condition_keeps_legacy_title_matching():
+    class Windows:
+        def query(self, target):
+            assert target.title == "Game"
+            return {"exists": True, "foreground": False, "title": "Game Window"}
+
+    result = await WindowCondition(Windows()).evaluate(
+        WindowConditionConfig(title="Game"),
+        None,
+    )
+
+    assert result.outcome is ConditionOutcome.MATCH
+    assert result.text == "Game Window"
 
 
 def test_win32_window_query_normalizes_injected_backend_result():
     class Backend:
-        def query(self, title):
-            assert title == "Game"
+        def query(self, target):
+            assert target.title == "Game"
             return {"exists": True, "foreground": True, "title": "Game Window", "handle": 42}
 
-    assert Win32WindowQuery(Backend()).query("Game") == {
+    assert Win32WindowQuery(Backend()).query(WindowConditionConfig(title="Game")) == {
         "exists": True,
         "foreground": True,
         "title": "Game Window",

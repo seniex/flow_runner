@@ -32,7 +32,7 @@ class TemplateStepDialog(QDialog):
         self.timeout_spin.setRange(0.1, 1_000_000.0)
         self.timeout_spin.setValue(10.0)
         self.key_edit = QLineEdit()
-        self.window_title_edit = QLineEdit()
+        self.window_process_name_edit = QLineEdit()
         self.target_step_combo = FocusWheelComboBox()
         self.target_workflow_combo = FocusWheelComboBox()
         self.success_workflow_combo = FocusWheelComboBox()
@@ -50,7 +50,7 @@ class TemplateStepDialog(QDialog):
         self.form.addRow("等待秒数", self.seconds_spin)
         self.form.addRow("超时秒数", self.timeout_spin)
         self.form.addRow("按键", self.key_edit)
-        self.form.addRow("窗口标题", self.window_title_edit)
+        self.form.addRow("进程名", self.window_process_name_edit)
         self.form.addRow("后续步骤", self.target_step_combo)
         self.form.addRow("目标流程", self.target_workflow_combo)
         self.form.addRow("成功流程", self.success_workflow_combo)
@@ -105,7 +105,7 @@ class TemplateStepDialog(QDialog):
             "seconds": self.seconds_spin,
             "timeout_seconds": self.timeout_spin,
             "key": self.key_edit,
-            "window_title": self.window_title_edit,
+            "window_process_name": self.window_process_name_edit,
             "target_step_id": self.target_step_combo,
             "target_workflow_id": self.target_workflow_combo,
             "success_workflow_id": self.success_workflow_combo,
@@ -137,7 +137,7 @@ class TemplateStepDialog(QDialog):
             "seconds": self.seconds_spin.value(),
             "timeout_seconds": self.timeout_spin.value(),
             "key": self.key_edit.text(),
-            "window_title": self.window_title_edit.text(),
+            "window_process_name": self.window_process_name_edit.text(),
             "target_step_id": self.target_step_combo.currentData(),
             "target_workflow_id": self.target_workflow_combo.currentData(),
             "success_workflow_id": self.success_workflow_combo.currentData(),

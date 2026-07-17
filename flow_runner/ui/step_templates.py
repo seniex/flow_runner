@@ -25,7 +25,7 @@ STEP_TEMPLATES: dict[str, StepTemplate] = {
     "wait_then_key": StepTemplate("固定等待后发送按键", ("seconds", "key")),
     "activate_window_then_key": StepTemplate(
         "激活窗口后发送按键",
-        ("window_title", "key"),
+        ("window_process_name", "key"),
     ),
     "jump_after_two_runs": StepTemplate(
         "执行两轮后跳转到另一流程",
@@ -101,7 +101,7 @@ def build_template_step(
                     capability="system.window_action",
                     config={
                         "operation": "activate",
-                        "title": _required_text(parameters, "window_title"),
+                        "process_name": _required_text(parameters, "window_process_name"),
                     },
                 ),
                 _key_action(_required_text(parameters, "key")),

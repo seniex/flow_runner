@@ -12,6 +12,7 @@ from flow_runner.domain.policies import ConditionPolicy
 from flow_runner.domain.project import AutomationStep, FlowGroup, Project, Workflow
 from flow_runner.domain.routing import ComparisonOperator, RoutePredicate, RouteRule, RouteTarget
 from flow_runner.infrastructure.input.recording import RecordedEvent
+from flow_runner.migration.window_controls import replacement_actions_for_script
 
 _NAMESPACE = UUID("52ca7442-748d-5ac3-bf51-d59a13bc76b3")
 
@@ -378,6 +379,13 @@ def _convert_launch_actions(
     paths: LegacyConversionPaths,
 ) -> list[ActionSpec]:
     application = Path(str(legacy.get("app_path", "")))
+    replacement = replacement_actions_for_script(application)
+    if replacement is not None:
+        actions = list(replacement)
+        wait_seconds = float(legacy.get("wait_seconds", 0.0))
+        if wait_seconds > 0:
+            actions.append(_wait_action(wait_seconds))
+        return actions
     suffix = application.suffix.casefold()
     if suffix in {".py", ".pyw"}:
         executable = paths.pythonw_executable if suffix == ".pyw" else paths.python_executable

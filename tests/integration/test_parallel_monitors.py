@@ -26,29 +26,51 @@ class FakeWindows:
     def __init__(self):
         self.calls = []
 
-    async def activate(self, title):
-        self.calls.append(("activate", title))
+    async def activate(self, target):
+        self.calls.append(("activate", target))
+        return {"selected_handle": 1}
 
-    async def minimize(self, title):
-        self.calls.append(("minimize", title))
+    async def minimize(self, target):
+        self.calls.append(("minimize", target))
+        return {"matched_handles": [1, 2]}
 
-    async def restore(self, title):
-        self.calls.append(("restore", title))
+    async def restore(self, target):
+        self.calls.append(("restore", target))
+        return {"matched_handles": [1, 2]}
 
-    async def move_resize(self, title, geometry):
-        self.calls.append(("move_resize", title, geometry))
+    async def move_resize(self, target, geometry):
+        self.calls.append(("move_resize", target, geometry))
+        return {"selected_handle": 1}
 
 
 @pytest.mark.asyncio
 async def test_window_action_declares_target_exclusivity_and_calls_adapter():
     windows = FakeWindows()
     action = WindowAction(windows)
-    config = WindowActionConfig(operation="move_resize", title="Game", geometry=(1, 2, 800, 600))
+    config = WindowActionConfig(
+        operation="move_resize",
+        process_name="Game.EXE",
+        fallback_process_names=["GameLegacy.exe"],
+        geometry=(1, 2, 800, 600),
+    )
 
     result = await action.execute(config, None)
 
     assert result.outcome is StepOutcome.SUCCESS
-    assert windows.calls == [("move_resize", "Game", (1, 2, 800, 600))]
+    operation, target, geometry = windows.calls[0]
+    assert operation == "move_resize"
+    assert target.process_names == ("Game.EXE", "GameLegacy.exe")
+    assert geometry == (1, 2, 800, 600)
+    assert result.provider_data == {"selected_handle": 1}
+    assert action.required_resources(config) == frozenset(
+        {"window:process:game.exe|gamelegacy.exe"}
+    )
+
+
+def test_window_action_config_keeps_legacy_title_resource_key():
+    action = WindowAction(FakeWindows())
+    config = WindowActionConfig(operation="activate", title="Game")
+
     assert action.required_resources(config) == frozenset({"window:Game"})
 
 
@@ -57,23 +79,38 @@ async def test_win32_window_controller_delegates_to_injected_backend():
     calls = []
 
     class Backend:
-        def activate(self, title):
-            calls.append(("activate", title))
+        def activate(self, target):
+            calls.append(("activate", target))
+            return {"selected_handle": 1}
 
-        def minimize(self, title):
-            calls.append(("minimize", title))
+        def minimize(self, target):
+            calls.append(("minimize", target))
+            return {"matched_handles": [1]}
 
-        def restore(self, title):
-            calls.append(("restore", title))
+        def restore(self, target):
+            calls.append(("restore", target))
+            return {"matched_handles": [1]}
 
-        def move_resize(self, title, geometry):
-            calls.append(("move_resize", title, geometry))
+        def move_resize(self, target, geometry):
+            calls.append(("move_resize", target, geometry))
+            return {"selected_handle": 1}
 
     controller = Win32WindowController(Backend())
-    await controller.activate("Game")
-    await controller.move_resize("Game", (1, 2, 3, 4))
+    activate_result = await controller.activate(
+        WindowActionConfig(operation="activate", title="Game")
+    )
+    move_result = await controller.move_resize(
+        WindowActionConfig(operation="move_resize", process_name="game.exe", geometry=(1, 2, 3, 4)),
+        (1, 2, 3, 4),
+    )
 
-    assert calls == [("activate", "Game"), ("move_resize", "Game", (1, 2, 3, 4))]
+    assert calls[0][0] == "activate"
+    assert calls[0][1].title == "Game"
+    assert calls[1][0] == "move_resize"
+    assert calls[1][1].process_name == "game.exe"
+    assert calls[1][2] == (1, 2, 3, 4)
+    assert activate_result == {"selected_handle": 1}
+    assert move_result == {"selected_handle": 1}
 
 
 @pytest.mark.asyncio

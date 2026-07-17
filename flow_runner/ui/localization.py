@@ -40,6 +40,8 @@ FIELD_LABELS = {
     "color": "颜色（RGB）",
     "tolerance": "颜色容差",
     "channel_tolerance": "通道容差",
+    "process_name": "进程名",
+    "fallback_process_names": "备用进程名",
     "title": "窗口标题",
     "require_foreground": "必须位于前台",
     "name": "名称",
@@ -226,9 +228,17 @@ def action_summary(
         name = _launch_target_name(config)
         return f"启动程序：{name}" if name else capability_label(action.capability)
     if action.capability == "system.window_action":
-        return (
-            f"窗口：{choice_label(config.get('operation', ''))} {config.get('title', '')}".strip()
-        )
+        operation = choice_label(config.get("operation", ""))
+        process_name = str(config.get("process_name", "")).strip()
+        fallbacks = config.get("fallback_process_names", [])
+        if process_name:
+            detail = process_name
+            if isinstance(fallbacks, list) and fallbacks:
+                names = "、".join(str(item) for item in fallbacks)
+                detail += f"（备用：{names}）"
+        else:
+            detail = str(config.get("title", "")).strip()
+        return f"窗口：{operation} {detail}".strip()
     if action.capability == "variables.set":
         return f"设置变量：{config.get('name', '')}"
     return capability_label(action.capability)

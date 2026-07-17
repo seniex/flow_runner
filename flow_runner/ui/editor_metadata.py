@@ -4,7 +4,10 @@ COMMON_FIELDS: dict[str, frozenset[str]] = {
     "input.keyboard": frozenset({"operation", "key", "keys", "text", "count"}),
     "system.wait": frozenset({"seconds"}),
     "system.launch": frozenset({"path", "arguments", "run_as_admin"}),
-    "system.window_action": frozenset({"operation", "title", "geometry"}),
+    "system.window": frozenset({"process_name", "fallback_process_names", "require_foreground"}),
+    "system.window_action": frozenset(
+        {"operation", "process_name", "fallback_process_names", "geometry"}
+    ),
 }
 
 

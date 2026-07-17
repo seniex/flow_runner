@@ -73,15 +73,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min_lanren.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "lanren2.exe"
                   }
                 }
               ],
@@ -302,7 +297,7 @@
                   "target": {
                     "kind": "jump_workflow",
                     "step_id": null,
-                    "workflow_id": "b1d23949-26ad-5734-9f5a-c7fca2ddf280"
+                    "workflow_id": "36581295-33a8-4e04-8ceb-c5442a5973e1"
                   }
                 }
               ]
@@ -310,25 +305,24 @@
           ]
         },
         {
-          "id": "b1d23949-26ad-5734-9f5a-c7fca2ddf280",
+          "id": "36581295-33a8-4e04-8ceb-c5442a5973e1",
           "name": "预设初始位置",
           "steps": [
             {
-              "id": "927868df-abd1-5d42-8c4d-89a1b582e2f6",
+              "id": "39db02f4-f13f-458c-a0d8-6cdfe44790dd",
               "name": "预设初始位置",
               "enabled": true,
               "condition": null,
               "actions": [
                 {
-                  "capability": "input.keyboard",
+                  "capability": "input.mouse",
                   "config": {
-                    "operation": "press",
-                    "key": "",
-                    "keys": [],
-                    "text": "",
-                    "text_mode": "keys",
-                    "count": 1,
-                    "interval": 0.0
+                    "operation": "scroll",
+                    "position": [
+                      1023,
+                      833
+                    ],
+                    "scroll_units": -168
                   }
                 }
               ],
@@ -557,24 +551,15 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "input.mouse",
+                  "capability": "input.keyboard",
                   "config": {
-                    "operation": "move",
-                    "position": [
-                      0,
-                      0
-                    ],
-                    "offset": [
-                      0,
-                      0
-                    ],
-                    "button": "left",
-                    "clicks": 1,
-                    "interval": 0.0,
-                    "duration": 0.0,
-                    "scroll_units": 1,
-                    "jitter_pixels": 0,
-                    "settle_delay": 0.0
+                    "operation": "press",
+                    "key": "F4",
+                    "keys": [],
+                    "text": "",
+                    "text_mode": "keys",
+                    "count": 1,
+                    "interval": 0.0
                   }
                 }
               ],
@@ -642,15 +627,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE_lanren.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "lanren2.exe"
                   }
                 }
               ],
@@ -691,15 +671,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.1
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -735,17 +730,37 @@
           "steps": [
             {
               "id": "d07b2a7f-151a-5af6-befc-c6c49b61eaf0",
-              "name": "执行录制脚本",
+              "name": "亮屏",
               "enabled": true,
               "condition": null,
               "actions": [
                 {
-                  "capability": "recording.playback",
+                  "capability": "system.wait",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
-                    "speed": 1.0,
-                    "max_gap": 2.0,
-                    "jitter_ms": 50
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "input.mouse",
+                  "config": {
+                    "operation": "click",
+                    "position": [
+                      1469,
+                      850
+                    ],
+                    "offset": [
+                      0,
+                      0
+                    ],
+                    "button": "left",
+                    "clicks": 1,
+                    "interval": 0.0,
+                    "duration": 0.0,
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.0,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 }
               ],
@@ -829,15 +844,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -882,12 +895,12 @@
                 "config": {
                   "target": "desktop",
                   "region": [
-                    291,
-                    796,
-                    432,
-                    929
+                    714,
+                    918,
+                    942,
+                    1054
                   ],
-                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\template_20260715_050949_146.png",
+                  "template_path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\templates\\legacy\\转职挑战.png",
                   "threshold": 0.5
                 }
               },
@@ -912,7 +925,7 @@
                 {
                   "capability": "system.wait",
                   "config": {
-                    "seconds": 0.01
+                    "seconds": 0.1
                   }
                 },
                 {
@@ -982,15 +995,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -1074,15 +1102,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -1305,15 +1331,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -1424,15 +1465,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -1476,19 +1515,22 @@
                   "config": {
                     "operation": "click",
                     "position": [
-                      1967,
-                      1057
+                      0,
+                      0
                     ],
                     "offset": [
                       0,
                       0
                     ],
-                    "button": "right",
+                    "button": "left",
                     "clicks": 1,
-                    "interval": 0.05,
-                    "jitter_pixels": 3,
-                    "duration": 0.015,
-                    "settle_delay": 0.015
+                    "interval": 0.0,
+                    "duration": 0.0,
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.0,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -1771,15 +1813,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -1909,15 +1966,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min_lanren.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "lanren2.exe"
                   }
                 }
               ],
@@ -1942,15 +1994,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -2008,6 +2058,7 @@
                   ],
                   "keywords": "挑战成功",
                   "language": "chi_sim",
+                  "preprocessing": "",
                   "scale": 1.0
                 }
               },
@@ -2067,9 +2118,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2087,9 +2141,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2107,9 +2164,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2127,9 +2187,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.315,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 }
               ],
@@ -2505,7 +2568,7 @@
             },
             {
               "id": "8a401311-4940-5d54-9d96-cebd281c457e",
-              "name": "OCR点击验收用",
+              "name": "OCR点击",
               "enabled": true,
               "condition": {
                 "kind": "leaf",
@@ -2514,12 +2577,12 @@
                 "config": {
                   "target": "desktop",
                   "region": [
-                    1851,
-                    456,
-                    2268,
-                    858
+                    1796,
+                    486,
+                    2189,
+                    856
                   ],
-                  "keywords": "测试",
+                  "keywords": "都不要",
                   "language": "chi_sim",
                   "preprocessing": "",
                   "scale": 2.0
@@ -2546,8 +2609,8 @@
               ],
               "condition_policy": {
                 "mode": "until",
-                "interval_seconds": 1.0,
-                "max_attempts": 15,
+                "interval_seconds": 0.5,
+                "max_attempts": 20,
                 "timeout_seconds": null,
                 "before_attempt_actions": [],
                 "after_no_match_actions": []
@@ -2632,6 +2695,7 @@
                   ],
                   "keywords": "存档",
                   "language": "chi_sim",
+                  "preprocessing": "",
                   "scale": 1.0
                 }
               },
@@ -2651,9 +2715,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2671,9 +2738,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2691,9 +2761,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2711,9 +2784,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2731,9 +2807,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -2751,9 +2830,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 }
               ],
@@ -2894,15 +2976,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -2942,6 +3022,12 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.02
+                  }
+                },
+                {
                   "capability": "input.keyboard",
                   "config": {
                     "operation": "press",
@@ -2951,12 +3037,24 @@
                   }
                 },
                 {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.02
+                  }
+                },
+                {
                   "capability": "input.keyboard",
                   "config": {
                     "operation": "press",
                     "key": "x",
                     "count": 1,
                     "interval": 0.05
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.02
                   }
                 },
                 {
@@ -2988,7 +3086,7 @@
                     "source": "step_count",
                     "key": "801fdf71-ddf9-5330-b71d-98e719b3b00a",
                     "operator": "gt",
-                    "expected": 2
+                    "expected": 0
                   },
                   "target": {
                     "kind": "jump_workflow",
@@ -3101,15 +3199,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 },
                 {
@@ -3140,15 +3253,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\restore_platform.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "platform.exe"
                   }
                 },
                 {
@@ -3291,15 +3399,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -3575,15 +3681,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min_lanren.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "lanren2.exe"
                   }
                 }
               ],
@@ -4460,15 +4561,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE_lanren.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "lanren2.exe"
                   }
                 }
               ],
@@ -4509,15 +4605,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.1
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -4558,12 +4669,32 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "recording.playback",
+                  "capability": "system.wait",
                   "config": {
-                    "path": "D:\\3eyes\\Python\\codex\\apps\\flow_runner\\data\\recordings\\legacy\\亮屏.json",
-                    "speed": 1.0,
-                    "max_gap": 2.0,
-                    "jitter_ms": 50
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "input.mouse",
+                  "config": {
+                    "operation": "click",
+                    "position": [
+                      1469,
+                      850
+                    ],
+                    "offset": [
+                      0,
+                      0
+                    ],
+                    "button": "left",
+                    "clicks": 1,
+                    "interval": 0.0,
+                    "duration": 0.0,
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.0,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 }
               ],
@@ -4647,15 +4778,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -4794,15 +4923,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -4886,15 +5030,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -5113,15 +5255,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -5232,15 +5389,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -5579,15 +5734,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -5717,15 +5887,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min_lanren.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "lanren2.exe"
                   }
                 }
               ],
@@ -5750,15 +5915,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -5816,6 +5979,7 @@
                   ],
                   "keywords": "挑战成功",
                   "language": "chi_sim",
+                  "preprocessing": "",
                   "scale": 1.0
                 }
               },
@@ -5875,9 +6039,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -5895,9 +6062,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -5915,9 +6085,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.115,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 },
                 {
@@ -5935,9 +6108,12 @@
                     "button": "left",
                     "clicks": 1,
                     "interval": 0.1,
-                    "jitter_pixels": 0,
                     "duration": 0.015,
-                    "settle_delay": 0.015
+                    "scroll_units": 1,
+                    "jitter_pixels": 0,
+                    "settle_delay": 0.315,
+                    "target": "desktop",
+                    "coordinate_space": "screen"
                   }
                 }
               ],
@@ -6242,15 +6418,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 },
                 {
@@ -6281,15 +6472,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\restore_platform.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "platform.exe"
                   }
                 },
                 {
@@ -6432,15 +6618,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -7255,15 +7439,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 },
                 {
@@ -7399,15 +7598,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -7546,15 +7743,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -7638,15 +7850,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -7865,15 +8075,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -7941,15 +8166,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -8288,15 +8511,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 }
               ],
@@ -8426,15 +8664,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -8917,15 +9153,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 }
               ],
@@ -9047,15 +9281,30 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\min.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "minimize",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
+                  }
+                },
+                {
+                  "capability": "system.wait",
+                  "config": {
+                    "seconds": 0.3
+                  }
+                },
+                {
+                  "capability": "system.window_action",
+                  "config": {
+                    "operation": "activate",
+                    "process_name": "chrome.exe",
+                    "fallback_process_names": [
+                      "PotPlayerMini64.exe",
+                      "potplayer.exe"
+                    ]
                   }
                 },
                 {
@@ -9086,15 +9335,10 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\restore_platform.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "platform.exe"
                   }
                 },
                 {
@@ -9237,15 +9481,13 @@
               "condition": null,
               "actions": [
                 {
-                  "capability": "system.launch",
+                  "capability": "system.window_action",
                   "config": {
-                    "path": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-                    "arguments": [
-                      "D:\\3eyes\\Python\\RESTORE.py"
-                    ],
-                    "run_as_admin": false,
-                    "working_directory": "D:\\3eyes\\Python",
-                    "hide_window": true
+                    "operation": "activate",
+                    "process_name": "war3.exe",
+                    "fallback_process_names": [
+                      "warcraft iii.exe"
+                    ]
                   }
                 },
                 {
@@ -11084,22 +11326,24 @@
     "hotkeys": {
       "start": "F11",
       "stop": "F12",
-      "pause": "F10",
-      "record": "F6"
+      "pause": "",
+      "record": "F6",
+      "record_pause": ""
     },
     "legacy_conversion": {
       "source": "config/flow_runner.json",
       "workflow_count": 99,
       "step_count": 159
     },
-    "entry_workflow_id": "df455a93-0f3f-5cd6-b51c-9cc5dcf974c3",
+    "entry_workflow_id": "fafcd120-0e1d-5310-87ff-b559b93227d8",
     "ui_layout": {
       "column_widths": [
-        246,
-        267,
-        1643
+        249,
+        259,
+        1178
       ]
     },
-    "debug_logging": false
+    "debug_logging": true,
+    "minimize_on_workflow_start": true
   }
 }

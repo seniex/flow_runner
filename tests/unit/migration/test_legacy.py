@@ -150,6 +150,44 @@ def test_legacy_recording_conversion_normalizes_time_and_click_pairs(tmp_path):
     assert loaded[2].data["units"] == -240
 
 
+def test_legacy_conversion_replaces_known_window_control_scripts(tmp_path):
+    source = {
+        "flow_groups": [
+            {
+                "name": "组",
+                "flows": [
+                    {
+                        "name": "流程",
+                        "steps": [
+                            {
+                                "type": "launch_app",
+                                "app_path": str(tmp_path / "min.py"),
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+    project = convert_legacy_config(
+        source,
+        LegacyConversionPaths(
+            project_directory=tmp_path,
+            python_executable=tmp_path / "python.exe",
+            pythonw_executable=tmp_path / "pythonw.exe",
+            paddle_executable=tmp_path / "PaddleOCR-json.exe",
+            recording_directory=tmp_path / "recordings",
+        ),
+    )
+
+    assert [action.capability for action in project.groups[0].workflows[0].steps[0].actions] == [
+        "system.window_action",
+        "system.wait",
+        "system.window_action",
+    ]
+
+
 def test_full_legacy_fixture_converts_all_groups_workflows_and_steps():
     source = json.loads(Path("data/legacy/config/flow_runner.json").read_text(encoding="utf-8"))
     project = convert_legacy_config(

@@ -6,7 +6,7 @@ of fixed OCR/image step combinations.
 
 ## Current release
 
-Current version: `0.3.0`.
+Current version: `0.4.0`.
 
 - Groups, workflows, and steps use independent two-digit display numbers without changing raw
   names, UUIDs, JSON data, or route references.
@@ -171,8 +171,12 @@ project column widths still take precedence.
 Every step card stays expanded by default, with its step name at the top followed by detection,
 action, policy, and route summaries. Each configured route occupies its own line and shows its
 result, count or variable predicate, and numbered group/workflow/step target; a step without explicit
-routes describes the implicit success continuation and non-success termination. Window actions keep
-operation, title, and geometry on one row, showing geometry only for move/resize. The main-window
+routes describes the implicit success continuation and non-success termination. New window actions
+and window-state conditions target an executable process name with optional ordered fallback names;
+matching is case-insensitive and uses the executable basename. Minimize and restore affect every
+visible top-level window owned by the selected process, while activate and move/resize choose one
+window deterministically. Existing title-only configurations remain valid and editable through
+advanced JSON. Window action fields remain on one row, showing geometry only for move/resize. The main-window
 width and height are stored in local Windows application settings when the window closes successfully
 and restored on the next launch; these local preferences do not dirty or modify the project JSON.
 Step cards constrain themselves to the middle-column viewport: long route lines wrap within the
