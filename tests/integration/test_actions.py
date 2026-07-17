@@ -692,6 +692,33 @@ def test_recording_recorder_captures_timed_events_and_saves(tmp_path):
     assert RecordingStore.load(path) == events
 
 
+def test_recording_recorder_saves_identical_primary_and_latest_files(tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    times = iter([10.0, 10.1])
+    recorder = RecordingRecorder(
+        listener_factory=lambda **provided: callbacks.update(provided) or Listener(),
+        clock=lambda: next(times),
+    )
+    archive = tmp_path / "recording_20260717_083314.json"
+    latest = tmp_path / "latest.json"
+
+    recorder.start()
+    callbacks["on_move"](8, 9)
+    events = recorder.stop(archive, additional_paths=(latest,))
+
+    assert RecordingStore.load(archive) == events
+    assert RecordingStore.load(latest) == events
+    assert archive.read_bytes() == latest.read_bytes()
+
+
 def test_recording_recorder_excludes_configured_control_key_pairs(tmp_path):
     callbacks = {}
 

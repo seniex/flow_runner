@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 
@@ -54,3 +55,13 @@ class ApplicationPaths:
     @property
     def session_name(self) -> str:
         return self.application_root.name or "flow_runner"
+
+
+def timestamped_recording_file(directory: Path, saved_at: datetime) -> Path:
+    stem = f"recording_{saved_at:%Y%m%d_%H%M%S}"
+    candidate = directory / f"{stem}.json"
+    suffix = 2
+    while candidate.exists():
+        candidate = directory / f"{stem}_{suffix}.json"
+        suffix += 1
+    return candidate

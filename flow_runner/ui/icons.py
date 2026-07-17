@@ -31,6 +31,7 @@ ACTION_ICON_NAMES = {
     "stopWorkflowAction": "stop",
     "recordAction": "record",
     "pauseRecordingAction": "pause",
+    "openRecordingDirectoryAction": "folder-open",
     "diagnosticsAction": "diagnostics",
     "runSelectedStepAction": "start",
     "previewConditionAction": "preview",

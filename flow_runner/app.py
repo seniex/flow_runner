@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from time import monotonic
 
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication
 
 from flow_runner.capabilities.actions.keyboard import KeyboardAction
@@ -45,6 +47,7 @@ from flow_runner.infrastructure.capture.windows_graphics import WindowsGraphicsC
 from flow_runner.infrastructure.input.keyboard import KeyboardDevice, PyAutoGuiKeyboardDevice
 from flow_runner.infrastructure.input.mouse import MouseDevice, PyAutoGuiMouseDevice
 from flow_runner.infrastructure.input.recording import (
+    RecordedEvent,
     RecordingListenerFactory,
     RecordingPlayer,
     RecordingRecorder,
@@ -54,7 +57,7 @@ from flow_runner.infrastructure.logging.session import session_log_path
 from flow_runner.infrastructure.logging.sinks import JsonEventSink, TextEventSink
 from flow_runner.infrastructure.ocr.paddle_json import PaddleJsonOcr, PaddleJsonProcessClient
 from flow_runner.infrastructure.ocr.tesseract import TesseractOcr
-from flow_runner.infrastructure.paths import ApplicationPaths
+from flow_runner.infrastructure.paths import ApplicationPaths, timestamped_recording_file
 from flow_runner.infrastructure.persistence.project_store import ProjectStore
 from flow_runner.infrastructure.processes.launch import WindowsProcessLauncher
 from flow_runner.infrastructure.processes.query import WindowsProcessQuery
@@ -86,6 +89,9 @@ class ApplicationComposition:
     hotkey_service: HotkeyService
     recorder: RecordingRecorder
     recording_path: Path
+    recording_archive_path_factory: Callable[[], Path]
+    recording_directory: Path
+    directory_opener: Callable[[Path], bool]
     resource_coordinator: ResourceCoordinator
     ocr_client: PaddleJsonProcessClient | None
     mouse_device: MouseDevice
@@ -96,7 +102,7 @@ class ApplicationComposition:
 
     def shutdown(self) -> None:
         if self.recorder.is_recording:
-            self.recorder.stop(self.recording_path)
+            self._stop_and_save_recording()
             self.window.set_recording_state(False, paused=False)
         self.hotkey_service.stop()
         self.runner_bridge.shutdown()
@@ -107,6 +113,12 @@ class ApplicationComposition:
     def release_inputs(self) -> None:
         self.mouse_device.release_all()
         self.keyboard_device.release_all()
+
+    def _stop_and_save_recording(self) -> list[RecordedEvent]:
+        return self.recorder.stop(
+            self.recording_archive_path_factory(),
+            additional_paths=(self.recording_path,),
+        )
 
     def toggle_recording_pause(self) -> None:
         if not self.recorder.is_recording:
@@ -134,7 +146,7 @@ class ApplicationComposition:
         if not self.recorder.is_recording:
             return
         try:
-            events = self.recorder.stop(self.recording_path)
+            events = self._stop_and_save_recording()
         except Exception as error:
             self.window.set_recording_state(False, paused=False)
             self.window.statusBar().showMessage(f"录制保存失败：{error}")
@@ -144,13 +156,25 @@ class ApplicationComposition:
 
     def toggle_recording(self) -> None:
         if self.recorder.is_recording:
-            events = self.recorder.stop(self.recording_path)
+            events = self._stop_and_save_recording()
             self.window.set_recording_state(False, paused=False)
             self.window.statusBar().showMessage(f"录制已保存：{len(events)} 个事件")
         else:
             self.recorder.start()
             self.window.set_recording_state(True, paused=False)
             self.window.statusBar().showMessage("正在录制输入")
+
+    def open_recording_directory(self) -> None:
+        try:
+            self.recording_directory.mkdir(parents=True, exist_ok=True)
+            opened = self.directory_opener(self.recording_directory)
+        except Exception as error:
+            self.window.statusBar().showMessage(f"无法打开录制目录：{error}")
+            return
+        if not opened:
+            self.window.statusBar().showMessage(
+                f"无法打开录制目录：{self.recording_directory}"
+            )
 
 
 def create_application(
@@ -161,6 +185,8 @@ def create_application(
     hotkey_listener_factory: ListenerFactory | None = None,
     recording_listener_factory: RecordingListenerFactory | None = None,
     recording_path: Path | None = None,
+    recording_clock: Callable[[], datetime] | None = None,
+    directory_opener: Callable[[Path], bool] | None = None,
     mouse_device: MouseDevice | None = None,
     keyboard_device: KeyboardDevice | None = None,
 ) -> ApplicationComposition:
@@ -292,6 +318,9 @@ def create_application(
     )
     qss_path = Path(__file__).parent / "resources" / "styles" / "base.qss"
     ThemeManager().apply(app, qss_path)
+    latest_recording_path = recording_path or paths.latest_recording_file
+    recording_directory = latest_recording_path.parent
+    wall_clock = recording_clock or datetime.now
     composition = ApplicationComposition(
         app=app,
         window=window,
@@ -301,7 +330,13 @@ def create_application(
         runner_bridge=runner_bridge,
         hotkey_service=hotkey_service,
         recorder=recorder,
-        recording_path=recording_path or paths.latest_recording_file,
+        recording_path=latest_recording_path,
+        recording_archive_path_factory=lambda: timestamped_recording_file(
+            recording_directory,
+            wall_clock(),
+        ),
+        recording_directory=recording_directory,
+        directory_opener=directory_opener or _open_local_directory,
         resource_coordinator=resource_coordinator,
         ocr_client=ocr_client,
         mouse_device=mouse,
@@ -309,11 +344,18 @@ def create_application(
     )
     window.recordRequested.connect(lambda: composition.toggle_recording())
     window.recordPauseRequested.connect(lambda: composition.toggle_recording_pause())
+    window.recordingDirectoryRequested.connect(
+        lambda: composition.open_recording_directory()
+    )
     window.hotkeyConfigChanged.connect(lambda config: composition.apply_hotkey_config(config))
     window.runtimeStopAccepted.connect(lambda: composition.stop_recording_after_runtime_stop())
     runner_bridge.terminated.connect(lambda: composition.release_inputs())
     app.aboutToQuit.connect(lambda: composition.shutdown())
     return composition
+
+
+def _open_local_directory(path: Path) -> bool:
+    return QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
 
 
 def _build_registry(

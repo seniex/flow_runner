@@ -270,8 +270,12 @@ changes replaces the active listener and recording filter immediately; all five 
 hotkeys (start, stop, workflow pause, recording toggle, and recording pause) are excluded from newly
 recorded key events. A key removed from the control bindings becomes recordable immediately.
 
-Recordings are stored by default at `data/recordings/latest.json`. The playback action can reuse a
-recording with configurable speed and maximum gap.
+Each completed recording is preserved under
+`data/recordings/recording_YYYYMMDD_HHMMSS.json` and also copied to
+`data/recordings/latest.json` for stable playback references. A numeric suffix avoids overwriting a
+recording saved in the same second. The icon-only folder control beside the recording pause control
+opens the active project's recordings directory. The playback action can reuse a recording with
+configurable speed and maximum gap.
 
 Mouse actions support fixed or result-bound coordinates, an additional coordinate offset, click,
 move, scroll, button-down, button-up, and drag operations. The guided mouse form exposes

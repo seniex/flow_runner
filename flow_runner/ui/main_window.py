@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
     stopRequested = Signal()
     recordRequested = Signal()
     recordPauseRequested = Signal()
+    recordingDirectoryRequested = Signal()
     hotkeyConfigChanged = Signal(object)
     runtimePauseChanged = Signal(bool)
     runtimeStopAccepted = Signal()
@@ -201,7 +202,7 @@ class MainWindow(QMainWindow):
         self.move_workflow_up_action.setObjectName("moveWorkflowUpAction")
         self.move_workflow_down_action = QAction("流程下移", self)
         self.move_workflow_down_action.setObjectName("moveWorkflowDownAction")
-        self.move_workflow_group_action = QAction("移动到组", self)
+        self.move_workflow_group_action = QAction("移动组", self)
         self.move_workflow_group_action.setObjectName("moveWorkflowGroupAction")
         self.delete_flow_action = QAction("删除组/流程", self)
         self.delete_flow_action.setObjectName("deleteFlowAction")
@@ -228,6 +229,9 @@ class MainWindow(QMainWindow):
         self.record_pause_action = QAction("暂停录制", self)
         self.record_pause_action.setObjectName("pauseRecordingAction")
         self.record_pause_action.setEnabled(False)
+        self.open_recording_directory_action = QAction("打开录制目录", self)
+        self.open_recording_directory_action.setObjectName("openRecordingDirectoryAction")
+        self.open_recording_directory_action.setToolTip("打开录制目录")
         self.diagnostics_action = QAction("诊断", self)
         self.diagnostics_action.setObjectName("diagnosticsAction")
         self.run_step_action = QAction("单步运行", self)
@@ -243,6 +247,9 @@ class MainWindow(QMainWindow):
         self.stop_action.triggered.connect(self._stop_runtime)
         self.record_action.triggered.connect(self.recordRequested.emit)
         self.record_pause_action.triggered.connect(self.recordPauseRequested.emit)
+        self.open_recording_directory_action.triggered.connect(
+            self.recordingDirectoryRequested.emit
+        )
         self.run_step_action.triggered.connect(self._run_selected_step)
         self.preview_action.triggered.connect(self._preview_selected_condition)
         self.diagnostics_action.triggered.connect(self.diagnostics_dialog.show)
@@ -302,6 +309,8 @@ class MainWindow(QMainWindow):
             self.record_pause_action,
         ):
             runtime.add_action(action)
+        directory_button = runtime.add_action(self.open_recording_directory_action)
+        directory_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         flows = self.flow_controls.add_group("组与流程")
         for action in (
             self.add_group_action,
@@ -310,8 +319,8 @@ class MainWindow(QMainWindow):
             self.copy_workflow_action,
             self.rename_flow_action,
             self.move_workflow_up_action,
-            self.move_workflow_down_action,
             self.move_workflow_group_action,
+            self.move_workflow_down_action,
             self.delete_flow_action,
         ):
             flows.add_action(action)

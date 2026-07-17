@@ -17,6 +17,7 @@ def sample_project() -> Project:
 
 def test_declared_icons_are_loadable():
     assert ACTION_ICON_NAMES["pauseRecordingAction"] == "pause"
+    assert ACTION_ICON_NAMES["openRecordingDirectoryAction"] == "folder-open"
     assert not application_icon().isNull()
     for name in set(ACTION_ICON_NAMES.values()):
         assert not icon(name).isNull(), name
@@ -48,7 +49,12 @@ def test_main_window_common_actions_keep_text_and_icons(qtbot):
     buttons = window.findChildren(QToolButton)
     assert buttons
     assert all(
-        button.toolButtonStyle() is Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        button.toolButtonStyle()
+        is (
+            Qt.ToolButtonStyle.ToolButtonIconOnly
+            if button.defaultAction() is window.open_recording_directory_action
+            else Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
         for button in buttons
         if button.defaultAction() in actions.values()
     )

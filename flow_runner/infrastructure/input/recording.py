@@ -110,7 +110,12 @@ class RecordingRecorder:
             self._paused_total += max(0.0, self.clock() - self._paused_at)
             self._paused_at = None
 
-    def stop(self, path: Path) -> list[RecordedEvent]:
+    def stop(
+        self,
+        path: Path,
+        *,
+        additional_paths: Iterable[Path] = (),
+    ) -> list[RecordedEvent]:
         listener = self.listener
         if listener is None:
             return []
@@ -118,8 +123,8 @@ class RecordingRecorder:
         with self._lock:
             self.listener = None
             events = list(self.events)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        RecordingStore.save(path, events)
+        for destination in (path, *additional_paths):
+            RecordingStore.save(destination, events)
         return events
 
     def _append(

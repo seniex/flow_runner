@@ -589,14 +589,15 @@ def test_main_window_places_actions_in_responsive_column_controls(qtbot):
         window.stop_action,
         window.record_action,
         window.record_pause_action,
+        window.open_recording_directory_action,
         window.add_group_action,
         window.copy_group_action,
         window.add_workflow_action,
         window.copy_workflow_action,
         window.rename_flow_action,
         window.move_workflow_up_action,
-        window.move_workflow_down_action,
         window.move_workflow_group_action,
+        window.move_workflow_down_action,
         window.delete_flow_action,
         window.add_parallel_action,
         window.edit_parallel_action,
@@ -646,6 +647,57 @@ def test_recording_pause_action_emits_request(qtbot):
 
     with qtbot.waitSignal(window.recordPauseRequested):
         window.record_pause_action.trigger()
+
+
+def test_recording_directory_action_is_icon_only_and_follows_record_pause(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+    buttons = window.flow_controls.findChildren(QToolButton)
+    actions = [button.defaultAction() for button in buttons]
+    directory_button = next(
+        button
+        for button in buttons
+        if button.defaultAction() is window.open_recording_directory_action
+    )
+
+    assert actions.index(window.open_recording_directory_action) == (
+        actions.index(window.record_pause_action) + 1
+    )
+    assert directory_button.toolButtonStyle() is Qt.ToolButtonStyle.ToolButtonIconOnly
+    assert window.open_recording_directory_action.toolTip() == "打开录制目录"
+
+
+def test_recording_directory_action_emits_request(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+
+    with qtbot.waitSignal(window.recordingDirectoryRequested):
+        window.open_recording_directory_action.trigger()
+
+
+def test_workflow_movement_controls_use_requested_order_and_label(qtbot):
+    window = MainWindow(sample_project())
+    qtbot.addWidget(window)
+    actions = [
+        button.defaultAction()
+        for button in window.flow_controls.findChildren(QToolButton)
+    ]
+    movement_actions = [
+        action
+        for action in actions
+        if action
+        in {
+            window.move_workflow_up_action,
+            window.move_workflow_group_action,
+            window.move_workflow_down_action,
+        }
+    ]
+
+    assert [action.text() for action in movement_actions] == [
+        "流程上移",
+        "移动组",
+        "流程下移",
+    ]
 
 
 def test_runtime_start_without_editor_selection_uses_startup_workflow(qtbot):

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -368,7 +369,7 @@ def test_application_releases_held_inputs_when_runtime_terminates(qtbot, tmp_pat
     assert keyboard.releases == 1
 
 
-def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_path):
+def test_record_hotkey_saves_timestamped_history_and_latest_recording(qtbot, tmp_path):
     hotkey_listeners = []
     recording_callbacks = {}
 
@@ -403,6 +404,7 @@ def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_pat
         hotkey_listener_factory=hotkey_factory,
         recording_listener_factory=recording_factory,
         recording_path=path,
+        recording_clock=lambda: datetime(2026, 7, 17, 8, 33, 14),
     )
     qtbot.addWidget(composition.window)
     composition.start_services()
@@ -413,7 +415,39 @@ def test_record_hotkey_toggles_capture_and_saves_latest_recording(qtbot, tmp_pat
     composition.shutdown()
 
     assert recording_listener.started and recording_listener.stopped
-    assert path.exists()
+    archive = tmp_path / "recording_20260717_083314.json"
+    assert RecordingStore.load(archive) == RecordingStore.load(path)
+    assert archive.read_bytes() == path.read_bytes()
+
+
+def test_shutdown_saves_timestamped_history_and_latest_recording(qtbot, tmp_path):
+    callbacks = {}
+
+    class Listener:
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    latest = tmp_path / "latest.json"
+    composition = create_application(
+        [],
+        project_path=tmp_path / "project.json",
+        recording_listener_factory=lambda **provided: (
+            callbacks.update(provided) or Listener()
+        ),
+        recording_path=latest,
+        recording_clock=lambda: datetime(2026, 7, 17, 8, 33, 15),
+    )
+    qtbot.addWidget(composition.window)
+    composition.window.record_action.trigger()
+    callbacks["on_press"]("a")
+
+    composition.shutdown()
+
+    archive = tmp_path / "recording_20260717_083315.json"
+    assert RecordingStore.load(archive) == RecordingStore.load(latest)
 
 
 def test_recording_pause_button_and_hotkey_work_without_runtime(qtbot, tmp_path):
@@ -547,6 +581,7 @@ def test_runtime_stop_saves_manually_paused_recording(qtbot, tmp_path):
         project_path=project_path,
         recording_listener_factory=lambda **provided: callbacks.update(provided) or Listener(),
         recording_path=recording_path,
+        recording_clock=lambda: datetime(2026, 7, 17, 8, 33, 16),
     )
     qtbot.addWidget(composition.window)
     composition.window.record_action.trigger()
@@ -560,6 +595,40 @@ def test_runtime_stop_saves_manually_paused_recording(qtbot, tmp_path):
 
     assert not composition.recorder.is_recording
     assert [event.data["key"] for event in RecordingStore.load(recording_path)] == ["a"]
+    archive = tmp_path / "recording_20260717_083316.json"
+    assert RecordingStore.load(archive) == RecordingStore.load(recording_path)
+    composition.shutdown()
+
+
+def test_recording_directory_action_creates_and_opens_active_directory(qtbot, tmp_path):
+    opened = []
+    project_path = tmp_path / "project.json"
+    composition = create_application(
+        [],
+        project_path=project_path,
+        directory_opener=lambda path: opened.append(path) or True,
+    )
+    qtbot.addWidget(composition.window)
+
+    composition.window.open_recording_directory_action.trigger()
+
+    expected = tmp_path / "recordings"
+    assert expected.is_dir()
+    assert opened == [expected]
+    composition.shutdown()
+
+
+def test_recording_directory_action_reports_open_failure(qtbot, tmp_path):
+    composition = create_application(
+        [],
+        project_path=tmp_path / "project.json",
+        directory_opener=lambda _path: False,
+    )
+    qtbot.addWidget(composition.window)
+
+    composition.window.open_recording_directory_action.trigger()
+
+    assert "无法打开录制目录" in composition.window.statusBar().currentMessage()
     composition.shutdown()
 
 
