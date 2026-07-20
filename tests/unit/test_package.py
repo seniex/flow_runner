@@ -1,7 +1,7 @@
 def test_package_exposes_version():
     import flow_runner
 
-    assert flow_runner.__version__ == "0.4.0"
+    assert flow_runner.__version__ == "0.4.1"
 
 
 def test_hatch_builds_the_flow_runner_package():
